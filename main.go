@@ -6,9 +6,8 @@ import (
 	"github.com/TimeForCoin/Server/app"
 )
 
-
 func main() {
-	configFile := flag.String("c", "config/default.yaml", "Config file")
+	configFile := flag.String("c", "config.yaml", "Config file")
 	flag.Parse()
 	app.Run(*configFile)
 }

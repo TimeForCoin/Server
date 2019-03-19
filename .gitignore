@@ -5,3 +5,5 @@
 out
 *.exe
 vendor
+
+config.yaml
