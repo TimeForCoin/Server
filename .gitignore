@@ -3,5 +3,5 @@
 
 # Build
 out
-main.exe
+*.exe
 vendor

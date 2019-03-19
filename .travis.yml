@@ -2,4 +2,7 @@ language: go
 go:
   - 1.12.x
 script:
-  - go test -v ./app/...
+  - go build
+  - go test -v -coverprofile="coverage.txt" -covermode=atomic ./app/...
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
