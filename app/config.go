@@ -9,7 +9,9 @@ import (
 
 // ServerConfig 服务端配置
 type ServerConfig struct {
-	Port string `yaml:"port"`
+	Host string `yaml:"host"` // 监听地址
+	Port string `yaml:"port"` // 监听端口
+	Dev  bool   `yaml:"dev"`  // 开发环境
 }
 
 // AppConfig 配置
