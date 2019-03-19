@@ -1,0 +1,9 @@
+# Project
+.idea/workspace.xml
+.idea/tasks.xml
+
+# Go Module
+go.sum
+
+# Build
+out
