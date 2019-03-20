@@ -5,13 +5,13 @@ ENV GO111MODULE on
 
 WORKDIR /go/cache
 
-ADD go.mod .
-ADD go.sum .
+COPY go.mod .
+COPY go.sum .
 RUN go mod download
 
 WORKDIR /go/release
 
-ADD . .
+COPY . .
 
 RUN GOOS=linux CGO_ENABLED=0 go build -ldflags="-s -w" -installsuffix cgo -o main main.go
 
