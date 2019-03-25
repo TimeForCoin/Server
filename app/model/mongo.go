@@ -28,7 +28,7 @@ type Model struct {
 // GetModel 获取 Model 实例
 func GetModel() *Model {
 	if model == nil {
-		panic("Model isn't init!!!")
+		panic("DB isn't Initialize!")
 	}
 	return model
 }
@@ -61,21 +61,20 @@ func connect(config *configs.DBConfig) error {
 	option := options.Client().
 		ApplyURI(fmt.Sprintf("mongodb://%s:%s@%s:%s/%s",
 			config.User, config.Password, config.Host, config.Port, config.DBName))
-	model.client, err = mongo.Connect(ctx, option)
-	if err != nil {
+	if model.client, err = mongo.Connect(ctx, option); err != nil {
 		return err
 	}
 	// 测试连接
 	err = model.client.Ping(ctx, readpref.Primary())
-	if err == nil {
-		log.Println("Successful connection to MongoDB.")
-	} else {
+	if err != nil {
 		log.Println("Failure to connect MongoDB!!!")
 		return err
 	}
+	log.Println("Successful connection to MongoDB.")
 	return nil
 }
 
+// DisconnectDB 断开数据库连接
 func DisconnectDB() error {
 	ctx, cancel := GetCtx()
 	defer cancel()

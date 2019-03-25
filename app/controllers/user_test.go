@@ -1,8 +1,9 @@
 package controllers
 
 import (
-	"github.com/kataras/iris/httptest"
 	"testing"
+
+	"github.com/kataras/iris/httptest"
 )
 
 func TestUserController(t *testing.T) {

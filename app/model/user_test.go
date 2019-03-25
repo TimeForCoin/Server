@@ -15,7 +15,6 @@ func TestUserModel(t *testing.T) {
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 
-
 func testUserModelAddUser(t *testing.T) {
 	if err := model.User.AddUser("MegaShow"); err != nil {
 		t.Error(err)

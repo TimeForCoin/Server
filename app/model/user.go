@@ -13,7 +13,7 @@ type UserModel struct {
 
 // UserSchema User 基本数据结构
 type UserSchema struct {
-	ID   primitive.ObjectID "_id,omitempty"
+	ID   primitive.ObjectID `bson:"_id,omitempty"`
 	Name string             `bson:"name"`
 }
 

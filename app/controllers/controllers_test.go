@@ -1,19 +1,20 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/configs"
-	"github.com/TimeForCoin/Server/app/model"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/TimeForCoin/Server/app/configs"
+	"github.com/TimeForCoin/Server/app/model"
 )
 
 func testInitDB(t *testing.T) {
 	err := model.InitDB(&configs.DBConfig{
-		Host: os.Getenv("DB_HOST"),
-		Port: os.Getenv("DB_PORT"),
-		DBName: os.Getenv("DB_NAME"),
-		User: os.Getenv("DB_USER"),
+		Host:     os.Getenv("DB_HOST"),
+		Port:     os.Getenv("DB_PORT"),
+		DBName:   os.Getenv("DB_NAME"),
+		User:     os.Getenv("DB_USER"),
 		Password: os.Getenv("DB_PASSWORD"),
 	})
 	if err != nil {
@@ -33,10 +34,10 @@ func testInitRedis(t *testing.T) {
 		t.Error(err)
 	}
 	err = model.InitRedis(&configs.RedisConfig{
-		Host: os.Getenv("REDIS_HOST"),
-		Port: os.Getenv("REDIS_PORT"),
+		Host:     os.Getenv("REDIS_HOST"),
+		Port:     os.Getenv("REDIS_PORT"),
 		Password: os.Getenv("REDIS_PASSWORD"),
-		DB: DB,
+		DB:       DB,
 	})
 	if err != nil {
 		t.Error(err)

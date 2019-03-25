@@ -22,7 +22,6 @@ type userService struct {
 func (s *userService) GetPong(ping string) string {
 	if ping == "ping" {
 		return "pong"
-	} else {
-		return "error"
 	}
+	return "error"
 }

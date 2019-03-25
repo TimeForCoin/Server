@@ -9,13 +9,13 @@ import (
 
 // Config 应用配置
 type Config struct {
-	HTTP  HttpConfig  `yaml:"http"`
+	HTTP  HTTPConfig  `yaml:"http"`
 	Db    DBConfig    `yaml:"db"`
 	Redis RedisConfig `yaml:"redis"`
 }
 
-// HttpConfig 服务器配置
-type HttpConfig struct {
+// HTTPConfig 服务器配置
+type HTTPConfig struct {
 	Host string `yaml:"host"`
 	Port string `yaml:"port"`
 	Dev  bool   `yaml:"dev"`

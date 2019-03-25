@@ -7,13 +7,13 @@ import (
 )
 
 // UserController 用户控制
-type UserController struct{
+type UserController struct {
 	Server services.UserService
 }
 
 // BindUserController 绑定用户控制器
 func BindUserController(app *iris.Application) {
-	userRoute :=  mvc.New(app.Party("/user"))
+	userRoute := mvc.New(app.Party("/user"))
 	userRoute.Register(services.NewUserService())
 	userRoute.Handle(new(UserController))
 }
