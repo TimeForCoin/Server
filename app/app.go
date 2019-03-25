@@ -1,13 +1,14 @@
 package app
 
 import (
+	"os"
+
 	"github.com/TimeForCoin/Server/app/configs"
 	"github.com/TimeForCoin/Server/app/controllers"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/kataras/iris"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
 )
 
 func initService(config configs.Config) {

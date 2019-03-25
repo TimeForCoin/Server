@@ -9,8 +9,8 @@ import (
 
 // UserController 用户控制
 type UserController struct {
-	Ctx iris.Context
-	Server services.UserService
+	Ctx     iris.Context
+	Server  services.UserService
 	Session *sessions.Session
 }
 

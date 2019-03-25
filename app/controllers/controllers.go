@@ -1,12 +1,13 @@
 package controllers
 
 import (
+	"time"
+
 	"github.com/TimeForCoin/Server/app/configs"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/logger"
 	"github.com/kataras/iris/middleware/recover"
 	"github.com/kataras/iris/sessions"
-	"time"
 )
 
 var sessionManager *sessions.Sessions
@@ -28,7 +29,7 @@ func NewApp() *iris.Application {
 func InitSession(config configs.SessionConfig) {
 	sessionManager = sessions.New(sessions.Config{
 		Cookie:  config.Key,
-		Expires:  time.Hour * time.Duration(config.Expires * 24),
+		Expires: time.Hour * time.Duration(config.Expires*24),
 	})
 }
 
@@ -37,7 +38,7 @@ func getSession() *sessions.Sessions {
 		// 生成默认 Session
 		sessionManager = sessions.New(sessions.Config{
 			Cookie:  "coin-for-time",
-			Expires:  time.Hour * time.Duration(15 * 24),
+			Expires: time.Hour * time.Duration(15*24),
 		})
 	}
 	return sessionManager

@@ -49,13 +49,13 @@ type RedisConfig struct {
 func (c *Config) GetConf(path string) *Config {
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Error().Err(err).Msg("Can't read config file")
+		log.Panic().Err(err).Msg("Can't read config file")
 	}
 
 	err = yaml.Unmarshal(yamlFile, c)
 
 	if err != nil {
-		log.Error().Err(err).Msg("Can't marshal config file")
+		log.Panic().Err(err).Msg("Can't marshal config file")
 	}
 	log.Info().Msg("Read config from " + path)
 	return c
