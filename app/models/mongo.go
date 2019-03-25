@@ -33,9 +33,9 @@ func GetModel() *Model {
 	return model
 }
 
-// GetCtx 获取并发上下文(默认3秒超时)
+// GetCtx 获取并发上下文(默认5秒超时)
 func GetCtx() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 3*time.Second)
+	return context.WithTimeout(context.Background(), 5*time.Second)
 }
 
 // InitDB 初始化数据库
