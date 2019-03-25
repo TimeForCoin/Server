@@ -11,7 +11,7 @@ func Run(configPath string) {
 	var config configs.Config
 	config.GetConf(configPath)
 
-	err := model.InitDB(config.Db)
+	err := model.InitDB(&config.Db)
 	if err != nil {
 		panic(err)
 	}

@@ -27,7 +27,7 @@ func GetCtx() (context.Context, context.CancelFunc) {
 }
 
 // InitDB 初始化数据库
-func InitDB(config configs.DBConfig) error {
+func InitDB(config *configs.DBConfig) error {
 	model = &Model{}
 	err := connectDB(config)
 	if err != nil {
@@ -42,7 +42,7 @@ func InitDB(config configs.DBConfig) error {
 }
 
 // 连接数据库
-func connectDB(config configs.DBConfig) error {
+func connectDB(config *configs.DBConfig) error {
 	var err error
 	ctx, cancel := GetCtx()
 	defer cancel()

@@ -2,13 +2,18 @@ package model
 
 import (
 	"github.com/TimeForCoin/Server/app/configs"
+	"os"
 	"testing"
 )
 
 func TestInitDB(t *testing.T) {
-	var config configs.Config
-	config.GetConf("../../config.yaml")
-	err := InitDB(config.Db)
+	err := InitDB(&configs.DBConfig{
+		Host: os.Getenv("DB_HOST"),
+		Port: os.Getenv("DB_PORT"),
+		DBName: os.Getenv("DB_NAME"),
+		User: os.Getenv("DB_USER"),
+		Password: os.Getenv("DB_PASSWORD"),
+	})
 	if err != nil {
 		t.Error(err)
 	}
