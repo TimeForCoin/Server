@@ -7,15 +7,19 @@ import (
 	"github.com/kataras/iris"
 )
 
+// Run 程序入口
 func Run(configPath string) {
 	var config configs.Config
 	config.GetConf(configPath)
-
-	err := model.InitDB(&config.Db)
-	if err != nil {
+	// 初始化数据库
+	if err := model.InitDB(&config.Db); err != nil {
 		panic(err)
 	}
-
+	// 初始化 Redis
+	if err := model.InitRedis(&config.Redis); err != nil {
+		panic(err)
+	}
+	// 启动服务器
 	app := controllers.NewApp()
 
 	if config.HTTP.Dev {

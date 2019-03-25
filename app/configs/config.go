@@ -25,7 +25,7 @@ type HttpConfig struct {
 type DBConfig struct {
 	Host     string `yaml:"host"`
 	Port     string `yaml:"port"`
-	DBName       string `yaml:"db"`
+	DBName   string `yaml:"db"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 }
@@ -35,6 +35,7 @@ type RedisConfig struct {
 	Host     string `yaml:"host"`
 	Port     string `yaml:"port"`
 	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
 }
 
 // GetConf 从文件读取配置信息

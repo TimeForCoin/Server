@@ -4,21 +4,33 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/TimeForCoin/Server/app/configs"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"time"
 )
 
 var model *Model
 
+// ErrNotExist 数据不存在
 var ErrNotExist = errors.New("not_exist")
 
+// Model 数据库实例
 type Model struct {
 	client *mongo.Client
 	db     *mongo.Database
 	User   *UserModel
+}
+
+// GetModel 获取 Model 实例
+func GetModel() *Model {
+	if model == nil {
+		panic("Model isn't init!!!")
+	}
+	return model
 }
 
 // GetCtx 获取并发上下文(默认3秒超时)
@@ -29,7 +41,7 @@ func GetCtx() (context.Context, context.CancelFunc) {
 // InitDB 初始化数据库
 func InitDB(config *configs.DBConfig) error {
 	model = &Model{}
-	err := connectDB(config)
+	err := connect(config)
 	if err != nil {
 		return err
 	}
@@ -42,7 +54,7 @@ func InitDB(config *configs.DBConfig) error {
 }
 
 // 连接数据库
-func connectDB(config *configs.DBConfig) error {
+func connect(config *configs.DBConfig) error {
 	var err error
 	ctx, cancel := GetCtx()
 	defer cancel()
@@ -56,10 +68,16 @@ func connectDB(config *configs.DBConfig) error {
 	// 测试连接
 	err = model.client.Ping(ctx, readpref.Primary())
 	if err == nil {
-		fmt.Println("MongoDB connected " + config.Host)
+		log.Println("Successful connection to MongoDB.")
 	} else {
-		fmt.Println("MongoDB connected failed.")
+		log.Println("Failure to connect MongoDB!!!")
 		return err
 	}
 	return nil
+}
+
+func DisconnectDB() error {
+	ctx, cancel := GetCtx()
+	defer cancel()
+	return model.client.Disconnect(ctx)
 }

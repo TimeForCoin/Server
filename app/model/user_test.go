@@ -1,25 +1,22 @@
 package model
 
 import (
-	"github.com/TimeForCoin/Server/app/configs"
-	"os"
 	"testing"
 )
 
-func TestInitDB(t *testing.T) {
-	err := InitDB(&configs.DBConfig{
-		Host: os.Getenv("DB_HOST"),
-		Port: os.Getenv("DB_PORT"),
-		DBName: os.Getenv("DB_NAME"),
-		User: os.Getenv("DB_USER"),
-		Password: os.Getenv("DB_PASSWORD"),
-	})
-	if err != nil {
-		t.Error(err)
-	}
+func TestUserModel(t *testing.T) {
+	t.Run("InitDB", testInitDB)
+
+	t.Run("AddUser", testUserModelAddUser)
+	t.Run("FindUser", testUserModelFindUser)
+	t.Run("UpdateUser", testUserModelUpdateUser)
+	t.Run("RemoveUser", testUserModelRemoveUser)
+
+	t.Run("DisconnectDB", testDisconnectDB)
 }
 
-func TestUserModel_AddUser(t *testing.T) {
+
+func testUserModelAddUser(t *testing.T) {
 	if err := model.User.AddUser("MegaShow"); err != nil {
 		t.Error(err)
 	}
@@ -28,7 +25,7 @@ func TestUserModel_AddUser(t *testing.T) {
 	}
 }
 
-func TestUserModel_FindUser(t *testing.T) {
+func testUserModelFindUser(t *testing.T) {
 	if res, err := model.User.FindUser("MegaShow"); err != nil {
 		t.Error(err)
 	} else {
@@ -42,7 +39,7 @@ func TestUserModel_FindUser(t *testing.T) {
 	}
 }
 
-func TestUserModel_UpdateUser(t *testing.T) {
+func testUserModelUpdateUser(t *testing.T) {
 
 	// 找不到
 	if err := model.User.UpdateUser("BB", "Mega"); err != nil {
@@ -69,7 +66,7 @@ func TestUserModel_UpdateUser(t *testing.T) {
 	}
 }
 
-func TestUserModel_RemoveUser(t *testing.T) {
+func testUserModelRemoveUser(t *testing.T) {
 	if err := model.User.RemoveUser("World"); err != nil {
 		t.Error(err)
 	}

@@ -17,6 +17,7 @@ type UserSchema struct {
 	Name string             `bson:"name"`
 }
 
+// AddUser 增加用户
 func (model *UserModel) AddUser(name string) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -25,6 +26,7 @@ func (model *UserModel) AddUser(name string) error {
 	return err
 }
 
+// FindUser 查找用户
 func (model *UserModel) FindUser(name string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -32,6 +34,7 @@ func (model *UserModel) FindUser(name string) (user UserSchema, err error) {
 	return
 }
 
+// UpdateUser 更新用户
 func (model *UserModel) UpdateUser(name string, newName string) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -46,6 +49,7 @@ func (model *UserModel) UpdateUser(name string, newName string) error {
 	return nil
 }
 
+// RemoveUser 删除用户
 func (model *UserModel) RemoveUser(name string) error {
 	ctx, over := GetCtx()
 	defer over()

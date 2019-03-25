@@ -7,4 +7,4 @@ out
 vendor
 
 config.yaml
-env.ps1
+test.ps1
