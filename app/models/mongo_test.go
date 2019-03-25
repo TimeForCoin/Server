@@ -1,4 +1,4 @@
-package model
+package models
 
 import (
 	"os"
@@ -17,6 +17,9 @@ func testInitDB(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+	}
+	if model := GetModel(); model == nil {
+		t.Error()
 	}
 }
 

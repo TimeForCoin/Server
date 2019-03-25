@@ -1,12 +1,11 @@
-package model
+package models
 
 import (
-	"log"
-
 	"github.com/kataras/iris/core/errors"
 
 	"github.com/TimeForCoin/Server/app/configs"
 	"github.com/go-redis/redis"
+	"github.com/rs/zerolog/log"
 )
 
 var cache *Cache
@@ -34,13 +33,13 @@ func InitRedis(config *configs.RedisConfig) error {
 	})
 	pong, err := cache.Redis.Ping().Result()
 	if err != nil {
-		log.Println("Failure to connect Redis!!!")
+		log.Error().Err(err).Msg("Failure to connect Redis!!!")
 		return err
 	}
 	if pong == "PONG" {
-		log.Println("Successful connection to Redis.")
+		log.Info().Msg("Successful connection to Redis.")
 	} else {
-		log.Println("Get error from Redis: " + pong)
+		log.Error().Msg("Get error from Redis: " + pong)
 		return errors.New("redis_error")
 	}
 	return nil

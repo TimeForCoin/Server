@@ -1,13 +1,13 @@
-package model
+package models
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/TimeForCoin/Server/app/configs"
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -67,10 +67,10 @@ func connect(config *configs.DBConfig) error {
 	// 测试连接
 	err = model.client.Ping(ctx, readpref.Primary())
 	if err != nil {
-		log.Println("Failure to connect MongoDB!!!")
+		log.Error().Err(err).Msg("Failure to connect MongoDB!!!")
 		return err
 	}
-	log.Println("Successful connection to MongoDB.")
+	log.Info().Msg("Successful connection to MongoDB.")
 	return nil
 }
 

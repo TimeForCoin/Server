@@ -1,4 +1,4 @@
-package model
+package models
 
 import (
 	"os"
@@ -26,6 +26,9 @@ func testInitRedis(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+	}
+	if cache := GetCache(); cache == nil {
+		t.Error()
 	}
 }
 

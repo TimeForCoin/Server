@@ -1,12 +1,11 @@
-package controllers
+package services
 
 import (
+	"github.com/TimeForCoin/Server/app/configs"
+	"github.com/TimeForCoin/Server/app/models"
 	"os"
 	"strconv"
 	"testing"
-
-	"github.com/TimeForCoin/Server/app/configs"
-	"github.com/TimeForCoin/Server/app/models"
 )
 
 func testInitDB(t *testing.T) {

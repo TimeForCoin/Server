@@ -1,7 +1,10 @@
+dev: true
 http:
   host: 127.0.0.1
   port: 30233
-  dev: true
+  session:
+    key: key
+    expires: 30
 db:
   host: 127.0.0.1
   port: 27017

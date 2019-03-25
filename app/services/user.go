@@ -1,6 +1,6 @@
 package services
 
-import "github.com/TimeForCoin/Server/app/model"
+import "github.com/TimeForCoin/Server/app/models"
 
 // UserService 用户逻辑
 type UserService interface {
@@ -10,12 +10,12 @@ type UserService interface {
 // NewUserService 初始化
 func NewUserService() UserService {
 	return &userService{
-		model: model.GetModel().User,
+		model: models.GetModel().User,
 	}
 }
 
 type userService struct {
-	model *model.UserModel
+	model *models.UserModel
 }
 
 // GetPong 测试函数
