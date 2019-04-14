@@ -19,17 +19,15 @@ TimeForCoin 服务端
 须使用`Golang 1.12.x`以上的版本(或者使用`1.11.x`并启用`mod`功能)
 
 ```bash
-$ git clone https://github.com/TimeForCoin/Server.git
-$ go mod download
+git clone https://github.com/TimeForCoin/Server.git
+go mod download
 ```
 
 按照`config.default.yaml`创建配置文件，运行应用(默认从当前目录读取配置文件`config.yaml`)
 
 ```bash
-$ go run main.go -c ./config.yaml
+go run main.go -c ./config.yaml
 ```
-
-
 
 ## Test 测试
 
@@ -38,23 +36,20 @@ $ go run main.go -c ./config.yaml
 设置测试需要的环境变量，然后执行测试
 
 ```bash
-$ go test -v .\app\...
+go test -v .\app\...
 ```
 
 `Windows`下的测试可以直接使用`powershell`执行 (须先设置好配置)
 
 ```bash
-$ ./test.default.ps1
+./test.default.ps1
 ```
-
-
 
 ## Deploy 部署
 
 默认使用`Docker`进行部署
 
 ```bash
-$ docker build -t time-for-coin:v1 .
-$ docker run -p 30233:30233 --name my-time-for-coin -d time-for-coin:v1
+docker build -t time-for-coin:v1 .
+docker run -p 30233:30233 --name my-time-for-coin -d time-for-coin:v1
 ```
-
