@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/TimeForCoin/Server/app/configs"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,7 +24,14 @@ var ErrNotExist = errors.New("not_exist")
 type Model struct {
 	client *mongo.Client
 	db     *mongo.Database
-	User   *UserModel
+	// 数据库实例
+	Log           *LogModel
+	Comment       *CommentModel
+	Message       *MessageModel
+	Questionnaire *QuestionnaireModel
+	Task          *TaskModel
+	TaskStatus    *TaskStatusModel
+	User          *UserModel
 }
 
 // GetModel 获取 Model 实例
@@ -38,6 +47,60 @@ func GetCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 5*time.Second)
 }
 
+// createIndexes 检查并创建索引
+func createIndexes(ctx context.Context, collection string, indexes []bson.M) error {
+	questionnaires := model.db.Collection(collection)
+	questionnairesIndexes := questionnaires.Indexes()
+	cur, err := questionnairesIndexes.List(ctx)
+	if err != nil {
+		return err
+	}
+	if cur == nil {
+		return errors.New("can't read collection")
+	}
+	if !cur.Next(ctx) {
+		// 创建索引
+		for i := range indexes {
+			indexOptions := options.Index()
+			indexOptions.SetUnique(true)
+			if _, err := questionnairesIndexes.CreateOne(ctx, mongo.IndexModel{
+				Keys:    indexes[i],
+				Options: indexOptions,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	if err := cur.Close(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// initCollection 初始化索引
+func initCollection() error {
+	ctx, cancel := GetCtx()
+	defer cancel()
+	if err := createIndexes(ctx, "comments", []bson.M{{"content_id": 1}}); err != nil {
+		return err
+	}
+	if err := createIndexes(ctx, "messages", []bson.M{{"user_1": 1}, {"user_2": 1}}); err != nil {
+		return err
+	}
+	// 任务数据库
+	if err := createIndexes(ctx, "tasks", []bson.M{{"publisher": 1}}); err != nil {
+		return err
+	}
+	if err := createIndexes(ctx, "questionnaires", []bson.M{{"task_id": 1}}); err != nil {
+		return err
+	}
+	if err := createIndexes(ctx, "task_status", []bson.M{{"task": 1, "owner": 1}}); err != nil {
+		return err
+	}
+	return nil
+
+}
+
 // InitDB 初始化数据库
 func InitDB(config *configs.DBConfig) error {
 	model = &Model{}
@@ -45,11 +108,42 @@ func InitDB(config *configs.DBConfig) error {
 	if err != nil {
 		return err
 	}
-	// 初始化 Collection 实例
 	model.db = model.client.Database(config.DBName)
+
+	// 初始化 索引
+	if err := initCollection(); err != nil {
+		return err
+	}
+	// 初始化 Model
+	// 日志数据库
+	model.Log = &LogModel{
+		Collection: model.db.Collection("logs"),
+	}
+	// 问卷数据库
+	model.Questionnaire = &QuestionnaireModel{
+		Collection: model.db.Collection("questionnaires"),
+	}
+	// 评论数据库
+	model.Comment = &CommentModel{
+		Collection: model.db.Collection("comments"),
+	}
+	// 消息数据库
+	model.Message = &MessageModel{
+		Collection: model.db.Collection("messages"),
+	}
+	// 任务状态数据库
+	model.TaskStatus = &TaskStatusModel{
+		Collection: model.db.Collection("task_status"),
+	}
+	// 用户数据库
 	model.User = &UserModel{
 		Collection: model.db.Collection("users"),
 	}
+	// 任务数据库
+	model.Task = &TaskModel{
+		Collection: model.db.Collection("tasks"),
+	}
+
 	return nil
 }
 
