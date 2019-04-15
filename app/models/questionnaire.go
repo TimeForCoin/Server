@@ -51,7 +51,7 @@ type ProblemSchema struct {
 		Options []struct {
 			Index   int64              // 选项序号
 			Content string             // 选项内容
-			Image   primitive.ObjectID // 图片附件ID
+			Image   primitive.ObjectID `bson:"image,omitempty"` // 图片附件ID
 		} `bson:"options"` // 问题选项
 		MaxChoose int64 `bson:"max_choose"` // 最大可选项
 	} `bson:"choose_problem,omitempty"`
@@ -87,7 +87,6 @@ type ProblemSchema struct {
 
 // StatisticsSchema 用户填写数据
 type StatisticsSchema struct {
-	ID       primitive.ObjectID  `bson:"_id, omitempty"`
 	UserID   primitive.ObjectID  `bson:"user_id"` // 填写用户ID
 	Data     []ProblemDataSchema // 问题答案
 	Time     int64               // 提交时间
@@ -106,12 +105,12 @@ type ProblemDataSchema struct {
 
 // QuestionnaireSchema 问卷数据结构
 type QuestionnaireSchema struct {
-	TaskID    primitive.ObjectID `bson:"_id"`        // 问卷所属任务ID [索引]
-	ViewCount int64              `bson:"view_count"` // 问卷浏览数
+	TaskID primitive.ObjectID `bson:"_id"` // 问卷所属任务ID [索引]
 
-	Title    string             // 问卷标题
-	Describe string             // 问卷描述
-	Owner    string             // 问卷创建者
-	Problems []ProblemSchema    // 问卷问题
-	Data     []StatisticsSchema // 问题统计数据
+	Title       string             // 问卷标题
+	Description string             // 问卷描述
+	Owner       string             // 问卷创建者(冗余)
+	Anonymous   bool               // 匿名收集
+	Problems    []ProblemSchema    // 问卷问题
+	Data        []StatisticsSchema // 问题统计数据
 }

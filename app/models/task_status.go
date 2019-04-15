@@ -19,6 +19,7 @@ const (
 	PlayerRunning PlayerStatus = "running" // 用户进行中
 	PlayerFinish  PlayerStatus = "finish"  // 用户已完成
 	PlayerGiveUp  PlayerStatus = "give_up" // 用户已放弃
+	PlayerFailure PlayerStatus = "failure" // 任务失败
 )
 
 // TaskStatusSchema 接受的任务状态 基本数据结构
@@ -28,6 +29,8 @@ type TaskStatusSchema struct {
 	Task   primitive.ObjectID `bson:"task"`          // 任务 ID [索引]
 	Owner  primitive.ObjectID `bson:"owner"`         // 用户 ID [索引]
 	Status PlayerStatus       // 状态
+	Note   string             // 申请备注
+	Accept bool               // 是否同意加入
 	// 完成后的评价
 	Degree int    // 完成度
 	Remark string // 评语
