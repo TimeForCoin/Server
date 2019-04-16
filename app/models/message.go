@@ -15,7 +15,7 @@ type MessageType string
 
 // MessageType 消息类型
 const (
-	MessageTypeChat    MessageType = "char"    // 聊天
+	MessageTypeChat    MessageType = "chat"    // 聊天
 	MessageTypeSystem  MessageType = "system"  // 系统通知
 	MessageTypeTask    MessageType = "task"    // 任务通知
 	MessageTypeComment MessageType = "comment" // 评论通知

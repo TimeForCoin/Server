@@ -86,7 +86,8 @@ type TaskSchema struct {
 	EndDate     int64 `bson:"end_data"`     // 任务结束时间
 
 	PlayerCount int64 `bson:"player_count"` // 参与的用户
-	MaxPlayer   int64 `bson:"max_player"`   // 参与用户上限
+	MaxPlayer   int64 `bson:"max_player"`   // 参与用户上限, -1为无限制
+	MaxFinsih   int64 `bson:"max_finish"`   // 完成用户上限, 可用于收集指定数量问卷
 	AutoAccept  bool  `bson:"auto_accept"`  // 自动同意领取任务
 
 	ViewCount    int64                `bson:"view_count"`    // 任务浏览数
