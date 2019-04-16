@@ -36,12 +36,11 @@ func InitRedis(config *configs.RedisConfig) error {
 		log.Error().Err(err).Msg("Failure to connect Redis!!!")
 		return err
 	}
-	if pong == "PONG" {
-		log.Info().Msg("Successful connection to Redis.")
-	} else {
+	if pong != "PONG" {
 		log.Error().Msg("Get error from Redis: " + pong)
 		return errors.New("redis_error")
 	}
+	log.Info().Msg("Successful connection to Redis.")
 	return nil
 }
 

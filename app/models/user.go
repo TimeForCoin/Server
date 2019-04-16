@@ -49,8 +49,8 @@ type UserDataSchema struct {
 	Value          int64                // 用户积分
 	Credit         int64                // 个人信誉
 	Type           UserType             // 用户类型
-	AttendanceDate int                  // 签到时间戳
-	CollectTasks   []primitive.ObjectID `bson:"collect_tasks"` // 收藏的任务
+	AttendanceDate int64                `bson:"attendance_date"` // 签到时间戳
+	CollectTasks   []primitive.ObjectID `bson:"collect_tasks"`   // 收藏的任务
 	// 冗余数据
 	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
 	PublishRunCount int64 `bson:"publish_run_count"` // 发布并进行中任务数

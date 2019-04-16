@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/json-iterator/go/extra"
 	"os"
 
 	"github.com/TimeForCoin/Server/app/configs"
@@ -12,6 +13,8 @@ import (
 )
 
 func initService(config configs.Config) {
+	// 初始化日志
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	// 初始化数据库
 	if err := models.InitDB(&config.Db); err != nil {
 		panic(err)
@@ -22,12 +25,13 @@ func initService(config configs.Config) {
 	}
 	// 初始化 Session
 	controllers.InitSession(config.HTTP.Session)
+	// 初始化 Json 设置
+	// 自动转换成小写下划线风格
+	extra.SetNamingStrategy(extra.LowerCaseWithUnderscores)
 }
 
 // Run 程序入口
 func Run(configPath string) {
-	// 初始化日志
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	// 读取配置
 	var config configs.Config
 	config.GetConf(configPath)

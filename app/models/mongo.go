@@ -48,57 +48,50 @@ func GetCtx() (context.Context, context.CancelFunc) {
 }
 
 // createIndexes 检查并创建索引
-func createIndexes(ctx context.Context, collection string, indexes []bson.M) error {
-	questionnaires := model.db.Collection(collection)
-	questionnairesIndexes := questionnaires.Indexes()
-	cur, err := questionnairesIndexes.List(ctx)
-	if err != nil {
-		return err
-	}
-	if cur == nil {
-		return errors.New("can't read collection")
-	}
-	if !cur.Next(ctx) {
-		// 创建索引
-		for i := range indexes {
-			indexOptions := options.Index()
-			indexOptions.SetUnique(true)
-			if _, err := questionnairesIndexes.CreateOne(ctx, mongo.IndexModel{
-				Keys:    indexes[i],
-				Options: indexOptions,
-			}); err != nil {
-				return err
+func createIndexes(ctx context.Context, name string, indexes []bson.M) error {
+	collection := model.db.Collection(name)
+	collectionIndexes := collection.Indexes()
+	if cur, err := collectionIndexes.List(ctx); err != nil {
+		return err // 读取索引发生错误
+	} else {
+		if cur == nil { // 指针不存在
+			return errors.New("can't read collection")
+		} else if !cur.Next(ctx) { // 索引不存在，创建索引
+			log.Info().Msg("Init index for " + name)
+			for i := range indexes { // 创建唯一索引
+				if _, err := collectionIndexes.CreateOne(ctx, mongo.IndexModel{
+					Keys:    indexes[i],
+					Options: options.Index().SetUnique(true),
+				}); err != nil {
+					return err
+				}
 			}
 		}
+		return cur.Close(ctx) // 关闭指针
 	}
-	if err := cur.Close(ctx); err != nil {
-		return err
-	}
-	return nil
 }
 
-// initCollection 初始化索引
+// initCollection 初始化集合
 func initCollection() error {
 	ctx, cancel := GetCtx()
 	defer cancel()
-	if err := createIndexes(ctx, "comments", []bson.M{{"content_id": 1}}); err != nil {
-		return err
+	// 初始化索引
+	DBIndexes := []struct {
+		name    string
+		indexes []bson.M
+	}{
+		{name: "comments", indexes: []bson.M{{"content_id": 1}}},
+		{name: "messages", indexes: []bson.M{{"user_1": 1}, {"user_2": 1}}},
+		{name: "tasks", indexes: []bson.M{{"publisher": 1}}},
+		{name: "logs", indexes: []bson.M{{"user_id": 1}}},
+		{name: "task_status", indexes: []bson.M{{"task": 1}, {"owner": 1}}},
 	}
-	if err := createIndexes(ctx, "messages", []bson.M{{"user_1": 1}, {"user_2": 1}}); err != nil {
-		return err
-	}
-	// 任务数据库
-	if err := createIndexes(ctx, "tasks", []bson.M{{"publisher": 1}}); err != nil {
-		return err
-	}
-	if err := createIndexes(ctx, "questionnaires", []bson.M{{"task_id": 1}}); err != nil {
-		return err
-	}
-	if err := createIndexes(ctx, "task_status", []bson.M{{"task": 1, "owner": 1}}); err != nil {
-		return err
+	for _, i := range DBIndexes {
+		if err := createIndexes(ctx, i.name, i.indexes); err != nil {
+			return err
+		}
 	}
 	return nil
-
 }
 
 // InitDB 初始化数据库
@@ -110,7 +103,7 @@ func InitDB(config *configs.DBConfig) error {
 	}
 	model.db = model.client.Database(config.DBName)
 
-	// 初始化 索引
+	// 初始化集合
 	if err := initCollection(); err != nil {
 		return err
 	}
@@ -149,18 +142,18 @@ func InitDB(config *configs.DBConfig) error {
 
 // 连接数据库
 func connect(config *configs.DBConfig) error {
-	var err error
 	ctx, cancel := GetCtx()
 	defer cancel()
 	option := options.Client().
 		ApplyURI(fmt.Sprintf("mongodb://%s:%s@%s:%s/%s",
 			config.User, config.Password, config.Host, config.Port, config.DBName))
-	if model.client, err = mongo.Connect(ctx, option); err != nil {
+	if client, err := mongo.Connect(ctx, option); err != nil {
 		return err
+	} else {
+		model.client = client
 	}
 	// 测试连接
-	err = model.client.Ping(ctx, readpref.Primary())
-	if err != nil {
+	if err := model.client.Ping(ctx, readpref.Primary()); err != nil {
 		log.Error().Err(err).Msg("Failure to connect MongoDB!!!")
 		return err
 	}

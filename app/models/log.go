@@ -26,11 +26,11 @@ const (
 
 // LogSchema 日志数据结构
 type LogSchema struct {
-	ID    primitive.ObjectID `bson:"_id,omitempty"` // 日志ID
-	Time  int64              // 时间
-	Type  LogType            // 日志类型
-	User  primitive.ObjectID `bson:"user,omitempty"`  // 相关用户
-	About primitive.ObjectID `bson:"about,omitempty"` // 相关事件
-	Value int64              `bson:"value,omitempty"` // 数值
-	Msg   string             `bson:"msg,omitempty"`   // 消息
+	ID      primitive.ObjectID `bson:"_id,omitempty"` // 日志ID
+	Time    int64              // 时间
+	Type    LogType            // 日志类型
+	UserID  primitive.ObjectID `bson:"user_id"`            // 相关用户 [索引]
+	AboutID primitive.ObjectID `bson:"about_id,omitempty"` // 相关事件
+	Value   int64              `bson:"value,omitempty"`    // 数值
+	Msg     string             `bson:"msg,omitempty"`      // 消息
 }
