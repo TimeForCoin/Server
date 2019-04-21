@@ -19,9 +19,6 @@ type RewardType string
 // TaskStatus 任务状态
 type TaskStatus string
 
-// AttachType 附件类型
-type AttachType string
-
 // TaskType 任务类型
 const (
 	TaskTypeRunning       TaskType = "run"           // 跑腿任务
@@ -46,36 +43,19 @@ const (
 	TaskStatusOverdue TaskStatus = "overdue" // 已过期
 )
 
-// AttachType 附件类型
-const (
-	AttachImage AttachType = "image" // 图片
-	AttachFile  AttachType = "file"  // 文件
-)
-
-// AttachmentSchema 附件数据结构
-// 附件存储在本地文件系统中 ./{任务ID}/{附件ID}
-type AttachmentSchema struct {
-	ID          primitive.ObjectID // 附件ID
-	Type        AttachType         // 附件类型
-	Name        string             // 附件名
-	Description string             // 附件描述
-	Size        int64              // 附件大小
-	Time        int64              // 创建时间
-	Use         bool               // 是否使用，未使用附件将定期处理
-	Public      bool               // 公开
-}
-
 // TaskSchema Task 基本数据结构
 type TaskSchema struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"` // 任务ID
 	Publisher primitive.ObjectID `bson:"publisher"`     // 任务发布者 [索引]
 
-	Title          string             // 任务名称
-	Type           TaskType           // 任务类型
-	Content        string             // 任务内容
-	Attachment     []AttachmentSchema // 任务附件
-	UserAttachment []AttachmentSchema // 用户上传附件
-	Status         TaskStatus         // 任务状态
+	Title      string               // 任务名称
+	Type       TaskType             // 任务类型
+	Content    string               // 任务内容
+	Attachment []primitive.ObjectID // 任务附件
+	Status     TaskStatus           // 任务状态
+	Location   []string             // 任务地点 (非问卷类任务)
+	Tags       []string             // 标签 (作为关键词，改进搜索体验)
+	TopTime    int64                // 置顶时间(默认为0)，如果当前时间小于置顶时间，即将任务置顶
 
 	Reward       RewardType // 酬劳类型
 	RewardValue  float32    `bson:"reward_value, omitempty"`  // 酬劳数值
@@ -87,7 +67,7 @@ type TaskSchema struct {
 
 	PlayerCount int64 `bson:"player_count"` // 参与的用户
 	MaxPlayer   int64 `bson:"max_player"`   // 参与用户上限, -1为无限制
-	MaxFinsih   int64 `bson:"max_finish"`   // 完成用户上限, 可用于收集指定数量问卷
+	MaxFinish   int64 `bson:"max_finish"`   // 完成用户上限, 可用于收集指定数量问卷
 	AutoAccept  bool  `bson:"auto_accept"`  // 自动同意领取任务
 
 	ViewCount    int64                `bson:"view_count"`    // 任务浏览数
@@ -95,4 +75,7 @@ type TaskSchema struct {
 	CommentCount int64                `bson:"comment_count"` // 评论数(冗余)
 	LikeCount    int64                `bson:"like_count"`    // 点赞数(冗余)
 	LikeID       []primitive.ObjectID `bson:"like_id"`       // 点赞用户ID
+
+	// 由[浏览量、评论数、收藏数、参与人数、时间、置顶、酬劳、发布者粉丝、信用]等数据加权计算，10分钟更新一次，用于排序
+	Hot int64 `bson:"hot"` // 任务热度
 }
