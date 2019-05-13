@@ -1,6 +1,9 @@
 package services
 
-import "github.com/TimeForCoin/Server/app/models"
+import (
+	"github.com/TimeForCoin/Server/app/libs"
+	"github.com/TimeForCoin/Server/app/models"
+)
 
 // UserService 用户逻辑
 type UserService interface {
@@ -24,4 +27,10 @@ func (s *userService) GetPong(ping string) string {
 		return "pong"
 	}
 	return "error"
+}
+
+
+// GetLoginURL 获取登陆链接
+func (s *userService) GetLoginURL() (url, state string, err error) {
+	return libs.GetOauth().GetLoginURL(libs.GetConf().Violet.Callback)
 }

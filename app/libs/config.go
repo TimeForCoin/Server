@@ -1,4 +1,4 @@
-package configs
+package libs
 
 import (
 	"io/ioutil"
@@ -9,10 +9,11 @@ import (
 
 // Config 应用配置
 type Config struct {
-	Dev   bool        `yaml:"dev"`   // 开发模式
-	HTTP  HTTPConfig  `yaml:"http"`  // HTTP 配置
-	Db    DBConfig    `yaml:"db"`    // 数据库配置
-	Redis RedisConfig `yaml:"redis"` // Redis 配置
+	Dev    bool         `yaml:"dev"`    // 开发模式
+	HTTP   HTTPConfig   `yaml:"http"`   // HTTP 配置
+	Db     DBConfig     `yaml:"db"`     // 数据库配置
+	Redis  RedisConfig  `yaml:"redis"`  // Redis 配置
+	Violet VioletConfig `yaml:"violet"` // Violet 配置
 }
 
 // HTTPConfig 服务器配置
@@ -45,8 +46,18 @@ type RedisConfig struct {
 	DB       int    `yaml:"db"`
 }
 
+// VioletConfig Violet 配置
+type VioletConfig struct {
+	ClientID   string `yaml:"id"`
+	ClientKey  string `yaml:"key"`
+	ServerHost string `yaml:"host"`
+	Callback   string `yaml:"callback"`
+}
+
+var config *Config
+
 // GetConf 从文件读取配置信息
-func (c *Config) GetConf(path string) *Config {
+func (c *Config) LoadConf(path string) *Config {
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Panic().Err(err).Msg("Can't read config file")
@@ -58,5 +69,10 @@ func (c *Config) GetConf(path string) *Config {
 		log.Panic().Err(err).Msg("Can't marshal config file")
 	}
 	log.Info().Msg("Read config from " + path)
+	config = c
 	return c
+}
+
+func GetConf() *Config {
+	return config
 }

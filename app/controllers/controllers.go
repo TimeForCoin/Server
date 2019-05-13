@@ -3,7 +3,7 @@ package controllers
 import (
 	"time"
 
-	"github.com/TimeForCoin/Server/app/configs"
+	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/logger"
 	"github.com/kataras/iris/middleware/recover"
@@ -26,7 +26,7 @@ func NewApp() *iris.Application {
 }
 
 // InitSession 初始化 Session
-func InitSession(config configs.SessionConfig) {
+func InitSession(config libs.SessionConfig) {
 	sessionManager = sessions.New(sessions.Config{
 		Cookie:  config.Key,
 		Expires: time.Hour * time.Duration(config.Expires*24),

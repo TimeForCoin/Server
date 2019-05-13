@@ -4,11 +4,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/TimeForCoin/Server/app/configs"
+	"github.com/TimeForCoin/Server/app/libs"
 )
 
 func testInitDB(t *testing.T) {
-	err := InitDB(&configs.DBConfig{
+	err := InitDB(&libs.DBConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),
 		DBName:   os.Getenv("DB_NAME"),

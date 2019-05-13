@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/TimeForCoin/Server/app/configs"
+	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 )
 
 func testInitDB(t *testing.T) {
-	err := models.InitDB(&configs.DBConfig{
+	err := models.InitDB(&libs.DBConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),
 		DBName:   os.Getenv("DB_NAME"),
@@ -20,6 +20,14 @@ func testInitDB(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func testInitViolet(t *testing.T) {
+	libs.InitViolet(libs.VioletConfig{
+		ClientID:   os.Getenv("VIOLET_ID"),
+		ClientKey:  os.Getenv("VIOLET_KEY"),
+		ServerHost: os.Getenv("VIOLET_HOST"),
+	})
 }
 
 func testDisconnectDB(t *testing.T) {
@@ -33,7 +41,7 @@ func testInitRedis(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = models.InitRedis(&configs.RedisConfig{
+	err = models.InitRedis(&libs.RedisConfig{
 		Host:     os.Getenv("REDIS_HOST"),
 		Port:     os.Getenv("REDIS_PORT"),
 		Password: os.Getenv("REDIS_PASSWORD"),
