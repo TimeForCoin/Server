@@ -16,3 +16,8 @@ redis:
   port: 6379
   password: password
   db: 0
+violet:
+  id: 5cd999e153b5735e91249c3b5
+  key: viu26hpfee8cxfaykmrea4
+  host: https://example.com/api
+  callback: https://my.website.com/auth

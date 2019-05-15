@@ -1,0 +1,78 @@
+package controllers
+
+import (
+	"github.com/TimeForCoin/Server/app/libs"
+	"github.com/TimeForCoin/Server/app/services"
+	"github.com/kataras/iris"
+)
+
+// UserController 用户控制
+type SessionController struct {
+	BaseController
+	Server  services.UserService
+}
+
+type GetSessionRes struct {
+	Url string
+}
+
+// Get 获取 Violet 登陆授权 URL
+func (c *SessionController) Get() int {
+	url, state := c.Server.GetLoginURL()
+	c.Session.Set("state", state)
+	c.Session.Set("login", "running")
+	libs.JSON(c.Ctx, GetSessionRes{
+		Url: url,
+	})
+	return iris.StatusOK
+}
+
+type GetVioletReq struct {
+	Code string
+	State string
+}
+
+func (c *SessionController) GetViolet() int {
+	defer func() {
+		if err := recover(); err != nil {
+			c.Session.Set("login", "false")
+			panic(err)
+		}
+	}()
+	code := c.Ctx.FormValue("code")
+	state := c.Ctx.FormValue("state")
+	libs.Assert(code != "" && state != "", "登陆失败，请重试")
+
+	rightState := c.Session.GetString("state")
+	libs.Assert(state == rightState, "状态校验失败，请重试")
+	c.Session.Delete("state")
+
+	id, _ := c.Server.LoginByCode(code)
+	libs.Assert(id != "", "登陆已过期，请重试")
+
+	c.Session.Set("id", id)
+	c.Session.Set("login", "violet")
+	return iris.StatusCreated
+}
+
+type GetSessionStatusRes struct {
+	Status string
+}
+
+func (c *SessionController) GetStatus() int {
+
+	status := c.Session.GetString("login")
+	if status == "" {
+		status = "none"
+	}
+	c.JSON(GetSessionStatusRes{
+		Status: status,
+	})
+	return iris.StatusOK
+}
+
+func (c *SessionController) Delete() int {
+	c.Session.Set("login", "none")
+	c.Session.Delete("id")
+	return iris.StatusOK
+}

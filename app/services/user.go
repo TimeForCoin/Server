@@ -3,34 +3,83 @@ package services
 import (
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
+	"github.com/kataras/iris"
+	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
+	"time"
 )
 
 // UserService 用户逻辑
 type UserService interface {
-	GetPong(ping string) string
+	GetLoginURL() (url, state string)
+	GetUser(id string) (models.UserSchema, error)
+	LoginByCode(code string) (id string, new bool)
 }
 
 // NewUserService 初始化
 func NewUserService() UserService {
 	return &userService{
 		model: models.GetModel().User,
+		oAuth: libs.GetOauth(),
 	}
 }
 
 type userService struct {
 	model *models.UserModel
+	oAuth *libs.OAuthService
 }
 
-// GetPong 测试函数
-func (s *userService) GetPong(ping string) string {
-	if ping == "ping" {
-		return "pong"
+func (s *userService) GetLoginURL() (url, state string) {
+	options := violet.AuthOption{
+		Scopes:    violet.ScopeTypes{violet.ScopeInfo, violet.ScopeEmail},
+		QuickMode: true,
 	}
-	return "error"
+	url, state, err := s.oAuth.Api.GetLoginURL(s.oAuth.Callback, options)
+	libs.Assert(err == nil, "Internal Server Error", iris.StatusInternalServerError)
+	return url, state
 }
 
-
-// GetLoginURL 获取登陆链接
-func (s *userService) GetLoginURL() (url, state string, err error) {
-	return libs.GetOauth().GetLoginURL(libs.GetConf().Violet.Callback)
+func (s *userService) LoginByCode(code string) (id string, new bool) {
+	res, err := s.oAuth.Api.GetToken(code)
+	//// TODO 检测是否绑定微信
+	if err != nil {
+		return "", false
+	}
+	// 账号已存在，直接返回 ID
+	if u, err := s.model.GetUserByViolet(res.UserID); err == nil {
+		return u.ID.Hex(), false
+	}
+	// 账号不存在，创建新账号
+	if id, err = s.model.AddUserByViolet(res.UserID); err != nil {
+		return "", false
+	}
+	// 获取用户信息
+	info, err := s.oAuth.Api.GetUserInfo(res.Token)
+	if err == nil {
+		var birthday int64
+		if t, err := time.Parse("2006-01-02T00:00:00.000Z", info.Birthday); err == nil {
+			birthday = t.Unix()
+		}
+		gender := models.GenderMan
+		if info.Gender == 1 {
+			gender = models.GenderWoman
+		} else if info.Gender == 2 {
+			gender = models.GenderOther
+		}
+		_ = s.model.SetUserInfoByID(id, models.UserInfoSchema{
+			Email:    info.Email,
+			Phone:    info.Phone,
+			Nickname: info.Nickname,
+			Avatar:   info.Avatar,
+			Bio:      info.Bio,
+			Birthday: birthday,
+			Gender:   gender,
+			Location: info.Location,
+		})
+	}
+	return "", true
 }
+
+func (s *userService) GetUser(id string) ( models.UserSchema,  error) {
+	return s.model.GetUserByID(id)
+}
+

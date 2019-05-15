@@ -1,78 +1,73 @@
 package models
 
 import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"testing"
+	"time"
 )
 
 func TestUserModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 
-	t.Run("AddUser", testUserModelAddUser)
-	t.Run("FindUser", testUserModelFindUser)
-	t.Run("UpdateUser", testUserModelUpdateUser)
-	t.Run("RemoveUser", testUserModelRemoveUser)
+	t.Run("testUser", testUserModelAll)
 
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 
-func testUserModelAddUser(t *testing.T) {
-	if err := model.User.AddUser("MegaShow"); err != nil {
+func testUserModelAll(t *testing.T) {
+	// 新建用户
+	violetID := primitive.NewObjectID().Hex()
+	id, err := model.User.AddUserByViolet(violetID)
+	if err != nil {
 		t.Error(err)
 	}
-	if err := model.User.AddUser("World"); err != nil {
-		t.Error(err)
-	}
-}
+	t.Log(id)
 
-func testUserModelFindUser(t *testing.T) {
-	if res, err := model.User.FindUser("MegaShow"); err != nil {
+	user, err := model.User.GetUserByID(id)
+	if err != nil {
 		t.Error(err)
-	} else {
-		t.Log(res)
 	}
-	if res, err := model.User.FindUser("Hello"); err != nil {
-		t.Log(err)
-	} else {
-		t.Log(res)
-		t.Error()
-	}
-}
+	t.Log(user)
 
-func testUserModelUpdateUser(t *testing.T) {
+	user, err = model.User.GetUserByViolet(violetID)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(user)
+	// 修改信息
+	err = model.User.SetUserInfoByID(id, UserInfoSchema{
+		Gender:GenderMan,
+		Email: "abc@qq.com",
+		Phone:"188",
+		Avatar:"bbb",
+		Nickname:"ccc",
+		Bio:"ddd",
+		Location:"kkk",
+		Birthday: time.Now().Unix(),
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	user, err = model.User.GetUserByID(id)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(user)
+	err = model.User.SetUserInfoByID(id, UserInfoSchema{
+		Gender: GenderWoman,
+		Email: "abc@qq.com",
+		Phone:"199",
+		Location:"location",
+		Birthday: time.Now().Unix(),
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	user, err = model.User.GetUserByID(id)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(user)
 
-	// 找不到
-	if err := model.User.UpdateUser("BB", "Mega"); err != nil {
-		t.Log(err)
-	} else {
-		t.Error()
-	}
-	// 更新成功
-	if err := model.User.UpdateUser("MegaShow", "Golang"); err != nil {
-		t.Error(err)
-	}
-	// 找不到
-	if res, err := model.User.FindUser("MegaShow"); err != nil {
-		t.Log(err)
-	} else {
-		t.Log(res)
-		t.Error()
-	}
-	// 找到
-	if res, err := model.User.FindUser("Golang"); err != nil {
-		t.Error(err)
-	} else {
-		t.Log(res)
-	}
-}
 
-func testUserModelRemoveUser(t *testing.T) {
-	if err := model.User.RemoveUser("World"); err != nil {
-		t.Error(err)
-	}
-	if err := model.User.RemoveUser("MegaShow"); err == nil {
-		t.Error()
-	}
-	if err := model.User.RemoveUser("Golang"); err != nil {
-		t.Error(err)
-	}
 }

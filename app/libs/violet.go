@@ -5,19 +5,28 @@ import (
 	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
 )
 
-var oauth *violet.Violet
+var oauth *OAuthService
 
-func InitViolet(c VioletConfig) {
-	oauth = violet.NewViolet(violet.Config{
-		ClientID: c.ClientID,
-		ClientKey: c.ClientKey,
-		ServerHost: c.ServerHost,
-	})
+type OAuthService struct {
+	Api *violet.Violet
+	Callback string
 }
 
-func GetOauth () *violet.Violet {
+func InitViolet(c VioletConfig) *OAuthService {
+	oauth = &OAuthService{
+		Api: violet.NewViolet(violet.Config{
+			ClientID: c.ClientID,
+			ClientKey: c.ClientKey,
+			ServerHost: c.ServerHost,
+		}),
+		Callback: c.Callback,
+	}
+	return oauth
+}
+
+func GetOauth () *OAuthService {
 	if oauth == nil {
-		log.Fatal().Msg("Violet is not init")
+		log.Panic().Msg("OAuth service is not init")
 	}
 	return oauth
 }

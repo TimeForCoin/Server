@@ -14,20 +14,14 @@ func TestUserService(t *testing.T) {
 	if userServiceTest == nil {
 		t.Error()
 	}
-	t.Run("GetPong", testUserServiceGetPong)
 	t.Run("GetLoginURL", testUserServiceGetLoginURL)
 
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 
-func testUserServiceGetPong(t *testing.T) {
-	if userServiceTest.GetPong("ping") != "pong" {
-		t.Error()
-	}
-}
 
 func testUserServiceGetLoginURL(t *testing.T) {
-	url, state, err := libs.GetOauth().GetLoginURL("http://localhost:30233/auth")
+	url, state, err := libs.GetOauth().Api.GetLoginURL("http://localhost:30233/auth")
 	if err != nil {
 		t.Error(err)
 	}

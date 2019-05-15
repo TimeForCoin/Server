@@ -1,12 +1,12 @@
 package controllers
 
 import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/logger"
-	"github.com/kataras/iris/middleware/recover"
 	"github.com/kataras/iris/sessions"
 )
 
@@ -16,13 +16,31 @@ var sessionManager *sessions.Sessions
 func NewApp() *iris.Application {
 	app := iris.New()
 	// recover from any http-relative panics
-	app.Use(recover.New())
 	// log the requests to the terminal.
 	app.Use(logger.New())
+
+	app.Use(libs.NewErrorHandler())
 
 	BindUserController(app)
 
 	return app
+}
+
+type BaseController struct {
+	Ctx     iris.Context
+	Session *sessions.Session
+}
+
+// 检查登陆状态
+func (b *BaseController) checkLogin() string {
+	id := b.Session.GetString("id")
+	_, err := primitive.ObjectIDFromHex(id)
+	libs.Assert(err == nil, "invalid_session", 401)
+	return id
+}
+
+func (b *BaseController) JSON(data interface{}) {
+	libs.JSON(b.Ctx, data)
 }
 
 // InitSession 初始化 Session

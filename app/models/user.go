@@ -4,6 +4,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"reflect"
+	"time"
 )
 
 // UserModel User 数据库
@@ -44,6 +46,7 @@ const (
 
 // UserIdentity 用户认证身份
 const (
+	IdentityNone    UserIdentity = "none"    // 未认证
 	IdentityStudent UserIdentity = "student" // 目前仅支持学生认证
 )
 
@@ -65,34 +68,34 @@ const (
 
 // UserInfoSchema 用户信息结构
 type UserInfoSchema struct {
-	Email    string     // 联系邮箱
-	Phone    string     // 联系手机
-	Avatar   string     // 头像
-	Nickname string     // 用户昵称
-	Bio      string     // 个人简介
-	Gender   UserGender // 性别
-	Location string     // 具体位置
-	BirthDay int64      // 生日
+	Email    string     `bson:"email"`    // 联系邮箱
+	Phone    string     `bson:"phone"`    // 联系手机
+	Avatar   string     `bson:"avatar"`   // 头像
+	School   string     `bson:"school"`   // 学校
+	Nickname string     `bson:"nickname"` // 用户昵称
+	Bio      string     `bson:"bio"`      // 个人简介
+	Gender   UserGender `bson:"gender"`   // 性别
+	Location string     `bson:"location"` // 具体位置
+	Birthday int64      `bson:"birthday"` // 生日
 }
 
 // UserDataSchema 用户数据结构
 type UserDataSchema struct {
-	Money          int64                // 当前持有闲币
-	Value          int64                // 用户积分
-	Credit         int64                // 个人信誉
-	Type           UserType             // 用户类型
+	Money  int64    // 当前持有闲币
+	Value  int64    // 用户积分
+	Credit int64    // 个人信誉
+	Type   UserType // 用户类型
+
 	AttendanceDate int64                `bson:"attendance_date"` // 签到时间戳
 	CollectTasks   []primitive.ObjectID `bson:"collect_tasks"`   // 收藏的任务
 	SearchHistory  []string             `bson:"searchHistory"`   // 搜索历史(仅保留最近的 20 条)
 	// 冗余数据
-	LastLoginDate   int64         `bson:"last_login_date"`   // 上次登陆时间(日志有)
-	LastLoginType   UserLoginType `bson:"last_login_type"`   // 上次登陆类型（PC/微信小程序）
-	PublishCount    int64         `bson:"publish_count"`     // 发布任务数
-	PublishRunCount int64         `bson:"publish_run_count"` // 发布并进行中任务数
-	ReceiveCount    int64         `bson:"receive_count"`     // 领取任务数
-	ReceiveRunCount int64         `bson:"receive_run_count"` // 领取并进行中任务数
-	FollowingCount  int64         `bson:"following_count"`   // 关注人数量
-	FollowerCount   int64         `bson:"follower_count"`    // 粉丝数量
+	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
+	PublishRunCount int64 `bson:"publish_run_count"` // 发布并进行中任务数
+	ReceiveCount    int64 `bson:"receive_count"`     // 领取任务数
+	ReceiveRunCount int64 `bson:"receive_run_count"` // 领取并进行中任务数
+	FollowingCount  int64 `bson:"following_count"`   // 关注人数量
+	FollowerCount   int64 `bson:"follower_count"`    // 粉丝数量
 }
 
 // UserCertificationSchema 用户认证信息
@@ -110,58 +113,102 @@ type UserCertificationSchema struct {
 // UserSchema User 基本数据结构
 type UserSchema struct {
 	ID            primitive.ObjectID      `bson:"_id,omitempty"` // 用户ID [索引]
-	OpenID        string                  `bson:"open_id"`       // 微信OpenID
-	WeChatName    string                  `bson:"wechat_name"`   // 微信名
+	WechatID      string                  `bson:"wechat_id"`     // 微信OpenID
+	WechatName    string                  `bson:"wechat_name"`   // 微信名
 	VioletID      string                  `bson:"violet_id"`     // VioletID
-	Name          string                  `bson:"name"`          // 用户名， 唯一
+	VioletName    string                  `bson:"violet_name"`   // Violet 用户名
 	RegisterTime  int64                   `bson:"register_time"` // 用户注册时间
 	Info          UserInfoSchema          `bson:"info"`          // 用户个性信息
 	Data          UserDataSchema          `bson:"data"`          // 用户数据
 	Certification UserCertificationSchema `bson:"certification"` // 用户认证信息
 }
 
-// AddUser 增加用户
-func (model *UserModel) AddUser(name string) error {
+// AddUserByViolet 通过 Violet 增加用户
+func (model *UserModel) AddUserByViolet(id string) (string, error) {
 	ctx, over := GetCtx()
 	defer over()
-	// 返回ID
-	_, err := model.Collection.InsertOne(ctx, &UserSchema{Name: name})
-	return err
+	userID := primitive.NewObjectID()
+	_, err := model.Collection.InsertOne(ctx, &UserSchema{
+		ID:           userID,
+		VioletID:     id,
+		RegisterTime: time.Now().Unix(),
+		Data: UserDataSchema{
+			Type: UserTypeNormal,
+		},
+		Certification: UserCertificationSchema{
+			Identity: IdentityNone,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return userID.Hex(), nil
 }
 
-// FindUser 查找用户
-func (model *UserModel) FindUser(name string) (user UserSchema, err error) {
+// FindUserByID 通过 ID 查找用户
+func (model *UserModel) GetUserByID(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	err = model.Collection.FindOne(ctx, bson.M{"name": name}).Decode(&user)
+	_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return
+	}
+	err = model.Collection.FindOne(ctx, bson.M{"_id": _id}).Decode(&user)
 	return
 }
 
-// UpdateUser 更新用户
-func (model *UserModel) UpdateUser(name string, newName string) error {
+// FindUserByViolet 通过 VioletID 查找用户
+func (model *UserModel) GetUserByViolet(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	// 返回更新的数量
-	res, err := model.Collection.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$set": bson.M{"name": newName}})
+	err = model.Collection.FindOne(ctx, bson.M{"violet_id": id}).Decode(&user)
+	return
+}
+
+// SetUserInfoByID 更新用户个人信息
+func (model *UserModel) SetUserInfoByID(id string, info UserInfoSchema) error {
+	ctx, over := GetCtx()
+	defer over()
+	_id, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil
+		return err
 	}
-	if res.MatchedCount < 1 {
+	// 通过反射获取非空字段
+	updateItem := bson.M{}
+	names := reflect.TypeOf(info)
+	values := reflect.ValueOf(info)
+	for i := 0; i < names.NumField(); i++ {
+		name := names.Field(i).Tag.Get("bson")
+		if name == "birthday" { // 生日字段为 int64
+			if values.Field(i).Int() != 0 {
+				updateItem["info."+name] = values.Field(i).Int()
+			}
+		} else { // 其他字段为 string
+			if values.Field(i).String() != "" {
+				updateItem["info."+name] = values.Field(i).String()
+			}
+		}
+	}
+	if res, err := model.Collection.UpdateOne(ctx,
+		bson.M{"_id": _id},
+		bson.M{"$set": updateItem}); err != nil {
+		return nil
+	} else if res.MatchedCount < 1 {
 		return ErrNotExist
 	}
 	return nil
 }
 
-// RemoveUser 删除用户
-func (model *UserModel) RemoveUser(name string) error {
-	ctx, over := GetCtx()
-	defer over()
-	res, err := model.Collection.DeleteOne(ctx, bson.M{"name": name})
-	if err != nil {
-		return err
-	}
-	if res.DeletedCount < 1 {
-		return ErrNotExist
-	}
-	return nil
-}
+//// RemoveUser 删除用户
+//func (model *UserModel) RemoveUser(name string) error {
+//	ctx, over := GetCtx()
+//	defer over()
+//	res, err := model.Collection.DeleteOne(ctx, bson.M{"name": name})
+//	if err != nil {
+//		return err
+//	}
+//	if res.DeletedCount < 1 {
+//		return ErrNotExist
+//	}
+//	return nil
+//}
