@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	recover2 "github.com/kataras/iris/middleware/recover"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 
@@ -18,6 +19,8 @@ func NewApp() *iris.Application {
 	// recover from any http-relative panics
 	// log the requests to the terminal.
 	app.Use(logger.New())
+
+	app.Use(recover2.New())
 
 	app.Use(libs.NewErrorHandler())
 

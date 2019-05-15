@@ -1,11 +1,8 @@
 package libs
 
 import (
-	"fmt"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -47,35 +44,14 @@ func NewErrorHandler() context.Handler {
 						if errJson != nil {
 							break
 						}
-						ctx.ContentType("application/javascript")
+						ctx.ContentType("application/json")
 						_, err = ctx.Write(b)
 						if err == nil && statusCode < 500 {
 							return
 						}
 					}
-
 				}
-
-				var stacktrace string
-				for i := 1; ; i++ {
-					_, f, l, got := runtime.Caller(i)
-					if !got {
-						break
-					}
-
-					stacktrace += fmt.Sprintf("%s:%d\n", f, l)
-				}
-
-				// when stack finishes
-				logMessage := fmt.Sprintf("Recovered from a route's Handler('%s')\n", ctx.HandlerName())
-				logMessage += fmt.Sprintf("At Request: %s\n",
-					fmt.Sprintf("%v %s %s %s", strconv.Itoa(ctx.GetStatusCode()), ctx.RemoteAddr(), ctx.Method(), ctx.Path()))
-				logMessage += fmt.Sprintf("Trace: %s\n", err)
-				logMessage += fmt.Sprintf("\n%s", stacktrace)
-				ctx.Application().Logger().Warn(logMessage)
-
-				ctx.StatusCode(iris.StatusInternalServerError)
-				ctx.StopExecution()
+				panic(err)
 			}
 		}()
 
