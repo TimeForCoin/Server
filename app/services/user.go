@@ -1,6 +1,7 @@
 package services
 
 import (
+	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
 	"time"
 
 	"github.com/TimeForCoin/Server/app/libs"

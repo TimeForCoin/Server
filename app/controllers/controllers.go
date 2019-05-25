@@ -64,6 +64,7 @@ func getSession() *sessions.Sessions {
 			Cookie:  "coin-for-time",
 			Expires: time.Hour * time.Duration(15*24),
 		})
+		// sessionManager.UseDatabase()
 	}
 	return sessionManager
 }
