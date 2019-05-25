@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	recover2 "github.com/kataras/iris/middleware/recover"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
+
+	irisRecover "github.com/kataras/iris/middleware/recover"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/kataras/iris"
@@ -20,7 +21,7 @@ func NewApp() *iris.Application {
 	// log the requests to the terminal.
 	app.Use(logger.New())
 
-	app.Use(recover2.New())
+	app.Use(irisRecover.New())
 
 	app.Use(libs.NewErrorHandler())
 
@@ -29,6 +30,7 @@ func NewApp() *iris.Application {
 	return app
 }
 
+// BaseController 控制基类
 type BaseController struct {
 	Ctx     iris.Context
 	Session *sessions.Session
@@ -42,6 +44,7 @@ func (b *BaseController) checkLogin() string {
 	return id
 }
 
+// JSON 使用 JSON 返回数据
 func (b *BaseController) JSON(data interface{}) {
 	libs.JSON(b.Ctx, data)
 }

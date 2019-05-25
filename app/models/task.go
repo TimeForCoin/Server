@@ -30,7 +30,7 @@ const (
 const (
 	RewardMoney    RewardType = "money"     // 闲钱币酬劳
 	RewardRMB      RewardType = "rmb"       // 人民币酬劳
-	RewardPhysical RewardType = "physical " // 实物酬劳
+	RewardPhysical RewardType = "physical" // 实物酬劳
 )
 
 // TaskStatus 任务状态

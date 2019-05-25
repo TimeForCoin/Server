@@ -192,23 +192,87 @@ func (model *UserModel) SetUserInfoByID(id string, info UserInfoSchema) error {
 	if res, err := model.Collection.UpdateOne(ctx,
 		bson.M{"_id": _id},
 		bson.M{"$set": updateItem}); err != nil {
-		return nil
+		return err
 	} else if res.MatchedCount < 1 {
 		return ErrNotExist
 	}
 	return nil
 }
 
-//// RemoveUser 删除用户
-//func (model *UserModel) RemoveUser(name string) error {
-//	ctx, over := GetCtx()
-//	defer over()
-//	res, err := model.Collection.DeleteOne(ctx, bson.M{"name": name})
-//	if err != nil {
-//		return err
-//	}
-//	if res.DeletedCount < 1 {
-//		return ErrNotExist
-//	}
-//	return nil
-//}
+// UserDataCount 用户数据更新
+type UserDataCount struct {
+	Money           int64 `bson:"money"`             // 当前持有闲币
+	Value           int64 `bson:"value"`             // 用户积分
+	Credit          int64 `bson:"credit"`            // 个人信誉
+	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
+	PublishRunCount int64 `bson:"publish_run_count"` // 发布并进行中任务数
+	ReceiveCount    int64 `bson:"receive_count"`     // 领取任务数
+	ReceiveRunCount int64 `bson:"receive_run_count"` // 领取并进行中任务数
+	FollowingCount  int64 `bson:"following_count"`   // 关注人数量
+	FollowerCount   int64 `bson:"follower_count"`    // 粉丝数量
+}
+
+// UpdateUserDataCount 更新用户数值数据（偏移值）
+func (model *UserModel) UpdateUserDataCount(id string, data UserDataCount) error {
+	ctx, over := GetCtx()
+	defer over()
+	_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	// 通过反射获取非零字段
+	updateItem := bson.M{}
+	names := reflect.TypeOf(data)
+	values := reflect.ValueOf(data)
+	for i := 0; i < names.NumField(); i++ {
+		if value := values.Field(i).Int(); value != 0 {
+			updateItem["data."+names.Field(i).Tag.Get("bson")] = value
+		}
+	}
+	if res, err := model.Collection.UpdateOne(ctx,
+		bson.M{"_id": _id},
+		bson.M{"$inc": updateItem}); err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+// SetUserType 设置用户类型
+func (model *UserModel) SetUserType(id string, userType UserType) error {
+	ctx, over := GetCtx()
+	defer over()
+	_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	if res, err := model.Collection.UpdateMany(ctx,
+		bson.M{"_id": _id},
+		bson.M{"$set": bson.M{"data.type": userType}}); err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+// SetUserAttend 用户签到
+func (model *UserModel) SetUserAttend(id string) error {
+	ctx, over := GetCtx()
+	defer over()
+	_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	if res, err := model.Collection.UpdateMany(ctx,
+		bson.M{"_id": _id},
+		bson.M{"$set": bson.M{"data.attendance_date": time.Now().Unix()}}); err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+// TODO 添加关注

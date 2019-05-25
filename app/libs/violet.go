@@ -24,7 +24,7 @@ func InitViolet(c VioletConfig) *OAuthService {
 	return oauth
 }
 
-func GetOauth () *OAuthService {
+func GetOAuth () *OAuthService {
 	if oauth == nil {
 		log.Panic().Msg("OAuth service is not init")
 	}

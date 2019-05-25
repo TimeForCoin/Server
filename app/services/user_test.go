@@ -1,8 +1,9 @@
 package services
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"testing"
+
+	"github.com/TimeForCoin/Server/app/libs"
 )
 
 var userServiceTest UserService
@@ -19,9 +20,8 @@ func TestUserService(t *testing.T) {
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 
-
 func testUserServiceGetLoginURL(t *testing.T) {
-	url, state, err := libs.GetOauth().Api.GetLoginURL("http://localhost:30233/auth")
+	url, state, err := libs.GetOAuth().Api.GetLoginURL("http://localhost:8080/api/session/violet")
 	if err != nil {
 		t.Error(err)
 	}

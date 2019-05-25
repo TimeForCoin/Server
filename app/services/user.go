@@ -1,17 +1,19 @@
 package services
 
 import (
+	"time"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/kataras/iris"
-	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
-	"time"
 )
 
 // UserService 用户逻辑
 type UserService interface {
 	GetLoginURL() (url, state string)
-	GetUser(id string) (models.UserSchema, error)
+	GetUser(id string) models.UserSchema
+	UserAttend(id string)
+	SetUserInfo(id string, info models.UserInfoSchema)
 	LoginByCode(code string) (id string, new bool)
 }
 
@@ -19,7 +21,7 @@ type UserService interface {
 func NewUserService() UserService {
 	return &userService{
 		model: models.GetModel().User,
-		oAuth: libs.GetOauth(),
+		oAuth: libs.GetOAuth(),
 	}
 }
 
@@ -40,7 +42,7 @@ func (s *userService) GetLoginURL() (url, state string) {
 
 func (s *userService) LoginByCode(code string) (id string, new bool) {
 	res, err := s.oAuth.Api.GetToken(code)
-	//// TODO 检测是否绑定微信
+	// TODO 检测是否绑定微信
 	if err != nil {
 		return "", false
 	}
@@ -79,7 +81,26 @@ func (s *userService) LoginByCode(code string) (id string, new bool) {
 	return "", true
 }
 
-func (s *userService) GetUser(id string) ( models.UserSchema,  error) {
-	return s.model.GetUserByID(id)
+// GetUser 获取用户数据
+func (s *userService) GetUser(id string) models.UserSchema {
+	user, err := s.model.GetUserByID(id)
+	libs.Assert(err == nil, "faked_users", 403)
+	return user
 }
 
+// UserAttend 用户签到
+func (s *userService) UserAttend(id string) {
+	user, err := s.model.GetUserByID(id)
+	libs.Assert(err == nil, "invalid_session", 401)
+	lastAttend := time.Unix(user.Data.AttendanceDate, 0)
+	nowDate := time.Now()
+	if lastAttend.Add(time.Hour*24).Before(nowDate) && lastAttend.YearDay() == nowDate.YearDay() {
+		libs.Assert(false, "already_attend", 403)
+	}
+	err = s.model.SetUserAttend(id)
+	libs.Assert(err == nil, err.Error(), iris.StatusInternalServerError)
+}
+
+func (s *userService) SetUserInfo(id string, info models.UserInfoSchema) {
+	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
+}

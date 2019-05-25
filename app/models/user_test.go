@@ -69,5 +69,29 @@ func testUserModelAll(t *testing.T) {
 	}
 	t.Log(user)
 
+	if err = model.User.UpdateUserDataCount(id, UserDataCount{
+		Money: 10,
+		Credit: -4,
+		FollowerCount: 1,
+		FollowingCount: -1,
+	}); err != nil {
+		t.Error(err)
+	}
+
+	if err = model.User.SetUserType(id, UserTypeAdmin); err != nil {
+		t.Error(err)
+	}
+
+	if err = model.User.SetUserAttend(id); err != nil {
+		t.Error(err)
+	}
+
+	user, err = model.User.GetUserByID(id)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(user)
+
+
 
 }

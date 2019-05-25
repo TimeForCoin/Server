@@ -4,9 +4,9 @@
 # Build
 out
 *.exe
+*.zip
 vendor
 
 config.yaml
 test.ps1
 env.ps1
-vendor.zip

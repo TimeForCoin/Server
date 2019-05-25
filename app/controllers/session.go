@@ -6,14 +6,15 @@ import (
 	"github.com/kataras/iris"
 )
 
-// UserController 用户控制
+// SessionController 用户登陆状态控制
 type SessionController struct {
 	BaseController
-	Server  services.UserService
+	Server services.UserService
 }
 
+// GetSessionRes 获取登陆URL返回值
 type GetSessionRes struct {
-	Url string
+	URL string `json:"url"`
 }
 
 // Get 获取 Violet 登陆授权 URL
@@ -22,16 +23,18 @@ func (c *SessionController) Get() int {
 	c.Session.Set("state", state)
 	c.Session.Set("login", "running")
 	libs.JSON(c.Ctx, GetSessionRes{
-		Url: url,
+		URL: url,
 	})
 	return iris.StatusOK
 }
 
+// GetVioletReq Violet 登陆参数
 type GetVioletReq struct {
-	Code string
+	Code  string
 	State string
 }
 
+// GetViolet 通过 Violet 登陆
 func (c *SessionController) GetViolet() int {
 	defer func() {
 		if err := recover(); err != nil {
@@ -55,10 +58,12 @@ func (c *SessionController) GetViolet() int {
 	return iris.StatusCreated
 }
 
+// GetSessionStatusRes 获取登陆状态返回值
 type GetSessionStatusRes struct {
 	Status string
 }
 
+// GetStatus 获取登陆状态
 func (c *SessionController) GetStatus() int {
 
 	status := c.Session.GetString("login")
@@ -71,6 +76,7 @@ func (c *SessionController) GetStatus() int {
 	return iris.StatusOK
 }
 
+// Delete 退出登陆
 func (c *SessionController) Delete() int {
 	c.Session.Set("login", "none")
 	c.Session.Delete("id")
