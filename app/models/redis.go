@@ -8,30 +8,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var cache *Cache
+var redisInst *Redis
 
 // Cache Redis 缓存
-type Cache struct {
-	Redis *redis.Client
+type Redis struct {
+	Client *redis.Client
+	Cache  *CacheModel
 }
 
 // GetCache 获取缓存实例
-func GetCache() *Cache {
-	if cache == nil {
-		panic("Redis isn't Initialize!")
-	}
-	return cache
+func GetRedis() *Redis {
+	return redisInst
 }
 
 // InitRedis 初始化 Redis
 func InitRedis(config *libs.RedisConfig) error {
-	cache = &Cache{}
-	cache.Redis = redis.NewClient(&redis.Options{
+	redisInst = &Redis{}
+	redisInst.Client = redis.NewClient(&redis.Options{
 		Addr:     config.Host + ":" + config.Port,
 		Password: config.Password,
 		DB:       config.DB,
 	})
-	pong, err := cache.Redis.Ping().Result()
+	pong, err := redisInst.Client.Ping().Result()
 	if err != nil {
 		log.Error().Err(err).Msg("Failure to connect Redis!!!")
 		return err
@@ -41,10 +39,17 @@ func InitRedis(config *libs.RedisConfig) error {
 		return errors.New("redis_error")
 	}
 	log.Info().Msg("Successful connection to Redis.")
+	redisInst.Cache = &CacheModel{Redis: redisInst.Client}
+
 	return nil
 }
 
 // DisconnectRedis 断开 Redis 连接
 func DisconnectRedis() error {
-	return cache.Redis.Close()
+	if redisInst == nil {
+		return nil
+	}
+	err := redisInst.Client.Close()
+	redisInst = nil
+	return err
 }

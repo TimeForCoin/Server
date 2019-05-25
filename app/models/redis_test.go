@@ -14,6 +14,9 @@ func TestRedis(t *testing.T) {
 }
 
 func testInitRedis(t *testing.T) {
+	if GetRedis() != nil {
+		return
+	}
 	DB, err := strconv.Atoi(os.Getenv("REDIS_DB"))
 	if err != nil {
 		t.Error(err)
@@ -27,7 +30,7 @@ func testInitRedis(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if cache := GetCache(); cache == nil {
+	if cache := GetRedis(); cache == nil {
 		t.Error()
 	}
 }

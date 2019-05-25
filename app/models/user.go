@@ -197,7 +197,8 @@ func (model *UserModel) SetUserInfoByID(id string, info UserInfoSchema) error {
 	} else if res.MatchedCount < 1 {
 		return ErrNotExist
 	}
-	return nil
+	// 更新缓存
+	return GetRedis().Cache.WillUpdateBaseInfo(id)
 }
 
 // UserDataCount 用户数据更新
@@ -255,7 +256,8 @@ func (model *UserModel) SetUserType(id string, userType UserType) error {
 	} else if res.MatchedCount < 1 {
 		return ErrNotExist
 	}
-	return nil
+	// 更新缓存
+	return GetRedis().Cache.WillUpdateBaseInfo(id)
 }
 
 // SetUserAttend 用户签到

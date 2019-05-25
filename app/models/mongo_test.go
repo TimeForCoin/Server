@@ -8,6 +8,9 @@ import (
 )
 
 func testInitDB(t *testing.T) {
+	if GetModel() != nil {
+		return
+	}
 	err := InitDB(&libs.DBConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),

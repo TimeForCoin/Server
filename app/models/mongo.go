@@ -40,9 +40,6 @@ type Model struct {
 
 // GetModel 获取 Model 实例
 func GetModel() *Model {
-	if model == nil {
-		panic("DB isn't Initialize!")
-	}
 	return model
 }
 
@@ -183,7 +180,12 @@ func connect(config *libs.DBConfig) error {
 
 // DisconnectDB 断开数据库连接
 func DisconnectDB() error {
+	if model == nil {
+		return nil
+	}
 	ctx, cancel := GetCtx()
 	defer cancel()
-	return model.client.Disconnect(ctx)
+	err := model.client.Disconnect(ctx)
+	model = nil
+	return err
 }

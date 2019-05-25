@@ -8,9 +8,11 @@ import (
 
 func TestUserModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
+	t.Run("InitRedis", testInitRedis)
 
 	t.Run("testUser", testUserModelAll)
 
+	t.Run("DisconnectRedis", testDisconnectRedis)
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 
@@ -91,7 +93,4 @@ func testUserModelAll(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(user)
-
-
-
 }
