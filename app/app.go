@@ -21,7 +21,7 @@ func initService(config libs.Config) {
 		panic(err)
 	}
 	// 初始化 Session
-	controllers.InitSession(config.HTTP.Session)
+	controllers.InitSession(config.HTTP.Session, config.Redis)
 	// 初始化 Json 设置
 	// 自动转换成小写下划线风格
 	extra.SetNamingStrategy(extra.LowerCaseWithUnderscores)
@@ -41,6 +41,15 @@ func Run(configPath string) {
 	// 启动服务器
 	app := controllers.NewApp()
 
+	// 关闭数据库
+	iris.RegisterOnInterrupt(func() {
+		if err := models.DisconnectDB(); err != nil {
+			log.Error().Msg(err.Error())
+		}
+		if err := models.DisconnectRedis(); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	})
 	if config.Dev {
 		app.Logger().SetLevel("debug")
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)

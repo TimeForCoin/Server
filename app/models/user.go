@@ -1,11 +1,12 @@
 package models
 
 import (
+	"reflect"
+	"time"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"reflect"
-	"time"
 )
 
 // UserModel User 数据库
@@ -145,7 +146,7 @@ func (model *UserModel) AddUserByViolet(id string) (string, error) {
 	return userID.Hex(), nil
 }
 
-// FindUserByID 通过 ID 查找用户
+// GetUserByID 通过 ID 查找用户
 func (model *UserModel) GetUserByID(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -157,7 +158,7 @@ func (model *UserModel) GetUserByID(id string) (user UserSchema, err error) {
 	return
 }
 
-// FindUserByViolet 通过 VioletID 查找用户
+// GetUserByViolet 通过 VioletID 查找用户
 func (model *UserModel) GetUserByViolet(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()

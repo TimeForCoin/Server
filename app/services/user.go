@@ -95,11 +95,10 @@ func (s *userService) UserAttend(id string) {
 	libs.Assert(err == nil, "invalid_session", 401)
 	lastAttend := time.Unix(user.Data.AttendanceDate, 0)
 	nowDate := time.Now()
-	if lastAttend.Add(time.Hour*24).Before(nowDate) && lastAttend.YearDay() == nowDate.YearDay() {
+	if lastAttend.Add(time.Hour*24).After(nowDate) && lastAttend.YearDay() == nowDate.YearDay() {
 		libs.Assert(false, "already_attend", 403)
 	}
-	err = s.model.SetUserAttend(id)
-	libs.Assert(err == nil, err.Error(), iris.StatusInternalServerError)
+	libs.Assert(s.model.SetUserAttend(id) == nil, "unknown", iris.StatusInternalServerError)
 }
 
 func (s *userService) SetUserInfo(id string, info models.UserInfoSchema) {

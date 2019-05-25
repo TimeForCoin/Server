@@ -44,6 +44,7 @@ type RedisConfig struct {
 	Port     string `yaml:"port"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
+	Session  string `yaml:"session"`
 }
 
 // VioletConfig Violet 配置

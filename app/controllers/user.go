@@ -34,12 +34,13 @@ func BindUserController(app *iris.Application) {
 // GetInfoByIDRes 获取用户信息返回值
 type GetInfoByIDRes struct {
 	ID           string `json:"id"`
-	VioletName   string
-	WechatName   string
+	VioletName   string `json:"violet_name,omitempty"`
+	WechatName   string `json:"wechat_name,omitempty"`
 	RegisterTime int64
 	Info         models.UserInfoSchema
-	Data         UserDataRes
+	Data         *UserDataRes
 }
+type omit *struct{}
 
 // UserDataRes 用户数据返回值
 type UserDataRes struct {
@@ -47,9 +48,9 @@ type UserDataRes struct {
 	// 额外项
 	Attendance bool
 	// 排除项
-	AttendanceDate int64                `json:"-"`
-	CollectTasks   []primitive.ObjectID `json:"-"`
-	SearchHistory  []string             `json:"-"`
+	AttendanceDate omit `json:"attendance_date,omitempty"`
+	CollectTasks   omit `json:"collect_tasks,omitempty"`
+	SearchHistory  omit `json:"search_history,omitempty"`
 }
 
 // GetInfoBy 获取用户信息
@@ -70,7 +71,7 @@ func (c *UserController) GetInfoBy(id string) int {
 		WechatName:   user.WechatName,
 		RegisterTime: user.RegisterTime,
 		Info:         user.Info,
-		Data: UserDataRes{
+		Data: &UserDataRes{
 			UserDataSchema: &user.Data,
 			Attendance:     isAttendance,
 		},

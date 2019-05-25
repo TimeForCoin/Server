@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"github.com/kataras/iris/sessions/sessiondb/redis"
+	"github.com/kataras/iris/sessions/sessiondb/redis/service"
+	"github.com/rs/zerolog/log"
 	"time"
 
 	irisRecover "github.com/kataras/iris/middleware/recover"
@@ -50,20 +53,38 @@ func (b *BaseController) JSON(data interface{}) {
 }
 
 // InitSession 初始化 Session
-func InitSession(config libs.SessionConfig) {
+func InitSession(config libs.SessionConfig, dbConfig libs.RedisConfig) {
 	sessionManager = sessions.New(sessions.Config{
 		Cookie:  config.Key,
 		Expires: time.Hour * time.Duration(config.Expires*24),
 	})
+	// 生成默认 Session
+	db := redis.New(service.Config{
+		Network:     "tcp",
+		Addr:        dbConfig.Host + ":" + dbConfig.Port,
+		Password:    dbConfig.Password,
+		Database:    dbConfig.Session,
+		MaxIdle:     0,
+		MaxActive:   0,
+		IdleTimeout: time.Duration(5) * time.Minute,
+		Prefix:      "session"})
+
+	// close connection when control+C/cmd+C
+	iris.RegisterOnInterrupt(func() {
+		if 	err := db.Close(); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	})
+	sessionManager.UseDatabase(db)
 }
 
 func getSession() *sessions.Sessions {
 	if sessionManager == nil {
-		// 生成默认 Session
 		sessionManager = sessions.New(sessions.Config{
 			Cookie:  "coin-for-time",
 			Expires: time.Hour * time.Duration(15*24),
 		})
+
 		// sessionManager.UseDatabase()
 	}
 	return sessionManager

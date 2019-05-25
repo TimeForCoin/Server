@@ -19,11 +19,11 @@ type GetSessionRes struct {
 
 // Get 获取 Violet 登陆授权 URL
 func (c *SessionController) Get() int {
-	url, state := c.Server.GetLoginURL()
+	loginURL, state := c.Server.GetLoginURL()
 	c.Session.Set("state", state)
 	c.Session.Set("login", "running")
 	libs.JSON(c.Ctx, GetSessionRes{
-		URL: url,
+		URL: loginURL,
 	})
 	return iris.StatusOK
 }
