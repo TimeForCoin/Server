@@ -1,8 +1,15 @@
 language: go
 go:
-  - 1.12.x
+- 1.12.x
+addons:
+  ssh_known_hosts: love.zhenly.cn
+before_install:
+- openssl aes-256-cbc -K $encrypted_da5ea0339585_key -iv $encrypted_da5ea0339585_iv
+  -in deploy.enc -out ~\/.ssh/deploy -d
 script:
-  - go build
-  - go test -v -coverprofile="coverage.txt" -covermode=atomic ./app/...
+- go build
+- go test -v -coverprofile="coverage.txt" -covermode=atomic ./app/...
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)
+- chmod 600 ~/.ssh/deploy
+- ssh deploy@love.zhenly.cn -i ~/.ssh/deploy "cd ~/TimeForCoin/Server && bash ./deploy.sh"

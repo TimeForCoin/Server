@@ -82,3 +82,8 @@ func (c *SessionController) Delete() int {
 	c.Session.Delete("id")
 	return iris.StatusOK
 }
+
+// 测试
+func (c *SessionController) GetTest() string {
+	return "Test"
+}

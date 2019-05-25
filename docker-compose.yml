@@ -1,0 +1,8 @@
+version: '3'
+services:
+  TimeForCoin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: time-for-coin
+    network_mode: host
