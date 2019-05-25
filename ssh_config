@@ -1,0 +1,5 @@
+Host love.zhenly.cn
+    HostName love.zhenly.cn
+    StrictHostKeyChecking no
+    User deploy
+    IdentityFile ~/.ssh/deploy
