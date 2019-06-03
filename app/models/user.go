@@ -146,6 +146,27 @@ func (model *UserModel) AddUserByViolet(id string) (string, error) {
 	return userID.Hex(), nil
 }
 
+func (model *UserModel) AddUserByWechat(openid string) (string, error) {
+	ctx, finish := GetCtx()
+	defer finish()
+	userID := primitive.NewObjectID()
+	_, err := model.Collection.InsertOne(ctx, &UserSchema{
+		ID: userID,
+		WechatID: openid,
+		RegisterTime: time.Now().Unix(),
+		Data: UserDataSchema{
+			Type: UserTypeNormal,
+		},
+		Certification: UserCertificationSchema{
+			Identity: IdentityNone,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return userID.Hex(), nil
+}
+
 // GetUserByID 通过 ID 查找用户
 func (model *UserModel) GetUserByID(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
@@ -163,6 +184,14 @@ func (model *UserModel) GetUserByViolet(id string) (user UserSchema, err error) 
 	ctx, over := GetCtx()
 	defer over()
 	err = model.Collection.FindOne(ctx, bson.M{"violet_id": id}).Decode(&user)
+	return
+}
+
+// GetUserByWechat 通过 Wechat OpenID 查找用户
+func (model *UserModel) GetUserByWechat(id string) (user UserSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	err = model.Collection.FindOne(ctx, bson.M{"wechat_id": id}).Decode(&user)
 	return
 }
 

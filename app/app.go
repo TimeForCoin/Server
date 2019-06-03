@@ -27,6 +27,8 @@ func initService(config libs.Config) {
 	extra.SetNamingStrategy(extra.LowerCaseWithUnderscores)
 	// 初始化 Violet Oauth 系统
 	libs.InitViolet(config.Violet)
+	// 初始化 微信 API
+	libs.InitWeChat(config.Wechat)
 }
 
 // Run 程序入口

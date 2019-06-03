@@ -39,9 +39,11 @@ type GetInfoByIDRes struct {
 	RegisterTime int64
 	Info         models.UserInfoSchema
 	Data         *UserDataRes
+	Certification *UserCertification
 }
-type omit *struct{}
 
+
+type omit *struct{}
 // UserDataRes 用户数据返回值
 type UserDataRes struct {
 	*models.UserDataSchema
@@ -51,6 +53,13 @@ type UserDataRes struct {
 	AttendanceDate omit `json:"attendance_date,omitempty"`
 	CollectTasks   omit `json:"collect_tasks,omitempty"`
 	SearchHistory  omit `json:"search_history,omitempty"`
+}
+
+// UserCertification 用户认证信息
+type UserCertification struct {
+	Type models.UserIdentity
+	Data string
+	Date int64
 }
 
 // GetInfoBy 获取用户信息
@@ -75,6 +84,11 @@ func (c *UserController) GetInfoBy(id string) int {
 			UserDataSchema: &user.Data,
 			Attendance:     isAttendance,
 		},
+		Certification: &UserCertification{
+			Type: user.Certification.Identity,
+			Data: user.Certification.Data,
+			Date: user.Certification.Date,
+		},
 	})
 	return iris.StatusOK
 }
@@ -86,18 +100,23 @@ func (c *UserController) PostAttend() int {
 	return iris.StatusOK
 }
 
+type UserInfoReq struct {
+	*models.UserInfoSchema
+	AvatarURL string `json:"avatarUrl"`
+}
+
 // PatchInfo 修改用户信息
-func (c *UserController) PatchInfo() int {
+func (c *UserController) PutInfo() int {
 	id := c.checkLogin()
 	// 解析
-	req := models.UserInfoSchema{}
+	req := UserInfoReq{}
 	err := c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(req.Email == "" || libs.IsEmail(req.Email), "invalid_email", 400)
 	libs.Assert(req.Gender == "" || libs.IsGender(string(req.Gender)), "invalid_gender", 400)
 	// TODO 处理头像
-	// 暂时不支持修改头像
-	req.Avatar = ""
+	// 暂时不支持直接上传头像
+	req.Avatar = req.AvatarURL
 	// 判断是否存在数据
 	count := 0
 	names := reflect.TypeOf(req)
@@ -116,7 +135,7 @@ func (c *UserController) PatchInfo() int {
 	}
 	libs.Assert(count != 0, "invalid_value", 400)
 
-	c.Server.SetUserInfo(id, req)
+	c.Server.SetUserInfo(id, *req.UserInfoSchema)
 	return iris.StatusOK
 }
 
@@ -127,7 +146,7 @@ type UseTypeReq struct {
 }
 
 // 修改用户信息
-func (c *UserController) PatchType() int {
+func (c *UserController) PutType() int {
 	id := c.checkLogin()
 	// 解析
 	req := UseTypeReq{}

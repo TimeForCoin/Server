@@ -15,7 +15,8 @@ type UserService interface {
 	GetUser(id string) models.UserSchema
 	UserAttend(id string)
 	SetUserInfo(id string, info models.UserInfoSchema)
-	LoginByCode(code string) (id string, new bool)
+	LoginByViolet(code string) (id string, new bool)
+	LoginByWechat(code string) (id string, new bool)
 	SetUserType(admin string, id string, userType models.UserType)
 }
 
@@ -42,7 +43,7 @@ func (s *userService) GetLoginURL() (url, state string) {
 	return url, state
 }
 
-func (s *userService) LoginByCode(code string) (id string, new bool) {
+func (s *userService) LoginByViolet(code string) (id string, new bool) {
 	res, err := s.oAuth.Api.GetToken(code)
 	// TODO 检测是否绑定微信
 	if err != nil {
@@ -81,6 +82,19 @@ func (s *userService) LoginByCode(code string) (id string, new bool) {
 		})
 	}
 	return "", true
+}
+
+func (s *userService) LoginByWechat(code string) (id string, new bool) {
+	openID, err := libs.GetWechat().GetOpenID(code)
+	libs.AssertErr(err, "", 403)
+	// 账号已存在，直接返回 ID
+	if u, err := s.model.GetUserByWechat(openID); err == nil {
+		return u.ID.Hex(), false
+	}
+	// 账号不存在，新建账号
+	id, err = s.model.AddUserByWechat(openID)
+	libs.Assert(err == nil, "db_error", iris.StatusInternalServerError)
+	return openID, true
 }
 
 // GetUser 获取用户数据

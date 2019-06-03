@@ -14,19 +14,23 @@ GET http://127.0.0.1:30233/users/info/me
 POST http://127.0.0.1:30233/users/attend
 
 ### 修改资料
-PATCH http://127.0.0.1:30233/users/info
+PUT http://127.0.0.1:30233/users/info
 Content-Type: application/json
 
 {
+  "nickname": "WeChat",
   "email": "a@zhenly.cn",
   "school": "SYSU"
 }
 
-### 修改用户信息
-PATCH http://127.0.0.1:30233/users/type
+### 修改用户类型
+PUT http://127.0.0.1:30233/users/type
 Content-Type: application/json
 
 {
   "id": "5cdbf6fe678405360d9fc162",
   "type": "normal"
 }
+
+### 微信登陆
+GET http://127.0.0.1:30233/session/wechat?code=023RlI2e2s6trG0tPP5e2aRJ2e2RlI2E

@@ -50,13 +50,31 @@ func (c *SessionController) GetViolet() int {
 	libs.Assert(state == rightState, "状态校验失败，请重试")
 	c.Session.Delete("state")
 
-	id, _ := c.Server.LoginByCode(code)
+	id, _ := c.Server.LoginByViolet(code)
 	libs.Assert(id != "", "登陆已过期，请重试")
 
 	c.Session.Set("id", id)
 	c.Session.Set("login", "violet")
 	return iris.StatusCreated
 }
+
+// GetVioletReq Violet 登陆参数
+type GetWechatRes struct {
+	New bool
+}
+
+// GetWechat 通过微信登陆
+func (c *SessionController) GetWechat() int {
+	code := c.Ctx.FormValue("code")
+	id, newUser := c.Server.LoginByWechat(code)
+	c.JSON(GetWechatRes{
+		New: newUser,
+	})
+	c.Session.Set("id", id)
+	c.Session.Set("login", "wechat")
+	return iris.StatusCreated
+}
+
 
 // GetSessionStatusRes 获取登陆状态返回值
 type GetSessionStatusRes struct {

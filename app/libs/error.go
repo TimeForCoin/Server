@@ -21,6 +21,19 @@ func Assert(condition bool, msg string, code ...int) {
 	}
 }
 
+func AssertErr(err error, msg string, code ...int) {
+	if err != nil {
+		statusCode := 400
+		if len(code) > 0 {
+			statusCode = code[0]
+		}
+		if msg == "" {
+			msg = err.Error()
+		}
+		panic("knownError&" + strconv.Itoa(statusCode) + "&" + msg)
+	}
+}
+
 func NewErrorHandler() context.Handler {
 	return func(ctx context.Context) {
 		defer func() {
