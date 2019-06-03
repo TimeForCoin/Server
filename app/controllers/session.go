@@ -28,12 +28,6 @@ func (c *SessionController) Get() int {
 	return iris.StatusOK
 }
 
-// GetVioletReq Violet 登陆参数
-type GetVioletReq struct {
-	Code  string
-	State string
-}
-
 // GetViolet 通过 Violet 登陆
 func (c *SessionController) GetViolet() int {
 	defer func() {
@@ -59,15 +53,23 @@ func (c *SessionController) GetViolet() int {
 }
 
 // GetVioletReq Violet 登陆参数
-type GetWechatRes struct {
+type PostWechatRes struct {
 	New bool
 }
 
+// GetVioletReq Violet 登陆参数
+type PostWechatReq struct {
+	Code string
+}
+
 // GetWechat 通过微信登陆
-func (c *SessionController) GetWechat() int {
-	code := c.Ctx.FormValue("code")
-	id, newUser := c.Server.LoginByWechat(code)
-	c.JSON(GetWechatRes{
+func (c *SessionController) PostWechat() int {
+	req := PostWechatReq{}
+	err := c.Ctx.ReadJSON(&req)
+	libs.Assert(err == nil && req.Code != "", "invalid_code", 400)
+
+	id, newUser := c.Server.LoginByWechat(req.Code)
+	c.JSON(PostWechatRes{
 		New: newUser,
 	})
 	c.Session.Set("id", id)
@@ -104,4 +106,20 @@ func (c *SessionController) Delete() int {
 // 测试
 func (c *SessionController) GetTest() string {
 	return "Test"
+}
+
+type GetWeChatImageRes struct {
+	Data string
+}
+
+// 微信登陆二维码
+func (c *SessionController) GetWechat() int {
+	// id := c.checkLogin()
+	image, err := libs.GetWechat().MakeImage("hello")
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	c.JSON(GetWeChatImageRes{
+		Data: image,
+	})
+	return iris.StatusOK
 }

@@ -33,4 +33,12 @@ Content-Type: application/json
 }
 
 ### 微信登陆
-GET http://127.0.0.1:30233/session/wechat?code=023RlI2e2s6trG0tPP5e2aRJ2e2RlI2E
+POST http://127.0.0.1:30233/session/wechat
+Content-Type: application/json
+
+{
+  "code": "043wQIzw0lqsYa1zBPBw0mCXzw0wQIz8"
+}
+
+### 微信二维码
+GET http://127.0.0.1:30233/session/wechat
