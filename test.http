@@ -2,22 +2,31 @@
 GET http://127.0.0.1:30233/session
 
 ### 登陆
-GET http://127.0.0.1:30233/session/violet?code=12967ef38fe385eb8c923fa76f505d36bef665580a3511198cdd07bcf336249fbf1bb8a103ac36d27d85f347b1d22d11522529d64f8b12158913a42c4890785916802ae0213c12c4221c8a815dc03b884d3128f07c5b13b0b1617dc7adcec68031&state=f86500a9f6af1ee0c40bb8912dc402e74cf886b0c913f84de194
+GET http://127.0.0.1:30233/session/violet?code=d46eb60b417be0e8940ad097490e4718ffc674d833695ec06c42365a4d24ac1f0522f986fc20e796cb3ec4b9a0349a46515b5cff9840da3fd522ea8482b288dc463e20940399bb37ab4c1f64b8600a5dde9af3fd57ff8744ba303303f285da2cbd&state=ac64a9902dc54298fc30a1fbf9dcc95725b85be60fcb79e77a63
 
 ### 获取登陆状态
 GET http://127.0.0.1:30233/session/status
 
 ### 获取用户信息
-GET http://127.0.0.1:30233/user/info/me
+GET http://127.0.0.1:30233/users/info/me
 
 ### 签到
-POST http://127.0.0.1:30233/user/attend
+POST http://127.0.0.1:30233/users/attend
 
 ### 修改资料
-PATCH http://127.0.0.1:30233/user/info
+PATCH http://127.0.0.1:30233/users/info
 Content-Type: application/json
 
 {
   "email": "a@zhenly.cn",
   "school": "SYSU"
+}
+
+### 修改用户信息
+PATCH http://127.0.0.1:30233/users/type
+Content-Type: application/json
+
+{
+  "id": "5cdbf6fe678405360d9fc162",
+  "type": "normal"
 }

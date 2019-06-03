@@ -26,7 +26,7 @@ func BindUserController(app *iris.Application) {
 	sessionRoute.Register(userService, getSession().Start)
 	sessionRoute.Handle(new(SessionController))
 
-	userRoute := mvc.New(app.Party("/user"))
+	userRoute := mvc.New(app.Party("/users"))
 	userRoute.Register(userService, getSession().Start)
 	userRoute.Handle(new(UserController))
 }
@@ -117,5 +117,26 @@ func (c *UserController) PatchInfo() int {
 	libs.Assert(count != 0, "invalid_value", 400)
 
 	c.Server.SetUserInfo(id, req)
+	return iris.StatusOK
+}
+
+// UserDataRes 用户数据返回值
+type UseTypeReq struct {
+	ID string `json:"id"`
+	Type string `json:"type"`
+}
+
+// 修改用户信息
+func (c *UserController) PatchType() int {
+	id := c.checkLogin()
+	// 解析
+	req := UseTypeReq{}
+	err := c.Ctx.ReadJSON(&req)
+	libs.Assert(err == nil, "invalid_value", 400)
+	libs.Assert(libs.IsID(req.ID), "invalid_id", 400)
+	libs.Assert(libs.IsUserType(req.Type) , "invalid_type", 400)
+	libs.Assert(req.Type != string(models.UserTypeRoot), "not_allow_type", 403)
+	c.Server.SetUserType(id, req.ID, models.UserType(req.Type))
+
 	return iris.StatusOK
 }

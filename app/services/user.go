@@ -16,6 +16,7 @@ type UserService interface {
 	UserAttend(id string)
 	SetUserInfo(id string, info models.UserInfoSchema)
 	LoginByCode(code string) (id string, new bool)
+	SetUserType(admin string, id string, userType models.UserType)
 }
 
 // NewUserService 初始化
@@ -101,6 +102,18 @@ func (s *userService) UserAttend(id string) {
 	libs.Assert(s.model.SetUserAttend(id) == nil, "unknown", iris.StatusInternalServerError)
 }
 
+// 设置用户信息
 func (s *userService) SetUserInfo(id string, info models.UserInfoSchema) {
 	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
+	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
+}
+
+// 设置用户类型
+func (s *userService) SetUserType(admin string, id string, userType models.UserType) {
+	adminInfo, err := models.GetRedis().Cache.GetUserBaseInfo(admin)
+	libs.Assert(err == nil, "invalid_session", 401)
+	libs.Assert(adminInfo.Type == models.UserTypeAdmin || adminInfo.Type == models.UserTypeRoot, "permission_deny", 403)
+	err = s.model.SetUserType(id, userType)
+	libs.Assert(err == nil, "faked_users", 403)
+	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
 }
