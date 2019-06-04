@@ -30,6 +30,10 @@ func BindUserController(app *iris.Application) {
 	userRoute := mvc.New(app.Party("/users"))
 	userRoute.Register(userService, getSession().Start)
 	userRoute.Handle(new(UserController))
+
+	certificationRoute := mvc.New(app.Party("/certification"))
+	certificationRoute.Register(userService, getSession().Start)
+	certificationRoute.Handle(new(CertificationController))
 }
 
 // GetInfoByIDRes 获取用户信息返回值

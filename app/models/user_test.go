@@ -19,13 +19,20 @@ func TestUserModel(t *testing.T) {
 func testUserModelAll(t *testing.T) {
 	// 新建用户
 	violetID := primitive.NewObjectID().Hex()
+
+	user, err := model.User.GetUserByID(violetID)
+	if err == nil {
+		t.Error("has conflict")
+	}
+	t.Log(user)
+
 	id, err := model.User.AddUserByViolet(violetID)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log(id)
 
-	user, err := model.User.GetUserByID(id)
+	user, err = model.User.GetUserByID(id)
 	if err != nil {
 		t.Error(err)
 	}

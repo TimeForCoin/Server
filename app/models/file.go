@@ -26,6 +26,7 @@ const (
 const (
 	FileForUser OwnerType = "user" // 用户文件，非公开内容仅用户本人查看[认证材料、问卷/数据征集提交内容]
 	FileForTask OwnerType = "task" // 任务文件，非公开内容仅任务参与者查看[任务附件]
+	FileForAll  OwnerType = "all"   // 公共文件，公开内容
 )
 
 // FileSchema 文件数据结构

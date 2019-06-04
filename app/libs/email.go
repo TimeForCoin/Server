@@ -13,22 +13,21 @@ type EmailService struct {
 }
 
 func  InitEmail(c EmailConfig) {
-
-
 	emailService = &EmailService{
 		Dialer: gomail.NewDialer(c.Host, c.Port, c.User, c.Password),
 		From: c.From,
 	}
 }
 
-func (s *EmailService) SendEmail(to, data string) error {
+func (s *EmailService) SendAuthEmail(to, id, code string) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", s.From)
 	m.SetHeader("To", to)
-	m.SetHeader("Subject", "Hello!")
-	m.SetBody("text/html", "Hello <b>Bob</b> and <i>Cora</i>!")
-	m.Attach("/home/Alex/lolcat.jpg")
-
+	m.SetHeader("Subject", "[闲得一币] 身份认证")
+	m.SetBody("text/html",
+		"<p>请点击下面的链接完成邮箱身份认证，有效期为30分钟</p><p><a>https://coin.zhenly.cn/api/certification/auth?code="+
+			code+"&user="+id+
+		"</a></p><p>如果不是本人操作请勿点击</p>")
 	return s.Dialer.DialAndSend(m)
 }
 
