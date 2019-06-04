@@ -67,11 +67,6 @@ func (s *WechatService) getToken() (string, error) {
 type WeChatMakeImageReq struct {
 	Scene string `json:"scene"`
 }
-type WeChatMakeImageRes struct {
-	WeChatError
-	ContentType string `json:"contentType"`
-	Buffer []byte `json:"buffer"`
-}
 
 func (s *WechatService) MakeImage(data string) (string, error) {
 	token, err := s.getToken()

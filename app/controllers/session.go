@@ -73,7 +73,11 @@ func (c *SessionController) PostWechat() int {
 		New: newUser,
 	})
 	c.Session.Set("id", id)
-	c.Session.Set("login", "wechat")
+	if newUser {
+		c.Session.Set("login", "wechat_new")
+	} else {
+		c.Session.Set("login", "wechat")
+	}
 	return iris.StatusCreated
 }
 

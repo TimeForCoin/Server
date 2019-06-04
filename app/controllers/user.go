@@ -136,6 +136,11 @@ func (c *UserController) PutInfo() int {
 	libs.Assert(count != 0, "invalid_value", 400)
 
 	c.Server.SetUserInfo(id, *req.UserInfoSchema)
+
+	if c.Session.GetString("status") == "wechat_new" {
+		c.Session.Set("status", "wechat")
+	}
+	
 	return iris.StatusOK
 }
 

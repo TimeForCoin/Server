@@ -94,7 +94,7 @@ func (s *userService) LoginByWechat(code string) (id string, new bool) {
 	// 账号不存在，新建账号
 	id, err = s.model.AddUserByWechat(openID)
 	libs.Assert(err == nil, "db_error", iris.StatusInternalServerError)
-	return openID, true
+	return id, true
 }
 
 // GetUser 获取用户数据
