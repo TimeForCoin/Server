@@ -20,8 +20,7 @@ var sessionManager *sessions.Sessions
 // NewApp 创建服务器实例并绑定控制器
 func NewApp() *iris.Application {
 	app := iris.New()
-	// recover from any http-relative panics
-	// log the requests to the terminal.
+
 	app.Use(logger.New())
 
 	app.Use(irisRecover.New())

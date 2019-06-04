@@ -2,13 +2,16 @@
 GET http://127.0.0.1:30233/session
 
 ### 登陆
-GET http://127.0.0.1:30233/session/violet?code=d46eb60b417be0e8940ad097490e4718ffc674d833695ec06c42365a4d24ac1f0522f986fc20e796cb3ec4b9a0349a46515b5cff9840da3fd522ea8482b288dc463e20940399bb37ab4c1f64b8600a5dde9af3fd57ff8744ba303303f285da2cbd&state=ac64a9902dc54298fc30a1fbf9dcc95725b85be60fcb79e77a63
+GET http://127.0.0.1:30233/session/violet?code=8f48c80107e95a232629c7301f3ac3300eb4220dbf7b38a373dfec4ffd07cee59a286576532e004ea20739b68a80cd8763bfa2111725728c879da6dadbadc5df6edc6ec47717a0edee13c2264e29160fe58b312dcb531c1d228f7cd6bcd3f824d8&state=9b3291d1427aa3d43a6738da6ed2e5c966d962f9d1b96002a2d2
 
 ### 获取登陆状态
 GET http://127.0.0.1:30233/session/status
 
 ### 获取用户信息
 GET http://127.0.0.1:30233/users/info/me
+
+### 获取用户信息
+GET http://127.0.0.1:30233/users/info/5cf6588cf629d9be71a64875
 
 ### 签到
 POST http://127.0.0.1:30233/users/attend
@@ -55,7 +58,8 @@ Content-Type: application/json
 }
 
 ### 用户认证
-GET http://127.0.0.1:30233/certification/auth?code=3c89a180a87fec9c734c4f9438f5e67a605bc2727cd45fefaccd0c0e9ad27dad0db2ca107f2adb005f9fa91d7c5873caf1e2e94d71247b482785475d125bac2c&user=5cf50f3642666482f82e1dee
+GET http://127.0.0.1:30233/certification/auth?code=0182949eef78757e93c7bb2deea32b88613b12d0c0629ed5632915fc031816fbc436285da10a674eeaeb797e7c312fb46418d3030ce34676cf0855825d6f081e&user=5cf6588cf629d9be71a64875
+
 
 
 

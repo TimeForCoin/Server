@@ -63,23 +63,22 @@ type UserDataRes struct {
 // UserCertification 用户认证信息
 type UserCertification struct {
 	Type models.UserIdentity
+	Status models.CertificationStatus
+	Email string
 	Data string
 	Date int64
 }
 
 // GetInfoBy 获取用户信息
-func (c *UserController) GetInfoBy(id string) int {
+func (c *UserController) GetInfoBy(userID string) int {
+	id := userID
 	if id == "me" {
 		id = c.checkLogin()
 	}
 	_, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "invalid_id")
 	user := c.Server.GetUser(id)
-
-	attendanceTime := time.Unix(user.Data.AttendanceDate, 0)
-	nowTime := time.Now()
-	isAttendance := attendanceTime.Year() == nowTime.Year() && attendanceTime.YearDay() == nowTime.YearDay()
-	c.JSON(GetInfoByIDRes{
+	res := GetInfoByIDRes{
 		ID:           user.ID.Hex(),
 		VioletName:   user.VioletName,
 		WechatName:   user.WechatName,
@@ -87,14 +86,27 @@ func (c *UserController) GetInfoBy(id string) int {
 		Info:         user.Info,
 		Data: &UserDataRes{
 			UserDataSchema: &user.Data,
-			Attendance:     isAttendance,
 		},
 		Certification: &UserCertification{
 			Type: user.Certification.Identity,
+			Status: user.Certification.Status,
+			Email: user.Certification.Email,
 			Data: user.Certification.Data,
 			Date: user.Certification.Date,
 		},
-	})
+	}
+	nowTime := time.Now()
+	attendanceTime := time.Unix(user.Data.AttendanceDate, 0)
+	res.Data.Attendance = attendanceTime.Year() == nowTime.Year() && attendanceTime.YearDay() == nowTime.YearDay()
+	if userID != "me" {
+		res.Certification.Email = ""
+		if res.Certification.Status != models.CertificationTrue {
+			res.Certification = &UserCertification{
+				Type: models.IdentityNone,
+			}
+		}
+	}
+	c.JSON(res)
 	return iris.StatusOK
 }
 

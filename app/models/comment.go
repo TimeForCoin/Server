@@ -1,8 +1,10 @@
 package models
 
 import (
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 // CommentModel 评论数据库
@@ -21,4 +23,41 @@ type CommentSchema struct {
 	LikeID     []primitive.ObjectID `bson:"like_id"`       // 点赞用户ID
 	Content    string               `bson:"content"`       // 评论内容
 	Time       int64                `bson:"time"`          // 评论时间
+}
+
+
+// 添加评论
+func (m *CommentModel) AddComment(contentID, contentOwn, userID primitive.ObjectID, content string) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	_, err := m.Collection.InsertOne(ctx, &CommentSchema{
+		ContentID: contentID,
+		ContentOwn: contentOwn,
+		UserID: userID,
+		Content: content,
+		Time: time.Now().Unix(),
+	})
+	return err
+}
+
+// 获取评论
+func (m *CommentModel) GetCommentsByContent(contentID primitive.ObjectID) (res []CommentSchema, err error) {
+	ctx, finish := GetCtx()
+	defer finish()
+	cur, err := m.Collection.Find(ctx, bson.M{"content_id": contentID})
+	if err != nil {
+		return
+	}
+	//noinspection GoUnhandledErrorResult
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		var result CommentSchema
+		err = cur.Decode(&result)
+		if err != nil {
+			return
+		}
+		res = append(res, result)
+	}
+	err = cur.Err()
+	return
 }
