@@ -16,6 +16,7 @@ type Config struct {
 	Violet VioletConfig `yaml:"violet"` // Violet 配置
 	Wechat WechatConfig `yaml:"wechat"` // 微信小程序 配置
 	COS    COSConfig    `yaml:"cos"`
+	Email  EmailConfig  `yaml:"email"`
 }
 
 // HTTPConfig 服务器配置
@@ -66,6 +67,14 @@ type COSConfig struct {
 	AppID     string `yaml:"id"`
 	AppSecret string `yaml:"secret"`
 	URL       string `yaml:"url"`
+}
+
+type EmailConfig struct {
+	Host     string `yaml:"host"`
+	Port     int `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	From     string `yaml:"from"`
 }
 
 var config *Config

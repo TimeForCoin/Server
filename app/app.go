@@ -32,7 +32,7 @@ func initService(config libs.Config) {
 	// 初始化 COS 腾讯云对象存储
 	libs.InitCOS(config.COS)
 	// 初始化 邮件服务器
-
+	libs.InitEmail(config.Email)
 }
 
 // Run 程序入口

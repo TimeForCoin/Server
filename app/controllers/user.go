@@ -121,7 +121,7 @@ func (c *UserController) PutInfo() int {
 	} else if req.Avatar != "" {
 		libs.Assert(strings.HasPrefix(req.Avatar,"data:image/png;base64,"), "invalid_avatar", 400)
 		url, err := libs.GetCOS().SaveBase64("avatar-" + id + ".png", req.Avatar[len("data:image/png;base64,"):])
-		libs.AssertErr(err, "invalid_avatar_decode", 400)
+		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
 

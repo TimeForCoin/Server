@@ -67,6 +67,7 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20190530043710-12d73424210d // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/xmatrixstudio/violet.sdk.go.v3 v3.0.7
 	gopkg.in/yaml.v2 v2.2.2

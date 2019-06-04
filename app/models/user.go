@@ -39,7 +39,6 @@ const (
 // UserType 用户类型
 const (
 	UserTypeBan    UserType = "ban"    // 禁封用户
-	UserTypeWeChat UserType = "wechat" // 微信临时用户
 	UserTypeNormal UserType = "normal" // 正式用户
 	UserTypeAdmin  UserType = "admin"  // 管理员
 	UserTypeRoot   UserType = "root"   // 超级管理员
