@@ -29,6 +29,10 @@ func initService(config libs.Config) {
 	libs.InitViolet(config.Violet)
 	// 初始化 微信 API
 	libs.InitWeChat(config.Wechat)
+	// 初始化 COS 腾讯云对象存储
+	libs.InitCOS(config.COS)
+	// 初始化 邮件服务器
+
 }
 
 // Run 程序入口

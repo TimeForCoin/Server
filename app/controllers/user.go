@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/TimeForCoin/Server/app/libs"
@@ -114,9 +115,16 @@ func (c *UserController) PutInfo() int {
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(req.Email == "" || libs.IsEmail(req.Email), "invalid_email", 400)
 	libs.Assert(req.Gender == "" || libs.IsGender(string(req.Gender)), "invalid_gender", 400)
-	// TODO 处理头像
-	// 暂时不支持直接上传头像
-	req.Avatar = req.AvatarURL
+	// TODO 获取头像链接保存在本地存储库中
+	if req.AvatarURL != "" {
+		req.Avatar = req.AvatarURL
+	} else if req.Avatar != "" {
+		libs.Assert(strings.HasPrefix(req.Avatar,"data:image/png;base64,"), "invalid_avatar", 400)
+		url, err := libs.GetCOS().SaveBase64("avatar-" + id + ".png", req.Avatar[len("data:image/png;base64,"):])
+		libs.AssertErr(err, "invalid_avatar_decode", 400)
+		req.Avatar = url
+	}
+
 	// 判断是否存在数据
 	count := 0
 	names := reflect.TypeOf(req)
@@ -140,7 +148,7 @@ func (c *UserController) PutInfo() int {
 	if c.Session.GetString("status") == "wechat_new" {
 		c.Session.Set("status", "wechat")
 	}
-	
+
 	return iris.StatusOK
 }
 

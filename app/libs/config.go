@@ -15,6 +15,7 @@ type Config struct {
 	Redis  RedisConfig  `yaml:"redis"`  // Redis 配置
 	Violet VioletConfig `yaml:"violet"` // Violet 配置
 	Wechat WechatConfig `yaml:"wechat"` // 微信小程序 配置
+	COS    COSConfig    `yaml:"cos"`
 }
 
 // HTTPConfig 服务器配置
@@ -57,8 +58,14 @@ type VioletConfig struct {
 }
 
 type WechatConfig struct {
-	AppID string `yaml:"id"`
+	AppID     string `yaml:"id"`
 	AppSecret string `yaml:"secret"`
+}
+
+type COSConfig struct {
+	AppID     string `yaml:"id"`
+	AppSecret string `yaml:"secret"`
+	URL       string `yaml:"url"`
 }
 
 var config *Config

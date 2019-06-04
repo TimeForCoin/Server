@@ -20,7 +20,7 @@ Content-Type: application/json
 {
   "nickname": "WeChat",
   "email": "a@zhenly.cn",
-  "school": "SYSU"
+  "school": "SYSU",
 }
 
 ### 修改用户类型
@@ -37,7 +37,7 @@ POST http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "043wQIzw0lqsYa1zBPBw0mCXzw0wQIz8"
+  "code": "023GgzvV15YrZY0wvKvV1q1ovV1Ggzvm"
 }
 
 ### 微信二维码
