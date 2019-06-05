@@ -29,6 +29,7 @@ func NewApp() *iris.Application {
 
 	BindUserController(app)
 	BindTaskController(app)
+	BindFileController(app)
 
 	return app
 }

@@ -9,12 +9,12 @@ import (
 )
 
 type TaskService interface {
-	GetTasks(id string, page int, size int, sortrule string, tasktype string,
+	GetTasks(id string, page int, size int, sortRule string, taskType string,
 		status string, reward string, user string, keyword string) (totalPages int, tasks []models.TaskCard)
 }
 
 // NewUserService 初始化
-func NewTaskService() TaskService {
+func newTaskService() TaskService {
 	return &taskService{
 		model: models.GetModel().Task,
 		userModel: models.GetModel().User,
@@ -29,24 +29,24 @@ type taskService struct {
 }
 
 // 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
-func (s *taskService) GetTasks(id string, page int, size int, sortrule string, tasktype string,
+func (s *taskService) GetTasks(id string, page int, size int, sortRule string, taskType string,
 		status string, reward string, user string, keyword string) (totalPages int, taskCards []models.TaskCard) {
 
-	var tasktypes []models.TaskType
-	split := strings.Split(tasktype, ",")
+	var taskTypes []models.TaskType
+	split := strings.Split(taskType, ",")
 	sort.Strings(split)
-	if sort.SearchStrings(split, "all") != -1 || sortrule == "user"{
-		tasktypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
+	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
+		taskTypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
 	} else {
 		for _, str := range split {
-			tasktypes = append(tasktypes, models.TaskType(str))
+			taskTypes = append(taskTypes, models.TaskType(str))
 		}
 	}
 
 	var statuses []models.TaskStatus
 	split = strings.Split(status, ",")
 	sort.Strings(split)
-	if sort.SearchStrings(split, "all") != -1 || sortrule == "user" {
+	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
 		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusDraft, models.TaskStatusFinish,
 			models.TaskStatusOverdue, models.TaskStatusRun, models.TaskStatusWait}
 	} else {
@@ -59,7 +59,7 @@ func (s *taskService) GetTasks(id string, page int, size int, sortrule string, t
 	var rewards []models.RewardType
 	split = strings.Split(reward, ",")
 	sort.Strings(split)
-	if sort.SearchStrings(split, "all") != -1 || sortrule == "user" {
+	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
 		rewards = []models.RewardType{models.RewardMoney, models.RewardPhysical, models.RewardRMB}
 	} else {
 		for _, str := range split {
@@ -69,11 +69,11 @@ func (s *taskService) GetTasks(id string, page int, size int, sortrule string, t
 
 	keywords := strings.Split(keyword, " ")
 
-	if sortrule == "new" {
-		sortrule = "publish_date"
+	if sortRule == "new" {
+		sortRule = "publish_date"
 	}
 
-	tasks, err := s.model.GetTasks(sortrule, tasktypes, statuses, rewards, keywords)
+	tasks, err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords)
 	libs.Assert(err == nil, err.Error(), 500)
 
 	_id, err := primitive.ObjectIDFromHex(id)

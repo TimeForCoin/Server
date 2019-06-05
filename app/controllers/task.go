@@ -14,7 +14,7 @@ type TaskController struct {
 }
 
 func BindTaskController(app *iris.Application) {
-	taskService := services.NewTaskService()
+	taskService := services.GetServiceManger().Task
 
 	taskRoute := mvc.New(app.Party("/task"))
 	taskRoute.Register(taskService, getSession().Start)

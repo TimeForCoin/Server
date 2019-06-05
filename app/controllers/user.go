@@ -21,7 +21,7 @@ type UserController struct {
 
 // BindUserController 绑定用户控制器
 func BindUserController(app *iris.Application) {
-	userService := services.NewUserService()
+	userService := services.GetServiceManger().User
 
 	sessionRoute := mvc.New(app.Party("/session"))
 	sessionRoute.Register(userService, getSession().Start)

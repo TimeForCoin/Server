@@ -28,7 +28,7 @@ type UserService interface {
 }
 
 // NewUserService 初始化
-func NewUserService() UserService {
+func newUserService() UserService {
 	return &userService{
 		model: models.GetModel().User,
 		system: models.GetModel().System,

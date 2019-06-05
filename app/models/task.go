@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -95,8 +95,12 @@ type TaskCard struct {
 	RewardObject	string	`json:"reward_object, omitempty"`	// 酬劳物体
 }
 
+func (model *TaskModel) CreateTask() {
+
+}
+
 // 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
-func (model *TaskModel) GetTasks(sort string, tasktypes []TaskType,
+func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 		statuses []TaskStatus, rewards []RewardType, keywords []string) (tasks []TaskSchema, err error){
 	ctx, over := GetCtx()
 	defer over()
@@ -112,7 +116,7 @@ func (model *TaskModel) GetTasks(sort string, tasktypes []TaskType,
 
 	// 按类型、状态、酬劳类型、关键词筛选
 	filter := bson.M{
-		"type": bson.M{"$in": tasktypes},
+		"type": bson.M{"$in": taskTypes},
 		"status": bson.M{"$in": statuses},
 		"tags": bson.M{"$in": keywords},
 		"reward": bson.M{"$in": rewards},
