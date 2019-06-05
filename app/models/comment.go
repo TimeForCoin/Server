@@ -1,10 +1,11 @@
 package models
 
 import (
+	"time"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 // CommentModel 评论数据库
@@ -25,17 +26,16 @@ type CommentSchema struct {
 	Time       int64                `bson:"time"`          // 评论时间
 }
 
-
 // 添加评论
 func (m *CommentModel) AddComment(contentID, contentOwn, userID primitive.ObjectID, content string) error {
 	ctx, finish := GetCtx()
 	defer finish()
 	_, err := m.Collection.InsertOne(ctx, &CommentSchema{
-		ContentID: contentID,
+		ContentID:  contentID,
 		ContentOwn: contentOwn,
-		UserID: userID,
-		Content: content,
-		Time: time.Now().Unix(),
+		UserID:     userID,
+		Content:    content,
+		Time:       time.Now().Unix(),
 	})
 	return err
 }
