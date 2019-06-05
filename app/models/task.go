@@ -1,8 +1,10 @@
 package models
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // TaskModel Task 任务 数据库
@@ -63,7 +65,7 @@ type TaskSchema struct {
 
 	PublishDate int64 `bson:"publish_date"` // 任务发布时间
 	StartDate   int64 `bson:"start_date"`   // 任务开始时间
-	EndDate     int64 `bson:"end_data"`     // 任务结束时间
+	EndDate     int64 `bson:"end_date"`     // 任务结束时间
 
 	PlayerCount int64 `bson:"player_count"` // 参与的用户
 	MaxPlayer   int64 `bson:"max_player"`   // 参与用户上限, -1为无限制
@@ -78,4 +80,56 @@ type TaskSchema struct {
 
 	// 由[浏览量、评论数、收藏数、参与人数、时间、置顶、酬劳、发布者粉丝、信用]等数据加权计算，10分钟更新一次，用于排序
 	Hot int64 `bson:"hot"` // 任务热度
+}
+
+type TaskCard struct {
+	ID			string		// 任务ID
+	Publisher	string		// 发布者ID
+	Avatar		string		// 发布者头像
+	Credit		int64		// 发布者信用度
+	Title		string		// 任务标题
+	TopTime		int64	`json:"top_time"`	// 任务是否置顶
+	EndDate		int64	`json:"end_date"`	// 任务截止时间
+	Reward		string						// 酬劳类型
+	RewardValue	float32	`json:"reward_value, omitempty"`		// 酬劳数值
+	RewardObject	string	`json:"reward_object, omitempty"`	// 酬劳物体
+}
+
+// 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
+func (model *TaskModel) GetTasks(sort string, tasktypes []TaskType,
+		statuses []TaskStatus, rewards []RewardType, keywords []string) (tasks []TaskSchema, err error){
+	ctx, over := GetCtx()
+	defer over()
+
+
+	var keywordsRegex string
+	for i, str := range keywords {
+		keywordsRegex += "(" + str + ")"
+		if i != len(keywords) - 1 {
+			keywordsRegex += "|"
+		}
+	}
+
+	// 按类型、状态、酬劳类型、关键词筛选
+	filter := bson.M{
+		"type": bson.M{"$in": tasktypes},
+		"status": bson.M{"$in": statuses},
+		"tags": bson.M{"$in": keywords},
+		"reward": bson.M{"$in": rewards},
+		"title": bson.M{"$regex": keywordsRegex},
+		"content": bson.M{"$regex": keywordsRegex}}
+
+	cursor, err := model.Collection.Find(ctx, filter, options.Find().SetSort(bson.M{sort: -1}))
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		task := TaskSchema{}
+		err = cursor.Decode(&task)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	return
 }
