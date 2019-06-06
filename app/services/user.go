@@ -2,6 +2,7 @@ package services
 
 import (
 	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
+	"strings"
 	"time"
 
 	"github.com/TimeForCoin/Server/app/libs"
@@ -15,18 +16,28 @@ type UserService interface {
 	GetUser(id string) models.UserSchema
 	UserAttend(id string)
 	SetUserInfo(id string, info models.UserInfoSchema)
-	LoginByCode(code string) (id string, new bool)
+	LoginByViolet(code string) (id string, new bool)
+	LoginByWechat(code string) (id string, new bool)
+	SetUserType(admin string, id string, userType models.UserType)
+	// 认证相关
+	CancelCertification(id string)
+	UpdateCertification(id, operate string, data string)
+	CheckCertification(id string, code string) string
+	SendCertificationEmail(id, email string)
+	AddEmailCertification(identity models.UserIdentity, id, data, email string)
 }
 
 // NewUserService 初始化
-func NewUserService() UserService {
+func newUserService() UserService {
 	return &userService{
 		model: models.GetModel().User,
+		system: models.GetModel().System,
 		oAuth: libs.GetOAuth(),
 	}
 }
 
 type userService struct {
+	system *models.SystemModel
 	model *models.UserModel
 	oAuth *libs.OAuthService
 }
@@ -41,7 +52,7 @@ func (s *userService) GetLoginURL() (url, state string) {
 	return url, state
 }
 
-func (s *userService) LoginByCode(code string) (id string, new bool) {
+func (s *userService) LoginByViolet(code string) (id string, new bool) {
 	res, err := s.oAuth.Api.GetToken(code)
 	// TODO 检测是否绑定微信
 	if err != nil {
@@ -79,20 +90,33 @@ func (s *userService) LoginByCode(code string) (id string, new bool) {
 			Location: info.Location,
 		})
 	}
-	return "", true
+	return id, true
+}
+
+func (s *userService) LoginByWechat(code string) (id string, new bool) {
+	openID, err := libs.GetWechat().GetOpenID(code)
+	libs.AssertErr(err, "", 403)
+	// 账号已存在，直接返回 ID
+	if u, err := s.model.GetUserByWechat(openID); err == nil {
+		return u.ID.Hex(), false
+	}
+	// 账号不存在，新建账号
+	id, err = s.model.AddUserByWechat(openID)
+	libs.AssertErr(err, "db_error", iris.StatusInternalServerError)
+	return id, true
 }
 
 // GetUser 获取用户数据
 func (s *userService) GetUser(id string) models.UserSchema {
 	user, err := s.model.GetUserByID(id)
-	libs.Assert(err == nil, "faked_users", 403)
+	libs.AssertErr(err, "faked_users", 403)
 	return user
 }
 
 // UserAttend 用户签到
 func (s *userService) UserAttend(id string) {
 	user, err := s.model.GetUserByID(id)
-	libs.Assert(err == nil, "invalid_session", 401)
+	libs.AssertErr(err, "invalid_session", 401)
 	lastAttend := time.Unix(user.Data.AttendanceDate, 0)
 	nowDate := time.Now()
 	if lastAttend.Add(time.Hour*24).After(nowDate) && lastAttend.YearDay() == nowDate.YearDay() {
@@ -101,6 +125,119 @@ func (s *userService) UserAttend(id string) {
 	libs.Assert(s.model.SetUserAttend(id) == nil, "unknown", iris.StatusInternalServerError)
 }
 
+// 设置用户信息
 func (s *userService) SetUserInfo(id string, info models.UserInfoSchema) {
 	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
+	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
+}
+
+// 设置用户类型
+func (s *userService) SetUserType(admin string, id string, userType models.UserType) {
+	adminInfo, err := models.GetRedis().Cache.GetUserBaseInfo(admin)
+	libs.AssertErr(err, "invalid_session", 401)
+	libs.Assert(adminInfo.Type == models.UserTypeAdmin ||
+		adminInfo.Type == models.UserTypeRoot, "permission_deny", 403)
+	err = s.model.SetUserType(id, userType)
+	libs.Assert(err == nil, "faked_users", 403)
+	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
+}
+
+// 取消认证
+func (s *userService) CancelCertification(id string) {
+	user, err := s.model.GetUserByID(id)
+	libs.AssertErr(err, "invalid_session", 401)
+	libs.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
+	user.Certification.Status = models.CertificationCancel
+	err = s.model.SetUserCertification(id, user.Certification)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+}
+
+// 更新认证[管理员]
+func (s *userService) UpdateCertification(id, operate string, data string) {
+	user, err := s.model.GetUserByID(id)
+	libs.AssertErr(err, "faked_user", 401)
+	libs.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
+	if operate == "true" {
+		if data != "" {
+			user.Certification.Data = data
+		}
+		user.Certification.Date = time.Now().Unix()
+		user.Certification.Status = models.CertificationTrue
+		err = s.model.SetUserCertification(id, user.Certification)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+	} else if operate == "false" {
+		user.Certification.Status = models.CertificationFalse
+		user.Certification.Feedback = data
+		err = s.model.SetUserCertification(id, user.Certification)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+	}
+}
+
+// AddCertification 添加认证
+func (s *userService) AddEmailCertification(identity models.UserIdentity, id, data, email string) {
+	user, err := s.model.GetUserByID(id)
+	libs.AssertErr(err, "invalid_session", 401)
+	libs.Assert(user.Certification.Identity == models.IdentityNone ||
+		user.Certification.Status == models.CertificationCancel, "exist_certification", 403)
+	libs.Assert(s.model.CheckCertificationEmail(email), "exist_email", 403)
+	err = s.model.SetUserCertification(id, models.UserCertificationSchema{
+		Identity: identity,
+		Data: data,
+		Status: models.CertificationCheckEmail,
+		Date: time.Now().Unix(),
+		Email: email,
+	})
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	s.SendCertificationEmail(id, email)
+}
+
+// 发送认证邮件
+func (s *userService) SendCertificationEmail(id, email string) {
+	if email == "" {
+		user, err := s.model.GetUserByID(id)
+		libs.AssertErr(err, "invalid_session", 401)
+		libs.Assert(user.Certification.Identity != models.IdentityNone &&
+			user.Certification.Status == models.CertificationCheckEmail, "faked_certification", 403)
+		libs.Assert(user.Certification.Email != "", "faked_email", 403)
+		email = user.Certification.Email
+	}
+	exist, _ := models.GetRedis().Cache.CheckCertification(id,"","", false)
+	libs.Assert(!exist, "limit_email", 403)
+	token := libs.GetRandomString(64)
+	code := libs.GetHash(token + "&" + email)
+	err := libs.GetEmail().SendAuthEmail(email,id, code)
+	libs.AssertErr(err, "error_email", iris.StatusInternalServerError)
+	err = models.GetRedis().Cache.SetCertification(id, token)
+	libs.AssertErr(err, "error_redis", iris.StatusInternalServerError)
+}
+
+func (s *userService) CheckCertification(id string, code string) string {
+	user, err := s.model.GetUserByID(id)
+	if err != nil {
+		return "无效的认证链接"
+	}
+	// 是否存在认证
+	libs.Assert(user.Certification.Identity != models.IdentityNone, "error_code", iris.StatusInternalServerError)
+	// 检查认证邮箱和 code 的正确性
+	exist, right := models.GetRedis().Cache.CheckCertification(id, user.Certification.Email, code, true)
+	if !exist || !right || user.Certification.Status != models.CertificationCheckEmail {
+		return "无效的认证链接"
+	}
+	// 是否自动通过认证
+	emailParts := strings.Split(user.Certification.Email, "@")
+	if len(emailParts) != 2 {
+		return "无效的认证邮箱"
+	}
+	content := s.system.ExistAutoEmail(emailParts[1])
+	if content == "" {
+		user.Certification.Status = models.CertificationWaitEmail
+		err = s.model.SetUserCertification(id, user.Certification)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		return "认证邮箱成功，待审核通过"
+	}
+	user.Certification.Status = models.CertificationTrue
+	user.Certification.Data = content
+	err = s.model.SetUserCertification(id, user.Certification)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	return "认证已通过"
 }

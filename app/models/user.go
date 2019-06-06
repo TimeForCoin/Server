@@ -39,7 +39,6 @@ const (
 // UserType 用户类型
 const (
 	UserTypeBan    UserType = "ban"    // 禁封用户
-	UserTypeWeChat UserType = "wechat" // 微信临时用户
 	UserTypeNormal UserType = "normal" // 正式用户
 	UserTypeAdmin  UserType = "admin"  // 管理员
 	UserTypeRoot   UserType = "root"   // 超级管理员
@@ -108,7 +107,6 @@ type UserCertificationSchema struct {
 	Material   []primitive.ObjectID `bson:"material"`    // 人工认证材料
 	Feedback   string               `bson:"feedback"`    // 审核不通过后的反馈
 	Email      string               `bson:"email"`       // 邮箱认证
-	EmailToken string               `bson:"email_token"` // 邮箱认证Token
 }
 
 // UserSchema User 基本数据结构
@@ -146,6 +144,27 @@ func (model *UserModel) AddUserByViolet(id string) (string, error) {
 	return userID.Hex(), nil
 }
 
+func (model *UserModel) AddUserByWechat(openid string) (string, error) {
+	ctx, finish := GetCtx()
+	defer finish()
+	userID := primitive.NewObjectID()
+	_, err := model.Collection.InsertOne(ctx, &UserSchema{
+		ID: userID,
+		WechatID: openid,
+		RegisterTime: time.Now().Unix(),
+		Data: UserDataSchema{
+			Type: UserTypeNormal,
+		},
+		Certification: UserCertificationSchema{
+			Identity: IdentityNone,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return userID.Hex(), nil
+}
+
 // GetUserByID 通过 ID 查找用户
 func (model *UserModel) GetUserByID(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
@@ -163,6 +182,14 @@ func (model *UserModel) GetUserByViolet(id string) (user UserSchema, err error) 
 	ctx, over := GetCtx()
 	defer over()
 	err = model.Collection.FindOne(ctx, bson.M{"violet_id": id}).Decode(&user)
+	return
+}
+
+// GetUserByWechat 通过 Wechat OpenID 查找用户
+func (model *UserModel) GetUserByWechat(id string) (user UserSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	err = model.Collection.FindOne(ctx, bson.M{"wechat_id": id}).Decode(&user)
 	return
 }
 
@@ -268,7 +295,7 @@ func (model *UserModel) SetUserAttend(id string) error {
 	if err != nil {
 		return err
 	}
-	if res, err := model.Collection.UpdateMany(ctx,
+	if res, err := model.Collection.UpdateOne(ctx,
 		bson.M{"_id": _id},
 		bson.M{"$set": bson.M{"data.attendance_date": time.Now().Unix()}}); err != nil {
 		return err
@@ -276,6 +303,34 @@ func (model *UserModel) SetUserAttend(id string) error {
 		return ErrNotExist
 	}
 	return nil
+}
+
+func (model *UserModel) SetUserCertification (id string, data UserCertificationSchema) error {
+	ctx, over := GetCtx()
+	defer over()
+	_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	if res, err := model.Collection.UpdateOne(ctx,
+		bson.M{"_id": _id},
+		bson.M{"$set": bson.M{"certification": data}}); err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+// 是否存在邮箱认证
+func (model *UserModel) CheckCertificationEmail (email string) bool {
+	ctx, over := GetCtx()
+	defer over()
+	if res, err := model.Collection.CountDocuments(ctx,
+		bson.M{"certification.email": email, "certification.status": CertificationTrue}); err == nil && res == 0 {
+		return true
+	}
+	return false
 }
 
 // TODO 添加关注

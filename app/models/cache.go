@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 	"time"
@@ -53,4 +54,23 @@ func (c *CacheModel) GetUserBaseInfo(id string) (UserBaseInfo, error) {
 // WillUpdateBaseInfo 更新基本信息
 func (c *CacheModel) WillUpdateBaseInfo(id string) error {
 	return c.Redis.Del("info-"+id).Err()
+}
+
+// 设置认证
+func (c *CacheModel) SetCertification(userID, code string)  error {
+	return c.Redis.Set("certification-"+userID, code, time.Minute * 30).Err()
+}
+
+// 检查认证
+func (c *CacheModel) CheckCertification(userID, email, code string, use bool) (exist bool, right bool) {
+	token, err := c.Redis.Get("certification-" + userID).Result()
+	if err != nil {
+		return false, false
+	}
+	rightCode := libs.GetHash(token + "&" + email)
+	if rightCode != code {
+		return true, false
+	}
+	err = c.Redis.Del("certification-" + userID).Err()
+	return true, true
 }

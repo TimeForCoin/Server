@@ -14,6 +14,9 @@ type Config struct {
 	Db     DBConfig     `yaml:"db"`     // 数据库配置
 	Redis  RedisConfig  `yaml:"redis"`  // Redis 配置
 	Violet VioletConfig `yaml:"violet"` // Violet 配置
+	Wechat WechatConfig `yaml:"wechat"` // 微信小程序 配置
+	COS    COSConfig    `yaml:"cos"`
+	Email  EmailConfig  `yaml:"email"`
 }
 
 // HTTPConfig 服务器配置
@@ -53,6 +56,25 @@ type VioletConfig struct {
 	ClientKey  string `yaml:"key"`
 	ServerHost string `yaml:"host"`
 	Callback   string `yaml:"callback"`
+}
+
+type WechatConfig struct {
+	AppID     string `yaml:"id"`
+	AppSecret string `yaml:"secret"`
+}
+
+type COSConfig struct {
+	AppID     string `yaml:"id"`
+	AppSecret string `yaml:"secret"`
+	URL       string `yaml:"url"`
+}
+
+type EmailConfig struct {
+	Host     string `yaml:"host"`
+	Port     int `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	From     string `yaml:"from"`
 }
 
 var config *Config

@@ -20,8 +20,7 @@ var sessionManager *sessions.Sessions
 // NewApp 创建服务器实例并绑定控制器
 func NewApp() *iris.Application {
 	app := iris.New()
-	// recover from any http-relative panics
-	// log the requests to the terminal.
+
 	app.Use(logger.New())
 
 	app.Use(irisRecover.New())
@@ -30,9 +29,12 @@ func NewApp() *iris.Application {
 
 	BindUserController(app)
 	BindTaskController(app)
+	BindFileController(app)
+
 	return app
 }
 
+type omit *struct{}
 // BaseController 控制基类
 type BaseController struct {
 	Ctx     iris.Context

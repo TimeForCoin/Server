@@ -28,12 +28,6 @@ func (c *SessionController) Get() int {
 	return iris.StatusOK
 }
 
-// GetVioletReq Violet 登陆参数
-type GetVioletReq struct {
-	Code  string
-	State string
-}
-
 // GetViolet 通过 Violet 登陆
 func (c *SessionController) GetViolet() int {
 	defer func() {
@@ -50,13 +44,43 @@ func (c *SessionController) GetViolet() int {
 	libs.Assert(state == rightState, "状态校验失败，请重试")
 	c.Session.Delete("state")
 
-	id, _ := c.Server.LoginByCode(code)
+	id, _ := c.Server.LoginByViolet(code)
 	libs.Assert(id != "", "登陆已过期，请重试")
 
 	c.Session.Set("id", id)
 	c.Session.Set("login", "violet")
 	return iris.StatusCreated
 }
+
+// GetVioletReq Violet 登陆参数
+type PostWechatRes struct {
+	New bool
+}
+
+// GetVioletReq Violet 登陆参数
+type PostWechatReq struct {
+	Code string
+}
+
+// GetWechat 通过微信登陆
+func (c *SessionController) PostWechat() int {
+	req := PostWechatReq{}
+	err := c.Ctx.ReadJSON(&req)
+	libs.Assert(err == nil && req.Code != "", "invalid_code", 400)
+
+	id, newUser := c.Server.LoginByWechat(req.Code)
+	c.JSON(PostWechatRes{
+		New: newUser,
+	})
+	c.Session.Set("id", id)
+	if newUser {
+		c.Session.Set("login", "wechat_new")
+	} else {
+		c.Session.Set("login", "wechat")
+	}
+	return iris.StatusCreated
+}
+
 
 // GetSessionStatusRes 获取登陆状态返回值
 type GetSessionStatusRes struct {
@@ -86,4 +110,20 @@ func (c *SessionController) Delete() int {
 // 测试
 func (c *SessionController) GetTest() string {
 	return "Test"
+}
+
+type GetWeChatImageRes struct {
+	Data string
+}
+
+// 微信登陆二维码
+func (c *SessionController) GetWechat() int {
+	// id := c.checkLogin()
+	image, err := libs.GetWechat().MakeImage("hello")
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	c.JSON(GetWeChatImageRes{
+		Data: image,
+	})
+	return iris.StatusOK
 }

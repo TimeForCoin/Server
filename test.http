@@ -2,22 +2,71 @@
 GET http://127.0.0.1:30233/session
 
 ### 登陆
-GET http://127.0.0.1:30233/session/violet?code=12967ef38fe385eb8c923fa76f505d36bef665580a3511198cdd07bcf336249fbf1bb8a103ac36d27d85f347b1d22d11522529d64f8b12158913a42c4890785916802ae0213c12c4221c8a815dc03b884d3128f07c5b13b0b1617dc7adcec68031&state=f86500a9f6af1ee0c40bb8912dc402e74cf886b0c913f84de194
+GET http://127.0.0.1:30233/session/violet?code=8f48c80107e95a232629c7301f3ac3300eb4220dbf7b38a373dfec4ffd07cee59a286576532e004ea20739b68a80cd8763bfa2111725728c879da6dadbadc5df6edc6ec47717a0edee13c2264e29160fe58b312dcb531c1d228f7cd6bcd3f824d8&state=9b3291d1427aa3d43a6738da6ed2e5c966d962f9d1b96002a2d2
 
 ### 获取登陆状态
 GET http://127.0.0.1:30233/session/status
 
 ### 获取用户信息
-GET http://127.0.0.1:30233/user/info/me
+GET http://127.0.0.1:30233/users/info/me
+
+### 获取用户信息
+GET http://127.0.0.1:30233/users/info/5cf6588cf629d9be71a64875
 
 ### 签到
-POST http://127.0.0.1:30233/user/attend
+POST http://127.0.0.1:30233/users/attend
 
 ### 修改资料
-PATCH http://127.0.0.1:30233/user/info
+PUT http://127.0.0.1:30233/users/info
 Content-Type: application/json
 
 {
+  "nickname": "WeChat",
   "email": "a@zhenly.cn",
-  "school": "SYSU"
+  "school": "SYSU",
 }
+
+### 修改用户类型
+PUT http://127.0.0.1:30233/users/type
+Content-Type: application/json
+
+{
+  "id": "5cdbf6fe678405360d9fc162",
+  "type": "normal"
+}
+
+### 微信登陆
+POST http://127.0.0.1:30233/session/wechat
+Content-Type: application/json
+
+{
+  "code": "023I5XwV1YuxXY0W6azV1dBTwV1I5Xwm"
+}
+
+### 微信二维码
+GET http://127.0.0.1:30233/session/wechat
+
+### 用户认证
+POST http://127.0.0.1:30233/certification
+Content-Type: application/json
+
+{
+  "identity": "student",
+  "data": "我是秀秀",
+  "type": "email",
+  "email": "zhenlychen@foxmail.com"
+}
+
+### 用户认证
+GET http://127.0.0.1:30233/certification/auth?code=0182949eef78757e93c7bb2deea32b88613b12d0c0629ed5632915fc031816fbc436285da10a674eeaeb797e7c312fb46418d3030ce34676cf0855825d6f081e&user=5cf6588cf629d9be71a64875
+
+
+
+
+
+
+
+
+
+
+

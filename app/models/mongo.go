@@ -64,7 +64,7 @@ func createIndexes(ctx context.Context, name string, indexes []bson.M) error {
 		for i := range indexes { // 创建唯一索引
 			if _, err := collectionIndexes.CreateOne(ctx, mongo.IndexModel{
 				Keys:    indexes[i],
-				Options: options.Index().SetUnique(true),
+				Options: options.Index().SetUnique(false),
 			}); err != nil {
 				return err
 			}

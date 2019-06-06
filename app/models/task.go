@@ -1,11 +1,12 @@
 package models
 
 import (
-	"reflect"
-	"time"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"reflect"
+	"time"
 )
 
 // TaskModel Task 任务 数据库
@@ -51,16 +52,16 @@ type TaskSchema struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"` // 任务ID
 	Publisher primitive.ObjectID `bson:"publisher"`     // 任务发布者 [索引]
 
-	Title      string               `bson:"title"`// 任务名称
-	Type       TaskType             `bson:"type"`// 任务类型
-	Content    string               `bson:"content"`// 任务内容
-	Attachment []primitive.ObjectID `bson:"attachment"`// 任务附件
-	Status     TaskStatus           `bson:"status"`// 任务状态
-	Location   []string             `bson:"location"`// 任务地点 (非问卷类任务)
-	Tags       []string             `bson:"tags"`// 标签 (作为关键词，改进搜索体验)
-	TopTime    int64                `bson:"top_time"`// 置顶时间(默认为0)，如果当前时间小于置顶时间，即将任务置顶
+	Title      string               `bson:"title"`      // 任务名称
+	Type       TaskType             `bson:"type"`       // 任务类型
+	Content    string               `bson:"content"`    // 任务内容
+	Attachment []primitive.ObjectID `bson:"attachment"` // 任务附件
+	Status     TaskStatus           `bson:"status"`     // 任务状态
+	Location   []string             `bson:"location"`   // 任务地点 (非问卷类任务)
+	Tags       []string             `bson:"tags"`       // 标签 (作为关键词，改进搜索体验)
+	TopTime    int64                `bson:"top_time"`   // 置顶时间(默认为0)，如果当前时间小于置顶时间，即将任务置顶
 
-	Reward       RewardType `bson:"reward"`// 酬劳类型
+	Reward       RewardType `bson:"reward"`                   // 酬劳类型
 	RewardValue  float32    `bson:"reward_value, omitempty"`  // 酬劳数值
 	RewardObject string     `bson:"reward_object, omitempty"` // 酬劳物体
 
@@ -113,7 +114,7 @@ func (model *TaskModel) SetTaskInfoByID(id string, info TaskSchema) error {
 	values := reflect.ValueOf(info)
 	for i := 0; i < names.NumField(); i++ {
 		name := names.Field(i).Tag.Get("bson")
-		if name == "top_time" || name == "publish_date" || name == "start_date" || name == "end_date" || name == "player_count" || name == "max_player" || name == "max_finish" ||  name == "view_count" || name == "collect_count" || name == "comment_count" || name == "like_count" || name == "hot"{ // 生日字段为 int64
+		if name == "top_time" || name == "publish_date" || name == "start_date" || name == "end_date" || name == "player_count" || name == "max_player" || name == "max_finish" || name == "view_count" || name == "collect_count" || name == "comment_count" || name == "like_count" || name == "hot" { // 生日字段为 int64
 			if values.Field(i).Int() != 0 {
 				updateItem[name] = values.Field(i).Int()
 			}
@@ -129,8 +130,8 @@ func (model *TaskModel) SetTaskInfoByID(id string, info TaskSchema) error {
 				//updateItem[name] = values.Field(i).Slice(0, len)
 			}
 		} else if name == "publisher" {
-			
-		}else { // 其他字段为 string
+
+		} else { // 其他字段为 string
 			if values.Field(i).String() != "" {
 				updateItem[name] = values.Field(i).String()
 			}
@@ -155,5 +156,56 @@ func (model *TaskModel) GetTaskByID(id string) (task TaskSchema, err error) {
 		return
 	}
 	err = model.Collection.FindOne(ctx, bson.M{"_id": _id}).Decode(&task)
+	return
+}
+
+type TaskCard struct {
+	ID           string  // 任务ID
+	Publisher    string  // 发布者ID
+	Avatar       string  // 发布者头像
+	Credit       int64   // 发布者信用度
+	Title        string  // 任务标题
+	TopTime      int64   `json:"top_time"` // 任务是否置顶
+	EndDate      int64   `json:"end_date"` // 任务截止时间
+	Reward       string  // 酬劳类型
+	RewardValue  float32 `json:"reward_value, omitempty"`  // 酬劳数值
+	RewardObject string  `json:"reward_object, omitempty"` // 酬劳物体
+}
+
+// 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
+func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
+	statuses []TaskStatus, rewards []RewardType, keywords []string) (tasks []TaskSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+
+	var keywordsRegex string
+	for i, str := range keywords {
+		keywordsRegex += "(" + str + ")"
+		if i != len(keywords)-1 {
+			keywordsRegex += "|"
+		}
+	}
+
+	// 按类型、状态、酬劳类型、关键词筛选
+	filter := bson.M{
+		"type":    bson.M{"$in": taskTypes},
+		"status":  bson.M{"$in": statuses},
+		"tags":    bson.M{"$in": keywords},
+		"reward":  bson.M{"$in": rewards},
+		"title":   bson.M{"$regex": keywordsRegex},
+		"content": bson.M{"$regex": keywordsRegex}}
+
+	cursor, err := model.Collection.Find(ctx, filter, options.Find().SetSort(bson.M{sort: -1}))
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		task := TaskSchema{}
+		err = cursor.Decode(&task)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
 	return
 }

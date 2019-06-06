@@ -11,7 +11,7 @@ var userServiceTest UserService
 func TestUserService(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 	t.Run("InitViolet", testInitViolet)
-	userServiceTest = NewUserService()
+	userServiceTest = newUserService()
 	if userServiceTest == nil {
 		t.Error()
 	}
