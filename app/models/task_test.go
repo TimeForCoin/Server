@@ -8,11 +8,7 @@ import (
 
 func TestTaskModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
-	t.Run("InitRedis", testInitRedis)
-
 	t.Run("testTask", testTaskModelAll)
-
-	t.Run("DisconnectRedis", testDisconnectRedis)
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 

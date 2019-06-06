@@ -9,8 +9,48 @@ func TestCache(t *testing.T) {
 	t.Run("InitRedis", testInitRedis)
 	t.Run("InitDB", testInitDB)
 	t.Run("GetUserBaseInfo", testGetUserBaseInfo)
+	t.Run("testAddLike", testAddLike)
 	t.Run("DisconnectRedis", testDisconnectRedis)
 	t.Run("DisconnectDB", testDisconnectDB)
+}
+
+func testAddLike(t *testing.T) {
+	userID := primitive.NewObjectID()
+	taskID := primitive.NewObjectID()
+	err := redisInst.Cache.WillUpdate(userID, KindOfLikeTask)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = model.Set.AddToSet(userID, taskID, SetOfLikeTask)
+	if err != nil {
+		t.Error(err)
+	}
+	if  redisInst.Cache.IsLikeTask(userID, primitive.NewObjectID()) == true {
+		t.Error()
+	}
+	if redisInst.Cache.IsLikeTask(userID, taskID) == false {
+		t.Error()
+	}
+	taskID = primitive.NewObjectID()
+	err = model.Set.AddToSet(userID, taskID, SetOfLikeTask)
+	if err != nil {
+		t.Error(err)
+	}
+	if redisInst.Cache.IsLikeTask(userID, taskID) == true {
+		t.Error()
+	}
+
+	err = redisInst.Cache.WillUpdate(userID, KindOfLikeTask)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if redisInst.Cache.IsLikeTask(userID, taskID) == false {
+		t.Error()
+	}
+
+
 }
 
 func testGetUserBaseInfo(t *testing.T) {
@@ -20,7 +60,7 @@ func testGetUserBaseInfo(t *testing.T) {
 	}
 	t.Log(id)
 
-	if err := redisInst.Cache.WillUpdateBaseInfo(id); err != nil {
+	if err := redisInst.Cache.WillUpdate(id, KindOfBaseInfo); err != nil {
 		t.Error(err)
 	}
 
@@ -59,7 +99,7 @@ func testGetUserBaseInfo(t *testing.T) {
 		t.Log(info)
 	}
 
-	if err := redisInst.Cache.WillUpdateBaseInfo(id); err != nil {
+	if err := redisInst.Cache.WillUpdate(id, KindOfBaseInfo); err != nil {
 		t.Error(err)
 	}
 

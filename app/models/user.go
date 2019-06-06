@@ -217,7 +217,7 @@ func (model *UserModel) SetUserInfoByID(id primitive.ObjectID, info UserInfoSche
 		return ErrNotExist
 	}
 	// 更新缓存
-	return GetRedis().Cache.WillUpdateBaseInfo(id)
+	return GetRedis().Cache.WillUpdate(id, KindOfBaseInfo)
 }
 
 // UserDataCount 用户数据更新
@@ -268,7 +268,7 @@ func (model *UserModel) SetUserType(id primitive.ObjectID, userType UserType) er
 		return ErrNotExist
 	}
 	// 更新缓存
-	return GetRedis().Cache.WillUpdateBaseInfo(id)
+	return GetRedis().Cache.WillUpdate(id, KindOfBaseInfo)
 }
 
 // SetUserAttend 用户签到

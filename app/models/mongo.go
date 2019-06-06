@@ -34,7 +34,7 @@ type Model struct {
 	User          *UserModel
 	File          *FileModel
 	Relation      *RelationModel
-	Like          *LikeModel
+	Set           *SetModel
 	System        *SystemModel
 }
 
@@ -148,8 +148,8 @@ func InitDB(config *libs.DBConfig) error {
 		Collection: model.db.Collection("relations"),
 	}
 	// 点赞数据库
-	model.Like = &LikeModel{
-		Collection: model.db.Collection("likes"),
+	model.Set = &SetModel{
+		Collection: model.db.Collection("sets"),
 	}
 	// 系统数据库
 	model.System = &SystemModel{

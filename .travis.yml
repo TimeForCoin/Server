@@ -11,7 +11,7 @@ before_install:
 - cp ssh_config ~/.ssh/config
 script:
 - go build
-- go test -v -coverprofile="coverage.txt" -covermode=atomic ./app/...
+- go test -v -coverprofile="coverage.txt" -covermode=atomic ./app/models/...
 after_success:
 - bash <(curl -s https://codecov.io/bash)
 - ssh deploy@love.zhenly.cn "cd ~/TimeForCoin/Server && source ~/.bashrc && bash ./deploy.sh"

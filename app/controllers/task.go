@@ -58,7 +58,8 @@ type GetTaskInfoRes struct {
 	Publisher  models.UserBaseInfo
 	Attachment []AttachmentData
 	Images     []string
-	Like       bool
+	Liked      bool
+	Collected  bool
 	// 排除项
 	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
 }
@@ -116,16 +117,15 @@ func (c *TaskController) GetBy(id string) int {
 	libs.Assert(err == nil, "string")
 	task, publisher, _, _ := c.Server.GetTaskByID(_id)
 
+	cache := models.GetRedis().Cache
 	isLike := false
+	isCollected := false
 	userID := c.Session.GetString("id")
 	if userID != "" {
-		_id, err := primitive.ObjectIDFromHex(userID)
-		if err == nil {
-			for _, likeUser := range task.LikeID {
-				if likeUser == _id {
-					isLike = true
-				}
-			}
+		id, err := primitive.ObjectIDFromHex(userID)
+		if err != nil {
+			isLike = cache.IsLikeTask(id, task.ID)
+			isCollected = cache.IsCollectTask(id, task.ID)
 		}
 	}
 
@@ -134,7 +134,8 @@ func (c *TaskController) GetBy(id string) int {
 		Publisher:  publisher,
 		Attachment: []AttachmentData{},
 		Images:     []string{},
-		Like:       isLike,
+		Liked:       isLike,
+		Collected: isCollected,
 	})
 	return iris.StatusOK
 }
@@ -224,25 +225,23 @@ func (c *TaskController) Get() int {
 	userID := c.Session.GetString("id")
 	for _, t := range tasksData {
 		userService := services.GetServiceManger().User
+		cache := models.GetRedis().Cache
 		isLike := false
+		isCollected := false
 		if userID != "" {
-			_id, err := primitive.ObjectIDFromHex(userID)
-			if err == nil {
-				for _, likeUser := range t.LikeID {
-					if likeUser == _id {
-						isLike = true
-					}
-				}
+			id, err := primitive.ObjectIDFromHex(userID)
+			if err != nil {
+				isLike = cache.IsLikeTask(id, t.ID)
+				isCollected = cache.IsCollectTask(id, t.ID)
 			}
 		}
-
-
 		tasks = append(tasks, GetTaskInfoRes{
 			TaskSchema: &t,
 			Publisher: userService.GetUserBaseInfo(t.Publisher),
 			Attachment: []AttachmentData{},
 			Images: []string{},
-			Like: isLike,
+			Liked: isLike,
+			Collected: isCollected,
 		})
 	}
 

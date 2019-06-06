@@ -21,7 +21,6 @@ type CommentSchema struct {
 	UserID     primitive.ObjectID   `bson:"user_id"`       // 评论用户 ID
 	ReplyCount int64                `bson:"reply_count"`   // 回复数
 	LikeCount  int64                `bson:"like_count"`    // 点赞数(冗余)
-	LikeID     []primitive.ObjectID `bson:"like_id"`       // 点赞用户ID
 	Content    string               `bson:"content"`       // 评论内容
 	Time       int64                `bson:"time"`          // 评论时间
 }

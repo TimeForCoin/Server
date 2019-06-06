@@ -147,7 +147,7 @@ func (s *userService) UserAttend(id primitive.ObjectID) {
 // 设置用户信息
 func (s *userService) SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema) {
 	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
-	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
+	libs.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
 // 设置用户类型
@@ -158,7 +158,7 @@ func (s *userService) SetUserType(admin primitive.ObjectID, id primitive.ObjectI
 		adminInfo.Type == models.UserTypeRoot, "permission_deny", 403)
 	err = s.model.SetUserType(id, userType)
 	libs.Assert(err == nil, "faked_users", 403)
-	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
+	libs.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
 // 取消认证

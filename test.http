@@ -95,6 +95,7 @@ Content-Type: application/json
 
 ### 获取任务列表
 GET http://127.0.0.1:30233/tasks?page=1&size=10
+// Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
 GET http://127.0.0.1:30233/tasks/5cf92124fab3ed88a669eb3b

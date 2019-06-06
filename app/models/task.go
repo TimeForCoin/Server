@@ -77,7 +77,6 @@ type TaskSchema struct {
 	CollectCount int64                `bson:"collect_count"` // 收藏数
 	CommentCount int64                `bson:"comment_count"` // 评论数(冗余)
 	LikeCount    int64                `bson:"like_count"`    // 点赞数(冗余)
-	LikeID       []primitive.ObjectID `bson:"like_id" json:"like_id"`       // 点赞用户ID
 
 	// 由[浏览量、评论数、收藏数、参与人数、时间、置顶、酬劳、发布者粉丝、信用]等数据加权计算，10分钟更新一次，用于排序
 	Hot int64 `bson:"hot"` // 任务热度
