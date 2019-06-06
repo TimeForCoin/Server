@@ -2,10 +2,11 @@ package models
 
 import (
 	"fmt"
+	"time"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 // FileModel 文件数据库
@@ -51,15 +52,15 @@ func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileTyp
 	ctx, finish := GetCtx()
 	defer finish()
 	res, err := m.Collection.InsertOne(ctx, &FileSchema{
-		Time: time.Now().Unix(),
-		Use: 0,
-		OwnerID: ownerID,
-		Owner: owner,
-		Type: fileType,
-		Name: name,
+		Time:        time.Now().Unix(),
+		Use:         0,
+		OwnerID:     ownerID,
+		Owner:       owner,
+		Type:        fileType,
+		Name:        name,
 		Description: description,
-		Size: size,
-		Public: public,
+		Size:        size,
+		Public:      public,
 	})
 	fmt.Println("err", err)
 	if err != nil {

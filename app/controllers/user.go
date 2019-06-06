@@ -48,7 +48,6 @@ type GetInfoByIDRes struct {
 }
 
 
-type omit *struct{}
 // UserDataRes 用户数据返回值
 type UserDataRes struct {
 	*models.UserDataSchema

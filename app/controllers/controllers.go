@@ -34,6 +34,7 @@ func NewApp() *iris.Application {
 	return app
 }
 
+type omit *struct{}
 // BaseController 控制基类
 type BaseController struct {
 	Ctx     iris.Context
