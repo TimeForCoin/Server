@@ -3,6 +3,7 @@ package models
 import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // FileModel 文件数据库
@@ -40,4 +41,14 @@ type FileSchema struct {
 	Time        int64              // 创建时间
 	Use         int64              // 引用数，未使用文件将定期处理
 	Public      bool               // 公开，非公开文件需要验证权限
+}
+func (model *FileModel) GetFileByID(id string) (file FileSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return
+	}
+	err = model.Collection.FindOne(ctx, bson.M{"_id": _id}).Decode(&file)
+	return
 }

@@ -29,7 +29,7 @@ func NewApp() *iris.Application {
 	app.Use(libs.NewErrorHandler())
 
 	BindUserController(app)
-
+	BindTaskController(app)
 	return app
 }
 
