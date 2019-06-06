@@ -42,11 +42,11 @@ type BaseController struct {
 }
 
 // 检查登陆状态
-func (b *BaseController) checkLogin() string {
+func (b *BaseController) checkLogin() primitive.ObjectID {
 	id := b.Session.GetString("id")
-	_, err := primitive.ObjectIDFromHex(id)
+	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "invalid_session", 401)
-	return id
+	return _id
 }
 
 // JSON 使用 JSON 返回数据

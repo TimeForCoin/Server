@@ -4,6 +4,7 @@ import (
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type CacheModel struct {
 }
 
 type UserBaseInfo struct {
+	ID       string `json:"id"`
 	Nickname string
 	Avatar   string
 	Gender   UserGender
@@ -27,9 +29,9 @@ type UserBaseInfo struct {
 }
 
 // GetUserBaseInfo 获取用户基本信息
-func (c *CacheModel) GetUserBaseInfo(id string) (UserBaseInfo, error) {
+func (c *CacheModel) GetUserBaseInfo(id primitive.ObjectID) (UserBaseInfo, error) {
 	baseInfo := UserBaseInfo{}
-	val, err := c.Redis.Get("info-" + id).Result()
+	val, err := c.Redis.Get("info-" + id.Hex()).Result()
 	// 不存在记录
 	if err != nil {
 		// 从数据库读取
@@ -37,6 +39,7 @@ func (c *CacheModel) GetUserBaseInfo(id string) (UserBaseInfo, error) {
 		if err != nil {
 			return baseInfo, err
 		}
+		baseInfo.ID = user.ID.Hex()
 		baseInfo.Nickname = user.Info.Nickname
 		baseInfo.Avatar = user.Info.Avatar
 		baseInfo.Gender = user.Info.Gender
@@ -45,25 +48,25 @@ func (c *CacheModel) GetUserBaseInfo(id string) (UserBaseInfo, error) {
 		if err != nil {
 			return baseInfo, err
 		}
-		return baseInfo, c.Redis.Set("info-"+id, str, time.Hour * 24).Err()
+		return baseInfo, c.Redis.Set("info-"+id.Hex(), str, time.Hour*24).Err()
 	}
 	err = jsoniter.Unmarshal([]byte(val), &baseInfo)
 	return baseInfo, err
 }
 
 // WillUpdateBaseInfo 更新基本信息
-func (c *CacheModel) WillUpdateBaseInfo(id string) error {
-	return c.Redis.Del("info-"+id).Err()
+func (c *CacheModel) WillUpdateBaseInfo(id primitive.ObjectID) error {
+	return c.Redis.Del("info-" + id.Hex()).Err()
 }
 
 // 设置认证
-func (c *CacheModel) SetCertification(userID, code string)  error {
-	return c.Redis.Set("certification-"+userID, code, time.Minute * 30).Err()
+func (c *CacheModel) SetCertification(userID primitive.ObjectID, code string) error {
+	return c.Redis.Set("certification-"+userID.Hex(), code, time.Minute*30).Err()
 }
 
 // 检查认证
-func (c *CacheModel) CheckCertification(userID, email, code string, use bool) (exist bool, right bool) {
-	token, err := c.Redis.Get("certification-" + userID).Result()
+func (c *CacheModel) CheckCertification(userID primitive.ObjectID, email, code string, use bool) (exist bool, right bool) {
+	token, err := c.Redis.Get("certification-" + userID.Hex()).Result()
 	if err != nil {
 		return false, false
 	}
@@ -71,6 +74,6 @@ func (c *CacheModel) CheckCertification(userID, email, code string, use bool) (e
 	if rightCode != code {
 		return true, false
 	}
-	err = c.Redis.Del("certification-" + userID).Err()
+	err = c.Redis.Del("certification-" + userID.Hex()).Err()
 	return true, true
 }

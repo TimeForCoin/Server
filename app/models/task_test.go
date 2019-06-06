@@ -18,8 +18,8 @@ func TestTaskModel(t *testing.T) {
 
 func testTaskModelAll(t *testing.T) {
 	// 新建任务
-	uid := primitive.NewObjectID().Hex()
-	tid, err := model.Task.AddTask(uid)
+	uid := primitive.NewObjectID()
+	tid, err := model.Task.AddTask(uid, TaskStatusWait)
 	if err != nil {
 		t.Error(err)
 	}
@@ -29,7 +29,6 @@ func testTaskModelAll(t *testing.T) {
 		Title:        "req.Title",
 		Type:         "run",
 		Content:      "req.Content",
-		Attachment:   []primitive.ObjectID{primitive.NewObjectID()},
 		Location:     []string{"req.Location"},
 		Tags:         []string{"req.Tags"},
 		TopTime:      111111111,
@@ -39,7 +38,6 @@ func testTaskModelAll(t *testing.T) {
 		StartDate:    11111111,
 		EndDate:      11111111,
 		MaxPlayer:    100,
-		MaxFinish:    100,
 		AutoAccept:   true,
 	})
 	if err != nil {

@@ -36,7 +36,7 @@ const (
 type FileSchema struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty"` // 文件ID[索引]
 	Time        int64              // 创建时间
-	Use         int64              // 引用数，未使用文件将定期处理
+	Used 		int 			// 引用数
 	OwnerID     primitive.ObjectID `bson:"owner_id"` // 拥有者ID[索引]
 	Owner       OwnerType          // 文件归属类型
 	Type        FileType           // 文件类型
@@ -48,12 +48,15 @@ type FileSchema struct {
 
 // 添加文件
 func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileType FileType,
-	name, description string, size int64, public bool) (primitive.ObjectID, error) {
+	name, description string, size int64, public, used bool) (primitive.ObjectID, error) {
 	ctx, finish := GetCtx()
 	defer finish()
+	usedNum := 0
+	if used {
+		usedNum = 1
+	}
 	res, err := m.Collection.InsertOne(ctx, &FileSchema{
 		Time:        time.Now().Unix(),
-		Use:         0,
 		OwnerID:     ownerID,
 		Owner:       owner,
 		Type:        fileType,
@@ -61,6 +64,7 @@ func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileTyp
 		Description: description,
 		Size:        size,
 		Public:      public,
+		Used: 		 usedNum,
 	})
 	fmt.Println("err", err)
 	if err != nil {
@@ -69,14 +73,52 @@ func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileTyp
 	return res.InsertedID.(primitive.ObjectID), nil
 }
 
-// 获取文件
-func (m *FileModel) GetFile(id string) (res FileSchema, err error) {
+// 获取文件信息
+func (m *FileModel) GetFile(id primitive.ObjectID) (res FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
-	_id, err := primitive.ObjectIDFromHex(id)
+	err = m.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&res)
+	return
+}
+
+// 获取内容文件
+func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType... FileType) (res []FileSchema, err error) {
+	ctx, finish := GetCtx()
+	defer finish()
+
+	search := bson.M{"owner_id": id}
+	if len(fileType) > 0 {
+		search["type"] = fileType[0]
+	}
+
+	cur, err := m.Collection.Find(ctx, search)
 	if err != nil {
 		return
 	}
-	err = m.Collection.FindOne(ctx, bson.M{"_id": _id}).Decode(&res)
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		var result FileSchema
+		err = cur.Decode(&result)
+		if err != nil {
+			return
+		}
+		res = append(res, result)
+	}
+	err = cur.Err()
 	return
+}
+
+// 将文件绑定到任务中
+func (m *FileModel) BindTask(userID, taskID, fileID primitive.ObjectID) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	if res, err := m.Collection.UpdateOne(ctx,
+		bson.M{"_id": fileID , "owner_id": userID},
+		bson.M{"$set": bson.M{"owner_id":taskID}});
+	err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
 }

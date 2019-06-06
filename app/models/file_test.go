@@ -13,18 +13,18 @@ func TestFileModel(t *testing.T) {
 
 func testAddFile(t *testing.T) {
 	newID := primitive.NewObjectID()
-	res, err := GetModel().File.GetFile(newID.Hex())
+	res, err := GetModel().File.GetFile(newID)
 	if err == nil {
 		t.Error(res)
 	}
 	id, err := GetModel().File.AddFile(newID, FileForTask, FileImage,
-		"文件","附件", 10085,true)
+		"文件","附件", 10085,true, true)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log(id)
 
-	res, err = GetModel().File.GetFile(id.Hex())
+	res, err = GetModel().File.GetFile(id)
 	if err != nil {
 		t.Error(err)
 	}

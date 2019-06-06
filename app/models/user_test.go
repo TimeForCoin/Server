@@ -18,7 +18,7 @@ func TestUserModel(t *testing.T) {
 
 func testUserModelAll(t *testing.T) {
 	// 新建用户
-	violetID := primitive.NewObjectID().Hex()
+	violetID := primitive.NewObjectID()
 
 	user, err := model.User.GetUserByID(violetID)
 	if err == nil {
@@ -26,7 +26,7 @@ func testUserModelAll(t *testing.T) {
 	}
 	t.Log(user)
 
-	id, err := model.User.AddUserByViolet(violetID)
+	id, err := model.User.AddUserByViolet(violetID.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -38,7 +38,7 @@ func testUserModelAll(t *testing.T) {
 	}
 	t.Log(user)
 
-	user, err = model.User.GetUserByViolet(violetID)
+	user, err = model.User.GetUserByViolet(violetID.Hex())
 	if err != nil {
 		t.Error(err)
 	}

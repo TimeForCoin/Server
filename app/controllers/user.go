@@ -70,12 +70,14 @@ type UserCertification struct {
 
 // GetInfoBy 获取用户信息
 func (c *UserController) GetInfoBy(userID string) int {
-	id := userID
-	if id == "me" {
+	var id primitive.ObjectID
+	if userID == "me" {
 		id = c.checkLogin()
+	} else {
+		var err error
+		id, err = primitive.ObjectIDFromHex(userID)
+		libs.AssertErr(err, "invalid_session", 401)
 	}
-	_, err := primitive.ObjectIDFromHex(id)
-	libs.Assert(err == nil, "invalid_id")
 	user := c.Server.GetUser(id)
 	res := GetInfoByIDRes{
 		ID:           user.ID.Hex(),
@@ -135,7 +137,7 @@ func (c *UserController) PutInfo() int {
 		req.Avatar = req.AvatarURL
 	} else if req.Avatar != "" {
 		libs.Assert(strings.HasPrefix(req.Avatar,"data:image/png;base64,"), "invalid_avatar", 400)
-		url, err := libs.GetCOS().SaveBase64("avatar-" + id + ".png", req.Avatar[len("data:image/png;base64,"):])
+		url, err := libs.GetCOS().SaveBase64("avatar-" + id.Hex() + ".png", req.Avatar[len("data:image/png;base64,"):])
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
@@ -174,16 +176,25 @@ type UseTypeReq struct {
 }
 
 // 修改用户信息
-func (c *UserController) PutType() int {
+func (c *UserController) PutTypeByID(userID string) int {
 	id := c.checkLogin()
 	// 解析
 	req := UseTypeReq{}
 	err := c.Ctx.ReadJSON(&req)
+
+	var opID primitive.ObjectID
+	if userID == "me" {
+		opID = id
+	} else {
+		var err error
+		opID, err = primitive.ObjectIDFromHex(userID)
+		libs.AssertErr(err, "invalid_session", 401)
+	}
+
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(libs.IsID(req.ID), "invalid_id", 400)
 	libs.Assert(libs.IsUserType(req.Type) , "invalid_type", 400)
 	libs.Assert(req.Type != string(models.UserTypeRoot), "not_allow_type", 403)
-	c.Server.SetUserType(id, req.ID, models.UserType(req.Type))
-
+	c.Server.SetUserType(id, opID, models.UserType(req.Type))
 	return iris.StatusOK
 }

@@ -123,7 +123,7 @@ type UserSchema struct {
 }
 
 // AddUserByViolet 通过 Violet 增加用户
-func (model *UserModel) AddUserByViolet(id string) (string, error) {
+func (model *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
 	userID := primitive.NewObjectID()
@@ -139,12 +139,12 @@ func (model *UserModel) AddUserByViolet(id string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", err
+		return primitive.ObjectID{}, err
 	}
-	return userID.Hex(), nil
+	return userID, nil
 }
 
-func (model *UserModel) AddUserByWechat(openid string) (string, error) {
+func (model *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, error) {
 	ctx, finish := GetCtx()
 	defer finish()
 	userID := primitive.NewObjectID()
@@ -160,20 +160,16 @@ func (model *UserModel) AddUserByWechat(openid string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", err
+		return primitive.ObjectID{}, err
 	}
-	return userID.Hex(), nil
+	return userID, nil
 }
 
 // GetUserByID 通过 ID 查找用户
-func (model *UserModel) GetUserByID(id string) (user UserSchema, err error) {
+func (model *UserModel) GetUserByID(id primitive.ObjectID) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	_id, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return
-	}
-	err = model.Collection.FindOne(ctx, bson.M{"_id": _id}).Decode(&user)
+	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	return
 }
 
@@ -194,13 +190,9 @@ func (model *UserModel) GetUserByWechat(id string) (user UserSchema, err error) 
 }
 
 // SetUserInfoByID 更新用户个人信息
-func (model *UserModel) SetUserInfoByID(id string, info UserInfoSchema) error {
+func (model *UserModel) SetUserInfoByID(id primitive.ObjectID, info UserInfoSchema) error {
 	ctx, over := GetCtx()
 	defer over()
-	_id, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
 	// 通过反射获取非空字段
 	updateItem := bson.M{}
 	names := reflect.TypeOf(info)
@@ -218,7 +210,7 @@ func (model *UserModel) SetUserInfoByID(id string, info UserInfoSchema) error {
 		}
 	}
 	if res, err := model.Collection.UpdateOne(ctx,
-		bson.M{"_id": _id},
+		bson.M{"_id": id},
 		bson.M{"$set": updateItem}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {
@@ -242,13 +234,9 @@ type UserDataCount struct {
 }
 
 // UpdateUserDataCount 更新用户数值数据（偏移值）
-func (model *UserModel) UpdateUserDataCount(id string, data UserDataCount) error {
+func (model *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserDataCount) error {
 	ctx, over := GetCtx()
 	defer over()
-	_id, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
 	// 通过反射获取非零字段
 	updateItem := bson.M{}
 	names := reflect.TypeOf(data)
@@ -259,7 +247,7 @@ func (model *UserModel) UpdateUserDataCount(id string, data UserDataCount) error
 		}
 	}
 	if res, err := model.Collection.UpdateOne(ctx,
-		bson.M{"_id": _id},
+		bson.M{"_id": id},
 		bson.M{"$inc": updateItem}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {
@@ -269,15 +257,11 @@ func (model *UserModel) UpdateUserDataCount(id string, data UserDataCount) error
 }
 
 // SetUserType 设置用户类型
-func (model *UserModel) SetUserType(id string, userType UserType) error {
+func (model *UserModel) SetUserType(id primitive.ObjectID, userType UserType) error {
 	ctx, over := GetCtx()
 	defer over()
-	_id, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
 	if res, err := model.Collection.UpdateMany(ctx,
-		bson.M{"_id": _id},
+		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"data.type": userType}}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {
@@ -288,15 +272,11 @@ func (model *UserModel) SetUserType(id string, userType UserType) error {
 }
 
 // SetUserAttend 用户签到
-func (model *UserModel) SetUserAttend(id string) error {
+func (model *UserModel) SetUserAttend(id primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
-	_id, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
 	if res, err := model.Collection.UpdateOne(ctx,
-		bson.M{"_id": _id},
+		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"data.attendance_date": time.Now().Unix()}}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {
@@ -305,15 +285,11 @@ func (model *UserModel) SetUserAttend(id string) error {
 	return nil
 }
 
-func (model *UserModel) SetUserCertification (id string, data UserCertificationSchema) error {
+func (model *UserModel) SetUserCertification (id primitive.ObjectID, data UserCertificationSchema) error {
 	ctx, over := GetCtx()
 	defer over()
-	_id, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
 	if res, err := model.Collection.UpdateOne(ctx,
-		bson.M{"_id": _id},
+		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"certification": data}}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {

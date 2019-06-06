@@ -38,7 +38,7 @@ func testGetUserBaseInfo(t *testing.T) {
 		t.Log(info)
 	}
 
-	info, err = redisInst.Cache.GetUserBaseInfo(primitive.NewObjectID().Hex())
+	info, err = redisInst.Cache.GetUserBaseInfo(primitive.NewObjectID())
 	if err != nil {
 		t.Log(err)
 	} else {

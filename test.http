@@ -5,10 +5,13 @@ GET http://127.0.0.1:30233/session
 GET http://127.0.0.1:30233/session/violet?code=8f48c80107e95a232629c7301f3ac3300eb4220dbf7b38a373dfec4ffd07cee59a286576532e004ea20739b68a80cd8763bfa2111725728c879da6dadbadc5df6edc6ec47717a0edee13c2264e29160fe58b312dcb531c1d228f7cd6bcd3f824d8&state=9b3291d1427aa3d43a6738da6ed2e5c966d962f9d1b96002a2d2
 
 ### 获取登陆状态
-GET http://127.0.0.1:30233/session/status
+// GET http://127.0.0.1:30233/session/status
+https://coin.zhenly.cn/api/session/status
 
 ### 获取用户信息
-GET http://127.0.0.1:30233/users/info/me
+// GET http://127.0.0.1:30233/users/info/me
+GET https://coin.zhenly.cn/api/users/info/me
+
 
 ### 获取用户信息
 GET http://127.0.0.1:30233/users/info/5cf6588cf629d9be71a64875
@@ -36,7 +39,8 @@ Content-Type: application/json
 }
 
 ### 微信登陆
-POST http://127.0.0.1:30233/session/wechat
+// POST http://127.0.0.1:30233/session/wechat
+POST  https://coin.zhenly.cn/api/session/wechat
 Content-Type: application/json
 
 {
@@ -60,10 +64,40 @@ Content-Type: application/json
 ### 用户认证
 GET http://127.0.0.1:30233/certification/auth?code=0182949eef78757e93c7bb2deea32b88613b12d0c0629ed5632915fc031816fbc436285da10a674eeaeb797e7c312fb46418d3030ce34676cf0855825d6f081e&user=5cf6588cf629d9be71a64875
 
+### 新建任务
+POST http://127.0.0.1:30233/tasks
+Content-Type: application/json
 
+{
+  "title": "帮我洗澡",
+  "content": "过来至二634洗澡澡",
+  "attachment": [
+    "5c9ecbbba4a3f52e3195fa68"
+  ],
+  "type": "run",
+  "reward": "rmb",
+  "reward_value": 100,
+  "reward_object": "一个吻",
+  "location": [
+    "中山大学"
+  ],
+  "tags": [
+    "打游戏"
+  ],
+  "top_time": 1559797723,
+  "start_date": 1571797723,
+  "end_date": 1579797723,
+  "max_player": 30,
+  "max_finish": 30,
+  "auto_accept": true,
+  "publish": true
+}
 
+### 获取任务列表
+GET http://127.0.0.1:30233/tasks?page=1&size=10
 
-
+### 获取单个任务详情
+GET http://127.0.0.1:30233/tasks/5cf92124fab3ed88a669eb3b
 
 
 

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
 	"strings"
 	"time"
@@ -13,23 +14,25 @@ import (
 // UserService 用户逻辑
 type UserService interface {
 	GetLoginURL() (url, state string)
-	GetUser(id string) models.UserSchema
-	UserAttend(id string)
-	SetUserInfo(id string, info models.UserInfoSchema)
+	GetUser(id primitive.ObjectID) models.UserSchema
+	GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo
+	UserAttend(id primitive.ObjectID)
+	SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema)
 	LoginByViolet(code string) (id string, new bool)
 	LoginByWechat(code string) (id string, new bool)
-	SetUserType(admin string, id string, userType models.UserType)
+	SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType)
 	// 认证相关
-	CancelCertification(id string)
-	UpdateCertification(id, operate string, data string)
-	CheckCertification(id string, code string) string
-	SendCertificationEmail(id, email string)
-	AddEmailCertification(identity models.UserIdentity, id, data, email string)
+	CancelCertification(id primitive.ObjectID)
+	UpdateCertification(id primitive.ObjectID, operate, data string)
+	CheckCertification(id primitive.ObjectID, code string) string
+	SendCertificationEmail(id primitive.ObjectID, email string)
+	AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string)
 }
 
 // NewUserService 初始化
 func newUserService() UserService {
 	return &userService{
+		cache: models.GetRedis().Cache,
 		model: models.GetModel().User,
 		system: models.GetModel().System,
 		oAuth: libs.GetOAuth(),
@@ -37,9 +40,24 @@ func newUserService() UserService {
 }
 
 type userService struct {
+	cache *models.CacheModel
 	system *models.SystemModel
 	model *models.UserModel
 	oAuth *libs.OAuthService
+}
+
+func (s *userService) GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo {
+	user, err := s.cache.GetUserBaseInfo(id)
+	if err != nil {
+		return models.UserBaseInfo{
+			ID: primitive.NewObjectID().Hex(),
+			Avatar: "",
+			Nickname: "匿名用户",
+			Gender: models.GenderOther,
+			Type: models.UserTypeBan,
+		}
+	}
+	return user
 }
 
 func (s *userService) GetLoginURL() (url, state string) {
@@ -63,7 +81,8 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		return u.ID.Hex(), false
 	}
 	// 账号不存在，创建新账号
-	if id, err = s.model.AddUserByViolet(res.UserID); err != nil {
+	userID, err := s.model.AddUserByViolet(res.UserID);
+	if err != nil {
 		return "", false
 	}
 	// 获取用户信息
@@ -79,7 +98,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		} else if info.Gender == 2 {
 			gender = models.GenderOther
 		}
-		_ = s.model.SetUserInfoByID(id, models.UserInfoSchema{
+		_ = s.model.SetUserInfoByID(userID, models.UserInfoSchema{
 			Email:    info.Email,
 			Phone:    info.Phone,
 			Nickname: info.Nickname,
@@ -90,7 +109,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 			Location: info.Location,
 		})
 	}
-	return id, true
+	return userID.Hex(), true
 }
 
 func (s *userService) LoginByWechat(code string) (id string, new bool) {
@@ -101,20 +120,20 @@ func (s *userService) LoginByWechat(code string) (id string, new bool) {
 		return u.ID.Hex(), false
 	}
 	// 账号不存在，新建账号
-	id, err = s.model.AddUserByWechat(openID)
+	userID, err := s.model.AddUserByWechat(openID)
 	libs.AssertErr(err, "db_error", iris.StatusInternalServerError)
-	return id, true
+	return userID.Hex(), true
 }
 
 // GetUser 获取用户数据
-func (s *userService) GetUser(id string) models.UserSchema {
+func (s *userService) GetUser(id primitive.ObjectID) models.UserSchema {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "faked_users", 403)
 	return user
 }
 
 // UserAttend 用户签到
-func (s *userService) UserAttend(id string) {
+func (s *userService) UserAttend(id primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "invalid_session", 401)
 	lastAttend := time.Unix(user.Data.AttendanceDate, 0)
@@ -126,13 +145,13 @@ func (s *userService) UserAttend(id string) {
 }
 
 // 设置用户信息
-func (s *userService) SetUserInfo(id string, info models.UserInfoSchema) {
+func (s *userService) SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema) {
 	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
 	libs.Assert(models.GetRedis().Cache.WillUpdateBaseInfo(id) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
 // 设置用户类型
-func (s *userService) SetUserType(admin string, id string, userType models.UserType) {
+func (s *userService) SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType) {
 	adminInfo, err := models.GetRedis().Cache.GetUserBaseInfo(admin)
 	libs.AssertErr(err, "invalid_session", 401)
 	libs.Assert(adminInfo.Type == models.UserTypeAdmin ||
@@ -143,7 +162,7 @@ func (s *userService) SetUserType(admin string, id string, userType models.UserT
 }
 
 // 取消认证
-func (s *userService) CancelCertification(id string) {
+func (s *userService) CancelCertification(id primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "invalid_session", 401)
 	libs.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
@@ -153,7 +172,7 @@ func (s *userService) CancelCertification(id string) {
 }
 
 // 更新认证[管理员]
-func (s *userService) UpdateCertification(id, operate string, data string) {
+func (s *userService) UpdateCertification(id primitive.ObjectID, operate, data string) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "faked_user", 401)
 	libs.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
@@ -174,7 +193,7 @@ func (s *userService) UpdateCertification(id, operate string, data string) {
 }
 
 // AddCertification 添加认证
-func (s *userService) AddEmailCertification(identity models.UserIdentity, id, data, email string) {
+func (s *userService) AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "invalid_session", 401)
 	libs.Assert(user.Certification.Identity == models.IdentityNone ||
@@ -192,7 +211,7 @@ func (s *userService) AddEmailCertification(identity models.UserIdentity, id, da
 }
 
 // 发送认证邮件
-func (s *userService) SendCertificationEmail(id, email string) {
+func (s *userService) SendCertificationEmail(id primitive.ObjectID, email string) {
 	if email == "" {
 		user, err := s.model.GetUserByID(id)
 		libs.AssertErr(err, "invalid_session", 401)
@@ -205,13 +224,13 @@ func (s *userService) SendCertificationEmail(id, email string) {
 	libs.Assert(!exist, "limit_email", 403)
 	token := libs.GetRandomString(64)
 	code := libs.GetHash(token + "&" + email)
-	err := libs.GetEmail().SendAuthEmail(email,id, code)
+	err := libs.GetEmail().SendAuthEmail(id, email, code)
 	libs.AssertErr(err, "error_email", iris.StatusInternalServerError)
 	err = models.GetRedis().Cache.SetCertification(id, token)
 	libs.AssertErr(err, "error_redis", iris.StatusInternalServerError)
 }
 
-func (s *userService) CheckCertification(id string, code string) string {
+func (s *userService) CheckCertification(id primitive.ObjectID, code string) string {
 	user, err := s.model.GetUserByID(id)
 	if err != nil {
 		return "无效的认证链接"

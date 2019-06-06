@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 )
 
 type TaskController struct {
@@ -23,28 +25,21 @@ func BindTaskController(app *iris.Application) {
 }
 
 type AddTaskReq struct {
-	Title        string               `json:"title"`
-	Content      string               `json:"content"`
-	Attachment   []primitive.ObjectID `json:"attachment"`
-	Type         models.TaskType      `json:"type"`
-	Reward       models.RewardType    `json:"reward"`
-	RewardValue  float32              `json:"reward_value"`
-	RewardObject string               `json:"reward_object"`
-	Location     []string             `json:"location"`
-	Tags         []string             `json:"tags"`
-	TopTime      int64                `json:"top_time"`
-	StartDate    int64                `json:"start_date"`
-	EndDate      int64                `json:"end_date"`
-	MaxPlayer    int64                `json:"max_player"`
-	MaxFinish    int64                `json:"max_finish"`
-	AutoAccept   bool                 `json:"auto_accept"`
-	Publish      bool                 `json:"publish"`
-}
-
-type PublisherData struct {
-	ID       primitive.ObjectID `json:"id"`
-	Nickname string             `json:"nickname"`
-	Avatar   string             `json:"avatar"`
+	Title        string   `json:"title"`
+	Content      string   `json:"content"`
+	Images       []string `json:"images"`
+	Attachment   []string `json:"attachment"`
+	Type         string   `json:"type"`
+	Reward       string   `json:"reward"`
+	RewardValue  float32  `json:"reward_value"`
+	RewardObject string   `json:"reward_object"`
+	Location     []string `json:"location"`
+	Tags         []string `json:"tags"`
+	StartDate    int64    `json:"start_date"`
+	EndDate      int64    `json:"end_date"`
+	MaxPlayer    int64    `json:"max_player"`
+	AutoAccept   bool     `json:"auto_accept"`
+	Publish      bool     `json:"publish"`
 }
 
 type AttachmentData struct {
@@ -57,64 +52,70 @@ type AttachmentData struct {
 	Public      bool               `json:"public"`
 }
 
-type TaskData struct {
+type GetTaskInfoRes struct {
 	*models.TaskSchema
 	// 额外项
-	Publisher  PublisherData
+	Publisher  models.UserBaseInfo
 	Attachment []AttachmentData
+	Images     []string
 	Like       bool
 	// 排除项
 	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
 }
 
-type GetTaskInfoByIDRes struct {
-	Data *TaskData `json:"data"`
-}
-
-func (c *TaskController) PostTasks() int {
-	id := primitive.NewObjectID().Hex()
+func (c *TaskController) Post() int {
+	id := c.checkLogin()
 	req := AddTaskReq{}
 	err := c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
+
+	taskType := models.TaskType(req.Type)
+	libs.Assert(taskType == models.TaskTypeInfo ||
+		taskType == models.TaskTypeQuestionnaire ||
+		taskType == models.TaskTypeRunning, "invalid_type", 400)
+
+	libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
+	taskReward := models.RewardType(req.Reward)
+
+	libs.Assert(req.Title != "", "invalid_title", 400)
+	libs.Assert(req.Content != "", "invalid_content", 400)
+	libs.Assert(req.Title != "", "invalid_title", 400)
+
+	libs.CheckDateDuring(req.StartDate, req.EndDate)
+
+	libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
+
+	var files []primitive.ObjectID
+	req.Images = append(req.Images, req.Attachment...)
+	for _, file := range req.Images {
+		fileID, err := primitive.ObjectIDFromHex(file)
+		libs.AssertErr(err, "invalid_file", 400)
+		files = append(files, fileID)
+	}
+
 	taskInfo := models.TaskSchema{
 		Title:        req.Title,
-		Type:         req.Type,
+		Type:         taskType,
 		Content:      req.Content,
-		Attachment:   req.Attachment,
 		Location:     req.Location,
 		Tags:         req.Tags,
-		TopTime:      req.TopTime,
-		Reward:       req.Reward,
+		Reward:       taskReward,
 		RewardValue:  req.RewardValue,
 		RewardObject: req.RewardObject,
 		StartDate:    req.StartDate,
 		EndDate:      req.EndDate,
 		MaxPlayer:    req.MaxPlayer,
-		MaxFinish:    req.MaxFinish,
 		AutoAccept:   req.AutoAccept,
 	}
-	_, success := c.Server.AddTask(id, taskInfo)
-	libs.Assert(success == true, "invalid_title", 403)
+	c.Server.AddTask(id, taskInfo, req.Publish)
 	return iris.StatusOK
 }
-func (c *TaskController) GetInfoBy(id string) int {
+func (c *TaskController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
-	_, err := primitive.ObjectIDFromHex(id)
+	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "string")
-	task, publisher, attachments, err := c.Server.GetTaskByID(id)
-	var attachmentsData []AttachmentData
-	for _, attachment := range attachments {
-		attachmentData := AttachmentData{
-			ID:          attachment.ID,
-			Type:        attachment.Type,
-			Name:        attachment.Name,
-			Description: attachment.Description,
-			Size:        attachment.Size,
-			Time:        attachment.Time,
-			Public:      attachment.Public,
-		}
-		attachmentsData = append(attachmentsData, attachmentData)
-	}
+	task, publisher, _, _ := c.Server.GetTaskByID(_id)
+
 	isLike := false
 	userID := c.Session.GetString("id")
 	if userID != "" {
@@ -127,43 +128,44 @@ func (c *TaskController) GetInfoBy(id string) int {
 			}
 		}
 	}
-	c.JSON(GetTaskInfoByIDRes{
-		Data: &TaskData{
-			TaskSchema: &task,
-			Publisher: PublisherData{
-				ID:       publisher.ID,
-				Nickname: publisher.Info.Nickname,
-				Avatar:   publisher.Info.Avatar,
-			},
-			Attachment:   attachmentsData,
-			Like:         isLike,
-		},
+
+	c.JSON(GetTaskInfoRes{
+		TaskSchema: &task,
+		Publisher:  publisher,
+		Attachment: []AttachmentData{},
+		Images:     []string{},
+		Like:       isLike,
 	})
 	return iris.StatusOK
 }
-func (c *TaskController) PatchInfoBy(id string) int {
-	_ = primitive.NewObjectID().Hex()
+func (c *TaskController) PatchBy(id string) int {
+	_ = c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+
 	req := AddTaskReq{}
-	err := c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil, "invalid_value", 400)
+	err = c.Ctx.ReadJSON(&req)
+	libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
+	taskReward := models.RewardType(req.Reward)
+	// TODO 检验用户权限
+
+	// TODO 检查时间
+
+	libs.AssertErr(err, "invalid_value", 400)
 	taskInfo := models.TaskSchema{
 		Title:        req.Title,
-		Type:         req.Type,
 		Content:      req.Content,
-		Attachment:   req.Attachment,
 		Location:     req.Location,
 		Tags:         req.Tags,
-		TopTime:      req.TopTime,
-		Reward:       req.Reward,
+		Reward:       taskReward,
 		RewardValue:  req.RewardValue,
 		RewardObject: req.RewardObject,
 		StartDate:    req.StartDate,
 		EndDate:      req.EndDate,
 		MaxPlayer:    req.MaxPlayer,
-		MaxFinish:    req.MaxFinish,
 		AutoAccept:   req.AutoAccept,
 	}
-	err = c.Server.SetTaskInfo(id, taskInfo)
+	c.Server.SetTaskInfo(taskID, taskInfo)
 	return iris.StatusOK
 }
 
@@ -178,21 +180,79 @@ type GetTasksReq struct {
 	Keyword string
 }
 
-type TasksListRes struct {
-	TotalPages int `json:"total_pages"`
-	Tasks      []models.TaskCard
+type PaginationRes struct {
+	Page  int
+	Size  int
+	Total int
 }
 
-func (c *TaskController) GetTasks() int {
-	id := c.checkLogin()
-	req := GetTasksReq{}
-	err := c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil, "invalid_value", 400)
-	totalPages, tasks := c.Server.GetTasks(id, req.Page, req.Size, req.Sort,
-		req.Type, req.Status, req.Reward, req.User, req.Keyword)
+type TasksListRes struct {
+	Pagination PaginationRes
+	Tasks      []GetTaskInfoRes
+}
+
+func (c *TaskController) Get() int {
+
+	pageStr := c.Ctx.URLParamDefault("page", "1")
+	page, err := strconv.Atoi(pageStr)
+	libs.AssertErr(err, "invalid_page", 400)
+	sizeStr := c.Ctx.URLParamDefault("size", "10")
+	size, err := strconv.Atoi(sizeStr)
+	libs.AssertErr(err, "invalid_size", 400)
+
+	sort := c.Ctx.URLParamDefault("sort", "new")
+	taskType := c.Ctx.URLParamDefault("type", "all")
+	status := c.Ctx.URLParamDefault("status", "wait,run")
+	reward := c.Ctx.URLParamDefault("reward", "all")
+	userFilter := c.Ctx.URLParamDefault("user", "all")
+	keyword := c.Ctx.URLParamDefault("keyword", "")
+
+	fmt.Println(page)
+
+	taskCount, tasksData := c.Server.GetTasks(page, size, sort,
+		taskType, status, reward, userFilter, keyword)
+
+	var tasks []GetTaskInfoRes
+	//{
+	//	TaskSchema: &task,
+	//	Publisher:  publisher,
+	//	Attachment: []AttachmentData{},
+	//	Images:     []string{},
+	//	Like:       isLike,
+	//}
+
+	userID := c.Session.GetString("id")
+	for _, t := range tasksData {
+		userService := services.GetServiceManger().User
+		isLike := false
+		if userID != "" {
+			_id, err := primitive.ObjectIDFromHex(userID)
+			if err == nil {
+				for _, likeUser := range t.LikeID {
+					if likeUser == _id {
+						isLike = true
+					}
+				}
+			}
+		}
+
+
+		tasks = append(tasks, GetTaskInfoRes{
+			TaskSchema: &t,
+			Publisher: userService.GetUserBaseInfo(t.Publisher),
+			Attachment: []AttachmentData{},
+			Images: []string{},
+			Like: isLike,
+		})
+	}
+
 	res := TasksListRes{
-		TotalPages: totalPages,
-		Tasks:      tasks,
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: taskCount,
+		},
+		Tasks: tasks,
 	}
 	c.JSON(res)
 	return iris.StatusOK
