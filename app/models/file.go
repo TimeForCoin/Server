@@ -36,7 +36,7 @@ const (
 type FileSchema struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty"` // 文件ID[索引]
 	Time        int64              // 创建时间
-	Used 		int 			// 引用数
+	Used        int                // 引用数
 	OwnerID     primitive.ObjectID `bson:"owner_id"` // 拥有者ID[索引]
 	Owner       OwnerType          // 文件归属类型
 	Type        FileType           // 文件类型
@@ -44,11 +44,12 @@ type FileSchema struct {
 	Description string             // 文件描述
 	Size        int64              // 文件大小
 	Public      bool               // 公开，非公开文件需要验证权限
+	URL         string			   // 下载链接
 }
 
 // 添加文件
 func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileType FileType,
-	name, description string, size int64, public, used bool) (primitive.ObjectID, error) {
+	name, description, url string, size int64, public, used bool) (primitive.ObjectID, error) {
 	ctx, finish := GetCtx()
 	defer finish()
 	usedNum := 0
@@ -64,7 +65,8 @@ func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileTyp
 		Description: description,
 		Size:        size,
 		Public:      public,
-		Used: 		 usedNum,
+		Used:        usedNum,
+		URL:         url,
 	})
 	fmt.Println("err", err)
 	if err != nil {
@@ -82,7 +84,7 @@ func (m *FileModel) GetFile(id primitive.ObjectID) (res FileSchema, err error) {
 }
 
 // 获取内容文件
-func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType... FileType) (res []FileSchema, err error) {
+func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType ...FileType) (res []FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
 
@@ -113,9 +115,8 @@ func (m *FileModel) BindTask(userID, taskID, fileID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
 	if res, err := m.Collection.UpdateOne(ctx,
-		bson.M{"_id": fileID , "owner_id": userID},
-		bson.M{"$set": bson.M{"owner_id":taskID}});
-	err != nil {
+		bson.M{"_id": fileID, "owner_id": userID},
+		bson.M{"$set": bson.M{"owner_id": taskID}}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {
 		return ErrNotExist

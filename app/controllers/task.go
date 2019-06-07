@@ -42,28 +42,6 @@ type AddTaskReq struct {
 	Publish      bool     `json:"publish"`
 }
 
-type AttachmentData struct {
-	ID          primitive.ObjectID `json:"id"`
-	Type        models.FileType    `json:"type"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Size        int64              `json:"size"`
-	Time        int64              `json:"time"`
-	Public      bool               `json:"public"`
-}
-
-type GetTaskInfoRes struct {
-	*models.TaskSchema
-	// 额外项
-	Publisher  models.UserBaseInfo
-	Attachment []AttachmentData
-	Images     []string
-	Liked      bool
-	Collected  bool
-	// 排除项
-	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
-}
-
 func (c *TaskController) Post() int {
 	id := c.checkLogin()
 	req := AddTaskReq{}
@@ -115,30 +93,11 @@ func (c *TaskController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "string")
-	task, publisher, _, _ := c.Server.GetTaskByID(_id)
-
-	cache := models.GetRedis().Cache
-	isLike := false
-	isCollected := false
-	userID := c.Session.GetString("id")
-	if userID != "" {
-		id, err := primitive.ObjectIDFromHex(userID)
-		if err != nil {
-			isLike = cache.IsLikeTask(id, task.ID)
-			isCollected = cache.IsCollectTask(id, task.ID)
-		}
-	}
-
-	c.JSON(GetTaskInfoRes{
-		TaskSchema: &task,
-		Publisher:  publisher,
-		Attachment: []AttachmentData{},
-		Images:     []string{},
-		Liked:       isLike,
-		Collected: isCollected,
-	})
+	task := c.Server.GetTaskByID(_id, c.Session.GetString("id"))
+	c.JSON(task)
 	return iris.StatusOK
 }
+
 func (c *TaskController) PatchBy(id string) int {
 	_ = c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -189,7 +148,7 @@ type PaginationRes struct {
 
 type TasksListRes struct {
 	Pagination PaginationRes
-	Tasks      []GetTaskInfoRes
+	Tasks      []services.TaskDetail
 }
 
 func (c *TaskController) Get() int {
@@ -211,39 +170,8 @@ func (c *TaskController) Get() int {
 	fmt.Println(page)
 
 	taskCount, tasksData := c.Server.GetTasks(page, size, sort,
-		taskType, status, reward, userFilter, keyword)
+		taskType, status, reward, userFilter, keyword, c.Session.GetString("id"))
 
-	var tasks []GetTaskInfoRes
-	//{
-	//	TaskSchema: &task,
-	//	Publisher:  publisher,
-	//	Attachment: []AttachmentData{},
-	//	Images:     []string{},
-	//	Like:       isLike,
-	//}
-
-	userID := c.Session.GetString("id")
-	for _, t := range tasksData {
-		userService := services.GetServiceManger().User
-		cache := models.GetRedis().Cache
-		isLike := false
-		isCollected := false
-		if userID != "" {
-			id, err := primitive.ObjectIDFromHex(userID)
-			if err != nil {
-				isLike = cache.IsLikeTask(id, t.ID)
-				isCollected = cache.IsCollectTask(id, t.ID)
-			}
-		}
-		tasks = append(tasks, GetTaskInfoRes{
-			TaskSchema: &t,
-			Publisher: userService.GetUserBaseInfo(t.Publisher),
-			Attachment: []AttachmentData{},
-			Images: []string{},
-			Liked: isLike,
-			Collected: isCollected,
-		})
-	}
 
 	res := TasksListRes{
 		Pagination: PaginationRes{
@@ -251,7 +179,7 @@ func (c *TaskController) Get() int {
 			Size:  size,
 			Total: taskCount,
 		},
-		Tasks: tasks,
+		Tasks: tasksData,
 	}
 	c.JSON(res)
 	return iris.StatusOK

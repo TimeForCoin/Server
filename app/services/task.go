@@ -15,9 +15,9 @@ type TaskService interface {
 	AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool)
 	SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema)
 	// SetTaskFile(taskID primitive.ObjectID, files []primitive.ObjectID)
-	GetTaskByID(id primitive.ObjectID) (task models.TaskSchema, user models.UserBaseInfo, images []models.FileSchema, attachment []models.FileSchema)
-	GetTasks(page int, size int, sortRule string, taskType string,
-		status string, reward string, user string, keyword string) (taskCount int, tasks []models.TaskSchema)
+	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
+	GetTasks(page, size int, sortRule, taskType,
+		status , reward , user , keyword, userID string) (taskCount int, tasks []TaskDetail)
 }
 
 // NewUserService 初始化
@@ -26,19 +26,37 @@ func newTaskService() TaskService {
 		model:     models.GetModel().Task,
 		userModel: models.GetModel().User,
 		fileModel: models.GetModel().File,
-		cache: 		models.GetRedis().Cache,
+		cache:     models.GetRedis().Cache,
 	}
+}
+
+type ImagesData struct {
+	ID  string `json:"id"`
+	URL string `json:"url"`
+}
+
+type omit *struct{}
+type TaskDetail struct {
+	*models.TaskSchema
+	// 额外项
+	Publisher  models.UserBaseInfo
+	Attachment []models.FileSchema
+	Images     []ImagesData
+	Liked      bool
+	Collected  bool
+	// 排除项
+	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
 }
 
 type taskService struct {
 	model     *models.TaskModel
 	userModel *models.UserModel
 	fileModel *models.FileModel
-	cache 	  *models.CacheModel
+	cache     *models.CacheModel
 }
 
 func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool) {
-	 status :=  models.TaskStatusDraft
+	status := models.TaskStatusDraft
 	if publish {
 		status = models.TaskStatusWait
 	}
@@ -46,7 +64,6 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	err = s.model.SetTaskInfoByID(id, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
-
 }
 
 func (s *taskService) SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema) {
@@ -54,26 +71,43 @@ func (s *taskService) SetTaskInfo(taskID primitive.ObjectID, info models.TaskSch
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-func (s *taskService) GetTaskByID(id primitive.ObjectID) (task models.TaskSchema, user models.UserBaseInfo, images []models.FileSchema, attachment []models.FileSchema) {
+func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail) {
 	var err error
-	task, err = s.model.GetTaskByID(id)
+	taskItem, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
+	task.TaskSchema = &taskItem
 
-	user, err = s.cache.GetUserBaseInfo(task.Publisher)
+	user, err := s.cache.GetUserBaseInfo(taskItem.Publisher)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	task.Publisher = user
 
-	images, err = s.fileModel.GetFileByContent(id, models.FileImage)
+	images, err := s.fileModel.GetFileByContent(taskID, models.FileImage)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	for _, i := range images {
+		task.Images = append(task.Images, ImagesData{
+			ID:  i.ID.Hex(),
+			URL: i.URL,
+		})
+	}
 
-	attachment, err = s.fileModel.GetFileByContent(id, models.FileFile)
+	attachment, err := s.fileModel.GetFileByContent(taskID, models.FileFile)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	task.Attachment = attachment
+
+	if userID != "" {
+		id, err := primitive.ObjectIDFromHex(userID)
+		if err != nil {
+			task.Liked = s.cache.IsLikeTask(id, task.ID)
+			task.Collected = s.cache.IsCollectTask(id, task.ID)
+		}
+	}
 
 	return
 }
 
 // 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
-func (s *taskService) GetTasks(page int, size int, sortRule string, taskType string,
-	status string, reward string, user string, keyword string) (totalPages int, taskCards []models.TaskSchema) {
+func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
+	status , reward , user , keyword, userID string) (totalPages int, taskCards []TaskDetail) {
 
 	var taskTypes []models.TaskType
 	split := strings.Split(taskType, ",")
@@ -123,7 +157,7 @@ func (s *taskService) GetTasks(page int, size int, sortRule string, taskType str
 	var tmp []models.TaskSchema
 	if draft {
 		for _, task := range tasks {
-			if task.Status != models.TaskStatusDraft{
+			if task.Status != models.TaskStatusDraft {
 				tmp = append(tmp, task)
 			}
 		}
@@ -156,7 +190,33 @@ func (s *taskService) GetTasks(page int, size int, sortRule string, taskType str
 	//		taskCards = append(taskCards, taskCard)
 	//	}
 	//}
-	taskCards = tasks
+	for _, t := range tasks {
+		var task TaskDetail
+		task.TaskSchema = &t
+
+		user, err := s.cache.GetUserBaseInfo(t.Publisher)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Publisher = user
+
+		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		for _, i := range images {
+			task.Images = append(task.Images, ImagesData{
+				ID:  i.ID.Hex(),
+				URL: i.URL,
+			})
+		}
+		if userID != "" {
+			id, err := primitive.ObjectIDFromHex(userID)
+			if err != nil {
+				task.Liked = s.cache.IsLikeTask(id, t.ID)
+				task.Collected = s.cache.IsCollectTask(id, t.ID)
+			}
+		}
+		taskCards = append(taskCards, task)
+	}
+
+	// TODO 待修复
 	totalPages = len(taskCards)
 
 	// 选择第几页
