@@ -12,7 +12,7 @@ import (
 
 type TaskController struct {
 	BaseController
-	Server services.TaskService
+	Service services.TaskService
 }
 
 func BindTaskController(app *iris.Application) {
@@ -85,7 +85,7 @@ func (c *TaskController) Post() int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Server.AddTask(id, taskInfo, req.Publish)
+	c.Service.AddTask(id, taskInfo, req.Publish)
 	return iris.StatusOK
 }
 
@@ -93,7 +93,7 @@ func (c *TaskController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "string")
-	task := c.Server.GetTaskByID(_id, c.Session.GetString("id"))
+	task := c.Service.GetTaskByID(_id, c.Session.GetString("id"))
 	c.JSON(task)
 	return iris.StatusOK
 }
@@ -119,7 +119,7 @@ func (c *TaskController) PutBy(id string) int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Server.SetTaskInfo(userID, taskID, taskInfo)
+	c.Service.SetTaskInfo(userID, taskID, taskInfo)
 	return iris.StatusOK
 }
 
@@ -155,22 +155,28 @@ func (c *TaskController) Get() int {
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
 	taskType := c.Ctx.URLParamDefault("type", "all")
-	status := c.Ctx.URLParamDefault("status", "wait,run")
+	status := c.Ctx.URLParamDefault("status", "wait")
 	reward := c.Ctx.URLParamDefault("reward", "all")
 	keyword := c.Ctx.URLParamDefault("keyword", "")
 	user := c.Ctx.URLParamDefault("user", "")
+
+	if status == string(models.TaskStatusDraft) {
+		libs.Assert(user == "me" || user == "", "not_allow_other_draft", 403)
+		user = "me"
+	}
 
 	if user == "me" {
 		// 自己的任务
 		id := c.checkLogin()
 		user = id.Hex()
+
 	} else if user != "" {
 		// 筛选用户
 		_, err := primitive.ObjectIDFromHex(user)
 		libs.AssertErr(err, "invalid_user", 403)
 	}
 
-	taskCount, tasksData := c.Server.GetTasks(page, size, sort,
+	taskCount, tasksData := c.Service.GetTasks(page, size, sort,
 		taskType, status, reward, keyword, user, c.Session.GetString("id"))
 
 
@@ -187,5 +193,13 @@ func (c *TaskController) Get() int {
 		Tasks: tasksData,
 	}
 	c.JSON(res)
+	return iris.StatusOK
+}
+
+func (c* TaskController) DeleteBy(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.RemoveTask(userID, taskID)
 	return iris.StatusOK
 }

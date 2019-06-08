@@ -11,7 +11,7 @@ import (
 // UserController 用户控制
 type CertificationController struct {
 	BaseController
-	Server services.UserService
+	Service services.UserService
 }
 
 type PostCertificationReq struct {
@@ -34,13 +34,13 @@ func (c *CertificationController) Post() int {
 	libs.Assert(req.Type == "email", "invalid_type", 400)
 	libs.Assert(libs.IsEmail(req.Email), "invalid_email", 400)
 
-	c.Server.AddEmailCertification(req.Identity, id, req.Data, req.Email)
+	c.Service.AddEmailCertification(req.Identity, id, req.Data, req.Email)
 	return iris.StatusOK
 }
 
 func (c *CertificationController) PostEmail() int {
 	id := c.checkLogin()
-	c.Server.SendCertificationEmail(id, "")
+	c.Service.SendCertificationEmail(id, "")
 	return iris.StatusOK
 }
 
@@ -57,7 +57,7 @@ func (c *CertificationController) GetAuth() string {
 	if err != nil {
 		return "无效的认证链接"
 	}
-	return c.Server.CheckCertification(userID, code)
+	return c.Service.CheckCertification(userID, code)
 }
 
 type PutUserReq struct {
@@ -81,16 +81,16 @@ func (c *CertificationController) PutUserBy(userID string) int {
 	err := c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
 	if req.Operate == "cancel" {
-		c.Server.CancelCertification(opUser)
+		c.Service.CancelCertification(opUser)
 	} else if req.Operate == "true" || req.Operate == "false" {
 		// 验证管理员权限
 		user, err := models.GetRedis().Cache.GetUserBaseInfo(sessionUser)
 		libs.AssertErr(err, "invalid_session", 401)
 		libs.Assert(user.Type == models.UserTypeRoot || user.Type == models.UserTypeAdmin, "permission_deny", 403)
 		if req.Operate == "true" {
-			c.Server.UpdateCertification(opUser, req.Operate, req.Data)
+			c.Service.UpdateCertification(opUser, req.Operate, req.Data)
 		} else {
-			c.Server.UpdateCertification(opUser, req.Operate, req.Feedback)
+			c.Service.UpdateCertification(opUser, req.Operate, req.Feedback)
 		}
 	} else {
 		libs.Assert(false, "invalid_operate", 400)

@@ -8,7 +8,7 @@ import (
 
 type FileController struct {
 	BaseController
-	Server services.FileService
+	Service services.FileService
 }
 
 func BindFileController(app *iris.Application) {

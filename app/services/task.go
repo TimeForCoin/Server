@@ -17,6 +17,7 @@ type TaskService interface {
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
 	GetTasks(page, size int64, sortRule, taskType,
 		status , reward , keyword, user, userID string) (taskCount int64, tasks []TaskDetail)
+	RemoveTask(userID, taskID primitive.ObjectID)
 }
 
 // NewUserService 初始化
@@ -214,4 +215,13 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	}
 
 	return
+}
+
+func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
+	err = s.model.RemoveTask(taskID)
+	libs.AssertErr(err, "", 500)
 }

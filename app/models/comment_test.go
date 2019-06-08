@@ -8,6 +8,14 @@ import (
 func TestCommentModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 	t.Run("testAddComment", testAddComment)
+
+	ctx, finish := GetCtx()
+	defer finish()
+	err := model.Comment.Collection.Drop(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 

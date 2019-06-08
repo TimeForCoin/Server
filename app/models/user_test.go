@@ -12,6 +12,13 @@ func TestUserModel(t *testing.T) {
 
 	t.Run("testUser", testUserModelAll)
 
+	ctx, finish := GetCtx()
+	defer finish()
+	err := model.User.Collection.Drop(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Run("DisconnectRedis", testDisconnectRedis)
 	t.Run("DisconnectDB", testDisconnectDB)
 }
@@ -100,4 +107,5 @@ func testUserModelAll(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(user)
+
 }

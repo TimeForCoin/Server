@@ -66,7 +66,7 @@ func (s *userService) GetLoginURL() (url, state string) {
 		QuickMode: true,
 	}
 	url, state, err := s.oAuth.Api.GetLoginURL(s.oAuth.Callback, options)
-	libs.Assert(err == nil, "Internal Server Error", iris.StatusInternalServerError)
+	libs.Assert(err == nil, "Internal Service Error", iris.StatusInternalServerError)
 	return url, state
 }
 

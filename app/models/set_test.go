@@ -8,6 +8,14 @@ import (
 func TestSetModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 	t.Run("testAddToSet", testAddToSet)
+
+	ctx, finish := GetCtx()
+	defer finish()
+	err := model.Set.Collection.Drop(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 

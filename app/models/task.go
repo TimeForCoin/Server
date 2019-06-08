@@ -79,10 +79,10 @@ type TaskSchema struct {
 	Hot int64 `bson:"hot"` // 任务热度
 }
 
-func (model *TaskModel) AddTask(publisherID primitive.ObjectID, status TaskStatus) (primitive.ObjectID, error) {
+func (m *TaskModel) AddTask(publisherID primitive.ObjectID, status TaskStatus) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
-	res, err := model.Collection.InsertOne(ctx, &TaskSchema{
+	res, err := m.Collection.InsertOne(ctx, &TaskSchema{
 		Publisher:   publisherID,
 		PublishDate: time.Now().Unix(),
 		Status: status,
@@ -93,7 +93,7 @@ func (model *TaskModel) AddTask(publisherID primitive.ObjectID, status TaskStatu
 	return res.InsertedID.(primitive.ObjectID), nil
 }
 
-func (model *TaskModel) SetTaskInfoByID(id primitive.ObjectID, info TaskSchema) error {
+func (m *TaskModel) SetTaskInfoByID(id primitive.ObjectID, info TaskSchema) error {
 	ctx, over := GetCtx()
 	defer over()
 	// 通过反射获取非空字段
@@ -125,7 +125,7 @@ func (model *TaskModel) SetTaskInfoByID(id primitive.ObjectID, info TaskSchema) 
 		updateItem["tags"] = info.Tags
 	}
 	//updateItem["publisher"] = _uid
-	if res, err := model.Collection.UpdateOne(ctx,
+	if res, err := m.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
 		bson.M{"$set": updateItem}); err != nil {
 		return err
@@ -135,10 +135,10 @@ func (model *TaskModel) SetTaskInfoByID(id primitive.ObjectID, info TaskSchema) 
 	// 更新缓存
 	return nil
 }
-func (model *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err error) {
+func (m *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&task)
+	err = m.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&task)
 	return
 }
 
@@ -156,7 +156,7 @@ func (model *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err
 //}
 
 // 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
-func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
+func (m *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 	statuses []TaskStatus, rewards []RewardType, keywords []string, user string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -191,12 +191,12 @@ func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 		filter["publisher"] = _id
 	}
 
-	count, err = model.Collection.CountDocuments(ctx, filter)
+	count, err = m.Collection.CountDocuments(ctx, filter)
 	if err != nil {
 		return
 	}
 
-	cursor, err := model.Collection.Find(ctx, filter, options.Find().SetSort(bson.M{sort: -1}).SetSkip(skip).SetLimit(limit))
+	cursor, err := m.Collection.Find(ctx, filter, options.Find().SetSort(bson.M{sort: -1}).SetSkip(skip).SetLimit(limit))
 	if err != nil {
 		return
 	}
@@ -212,4 +212,18 @@ func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 	}
 
 	return
+}
+
+func (m *TaskModel) RemoveTask(taskID primitive.ObjectID) error {
+	ctx, over := GetCtx()
+	defer over()
+
+	res, err := m.Collection.DeleteOne(ctx, bson.M{"_id": taskID})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return ErrNotExist
+	}
+	return nil
 }
