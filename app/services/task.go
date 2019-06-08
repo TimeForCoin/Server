@@ -1,23 +1,22 @@
 package services
 
 import (
-	"github.com/kataras/iris"
-	"sort"
-	"strings"
-
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
+	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"sort"
+	"strings"
 )
 
 // TaskService 用户逻辑
 type TaskService interface {
 	AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool)
-	SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema)
+	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema)
 	// SetTaskFile(taskID primitive.ObjectID, files []primitive.ObjectID)
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
 	GetTasks(page, size int64, sortRule, taskType,
-		status , reward , user , keyword, userID string) (taskCount int64, tasks []TaskDetail)
+		status , reward , keyword, user, userID string) (taskCount int64, tasks []TaskDetail)
 }
 
 // NewUserService 初始化
@@ -66,8 +65,36 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-func (s *taskService) SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema) {
-	err := s.model.SetTaskInfoByID(taskID, info)
+func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema) {
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+
+	libs.Assert(task.Status == models.TaskStatusDraft ||
+		task.Status == models.TaskStatusWait, "not_allow_edit", 403)
+
+	libs.Assert(string(info.Status) == "" ||
+		info.Status == models.TaskStatusWait  ||
+		info.Status == models.TaskStatusClose ||
+		info.Status == models.TaskStatusFinish, "not_allow_status", 403)
+	if info.Status == models.TaskStatusWait {
+		libs.Assert(task.Status == models.TaskStatusDraft, "not_allow_status", 403)
+	} else if info.Status == models.TaskStatusClose || info.Status == models.TaskStatusFinish {
+		libs.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
+	}
+
+	libs.Assert(info.MaxPlayer == 0 || info.MaxPlayer > task.PlayerCount, "not_allow_max_player", 403)
+
+	if task.Status != models.TaskStatusDraft && task.Reward != models.RewardObject {
+		libs.Assert(info.RewardValue > task.RewardValue, "not_allow_reward_value", 403)
+	}
+
+	//libs.Assert(task.Status == models.TaskStatusDraft ||
+	//	task.Status == models.TaskStatusWait ||
+	//	task.Status == models.TaskStatusRun, "not_allow_edit", 403)
+
+
+	err = s.model.SetTaskInfoByID(taskID, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
@@ -111,8 +138,8 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 }
 
 // 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
-func (s *taskService) GetTasks(page, size int64, sortRule , taskType ,
-	status , reward , user , keyword, userID string) (taskCount int64, taskCards []TaskDetail) {
+func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
+	status , reward , keyword, user, userID string) (taskCount int64, taskCards []TaskDetail) {
 
 	var taskTypes []models.TaskType
 	split := strings.Split(taskType, ",")
@@ -130,7 +157,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule , taskType ,
 	sort.Strings(split)
 	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
 		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusFinish,
-			models.TaskStatusOverdue, models.TaskStatusRun, models.TaskStatusWait}
+			models.TaskStatusWait}
 	} else {
 		for _, str := range split {
 			statuses = append(statuses, models.TaskStatus(str))
@@ -154,35 +181,9 @@ func (s *taskService) GetTasks(page, size int64, sortRule , taskType ,
 		sortRule = "publish_date"
 	}
 
-	tasks, taskCount , err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords, (page - 1) * size, size)
+	tasks, taskCount, err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords, user, (page - 1) * size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
-	// 筛选用户类型
-	//for _, task := range tasks {
-	//	userSchema, err := s.userModel.GetUserByID(id)
-	//	libs.Assert(err != nil, err.Error(), 500)
-	//	if user == "certification" &&
-	//		userSchema.Certification.Identity != models.IdentityNone || // 筛选已认证用户
-	//		user == "credit" || // TODO 筛选高信誉用户
-	//		user == "all" ||
-	//		user == "" { // 筛选所有用户
-	//
-	//		taskCard := models.TaskCard{
-	//			ID:           task.ID.String(),
-	//			Publisher:    task.Publisher.String(),
-	//			Avatar:       userSchema.Info.Avatar,
-	//			Credit:       userSchema.Data.Credit,
-	//			Title:        task.Title,
-	//			TopTime:      task.TopTime,
-	//			EndDate:      task.EndDate,
-	//			Reward:       string(task.Reward),
-	//			RewardValue:  task.RewardValue,
-	//			RewardObject: string(task.RewardObject),
-	//		}
-	//
-	//		taskCards = append(taskCards, taskCard)
-	//	}
-	//}
 	for i, t := range tasks {
 		var task TaskDetail
 		task.TaskSchema = &tasks[i]
@@ -208,6 +209,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule , taskType ,
 				task.Collected = s.cache.IsCollectTask(id, t.ID)
 			}
 		}
+
 		taskCards = append(taskCards, task)
 	}
 

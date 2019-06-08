@@ -67,20 +67,20 @@ POST http://127.0.0.1:30233/tasks
 Content-Type: application/json
 
 {
-  "title": "吃饭",
-  "content": "到底什么时候吃饭啊",
+  "title": "睡觉",
+  "content": "到底什么时候睡觉啊",
   "type": "run",
   "reward": "object",
-  "reward_object": "饭",
+  "reward_object": "觉",
   "location": [
-    "二饭"
+    "床上"
   ],
   "tags": [
-    "吃饭"
+    "睡觉"
   ],
-  "start_date": 1571797723,
-  "end_date": 1579797723,
-  "max_player": 10,
+  "start_date": 1579797713,
+  "end_date": 1579797724,
+  "max_player": 2,
   "auto_accept": true,
   "publish": true
 }
@@ -90,4 +90,13 @@ GET http://127.0.0.1:30233/tasks?page=1&size=10
 // Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
-GET http://127.0.0.1:30233/tasks/5cf92124fab3ed88a669eb3b
+GET http://127.0.0.1:30233/tasks/5cfb3596b95a4e4399ec732b
+
+### 修改任务信息
+
+PUT http://127.0.0.1:30233/tasks/5cfb3596b95a4e4399ec732b
+Content-Type: application/json
+
+{
+  "status": ""
+}

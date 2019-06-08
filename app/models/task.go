@@ -41,10 +41,8 @@ const (
 const (
 	TaskStatusDraft   TaskStatus = "draft"   // 草稿
 	TaskStatusWait    TaskStatus = "wait"    // 等待接受
-	TaskStatusRun     TaskStatus = "run"     // 执行中（人数已满）
 	TaskStatusClose   TaskStatus = "close"   // 已关闭
 	TaskStatusFinish  TaskStatus = "finish"  // 已完成
-	TaskStatusOverdue TaskStatus = "overdue" // 已过期
 )
 
 // TaskSchema Task 基本数据结构
@@ -159,9 +157,11 @@ func (model *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err
 
 // 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
 func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
-	statuses []TaskStatus, rewards []RewardType, keywords []string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
+	statuses []TaskStatus, rewards []RewardType, keywords []string, user string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
+
+
 
 	var keywordsRegex string
 	for i, str := range keywords {
@@ -180,6 +180,16 @@ func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 		"reward":  bson.M{"$in": rewards}}
 		//"title":   bson.M{"$regex": keywordsRegex},
 		//"content": bson.M{"$regex": keywordsRegex}}
+
+	// 筛选发布者
+	if user != "" {
+		var _id primitive.ObjectID
+		_id, err = primitive.ObjectIDFromHex(user)
+		if err != nil {
+			return
+		}
+		filter["publisher"] = _id
+	}
 
 	count, err = model.Collection.CountDocuments(ctx, filter)
 	if err != nil {

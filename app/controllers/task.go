@@ -98,26 +98,20 @@ func (c *TaskController) GetBy(id string) int {
 	return iris.StatusOK
 }
 
-func (c *TaskController) PatchBy(id string) int {
-	_ = c.checkLogin()
+func (c *TaskController) PutBy(id string) int {
+	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 
 	req := AddTaskReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
-	taskReward := models.RewardType(req.Reward)
-	// TODO 检验用户权限
-
-	// TODO 检查时间
 
 	libs.AssertErr(err, "invalid_value", 400)
-	taskInfo := models.TaskSchema{
+	taskInfo := models.TaskSchema {
 		Title:        req.Title,
 		Content:      req.Content,
 		Location:     req.Location,
 		Tags:         req.Tags,
-		Reward:       taskReward,
 		RewardValue:  req.RewardValue,
 		RewardObject: req.RewardObject,
 		StartDate:    req.StartDate,
@@ -125,7 +119,7 @@ func (c *TaskController) PatchBy(id string) int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Server.SetTaskInfo(taskID, taskInfo)
+	c.Server.SetTaskInfo(userID, taskID, taskInfo)
 	return iris.StatusOK
 }
 
@@ -163,11 +157,22 @@ func (c *TaskController) Get() int {
 	taskType := c.Ctx.URLParamDefault("type", "all")
 	status := c.Ctx.URLParamDefault("status", "wait,run")
 	reward := c.Ctx.URLParamDefault("reward", "all")
-	userFilter := c.Ctx.URLParamDefault("user", "all")
 	keyword := c.Ctx.URLParamDefault("keyword", "")
+	user := c.Ctx.URLParamDefault("user", "")
+
+	if user == "me" {
+		// 自己的任务
+		id := c.checkLogin()
+		user = id.Hex()
+	} else if user != "" {
+		// 筛选用户
+		_, err := primitive.ObjectIDFromHex(user)
+		libs.AssertErr(err, "invalid_user", 403)
+	}
 
 	taskCount, tasksData := c.Server.GetTasks(page, size, sort,
-		taskType, status, reward, userFilter, keyword, c.Session.GetString("id"))
+		taskType, status, reward, keyword, user, c.Session.GetString("id"))
+
 
 	if tasksData == nil {
 		tasksData = []services.TaskDetail{}
