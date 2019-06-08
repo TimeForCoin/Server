@@ -8,6 +8,14 @@ import (
 func TestFileModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 	t.Run("testAddFile", testAddFile)
+
+	ctx, finish := GetCtx()
+	defer finish()
+	err := model.File.Collection.Drop(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 

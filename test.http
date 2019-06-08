@@ -9,8 +9,8 @@ GET http://127.0.0.1:30233/session/violet?code=8f48c80107e95a232629c7301f3ac3300
 https://coin.zhenly.cn/api/session/status
 
 ### 获取用户信息
-// GET http://127.0.0.1:30233/users/info/me
-GET https://coin.zhenly.cn/api/users/info/me
+GET http://127.0.0.1:30233/users/info/me
+//GET https://coin.zhenly.cn/api/users/info/me
 
 
 ### 获取用户信息
@@ -82,7 +82,7 @@ Content-Type: application/json
   "end_date": 1579797724,
   "max_player": 2,
   "auto_accept": true,
-  "publish": true
+  "publish": false
 }
 
 ### 获取任务列表
@@ -90,13 +90,26 @@ GET http://127.0.0.1:30233/tasks?page=1&size=10
 // Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
-GET http://127.0.0.1:30233/tasks/5cfb3596b95a4e4399ec732b
+GET http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
 
 ### 修改任务信息
 
-PUT http://127.0.0.1:30233/tasks/5cfb3596b95a4e4399ec732b
+PUT http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
 Content-Type: application/json
 
 {
-  "status": ""
+  "tags": ["起床", "睡觉"]
 }
+
+### 删除任务
+DELETE http://127.0.0.1:30233/tasks/5cfbcb2836ef7fc31418d916
+
+### 添加阅读量
+POST http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/view
+
+### 任务点赞
+POST http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
+
+### 取消点赞
+DELETE http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
+

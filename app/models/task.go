@@ -32,31 +32,31 @@ const (
 
 // RewardType 酬劳类型
 const (
-	RewardMoney    RewardType = "money"    // 闲钱币酬劳
-	RewardRMB      RewardType = "rmb"      // 人民币酬劳
+	RewardMoney  RewardType = "money"  // 闲钱币酬劳
+	RewardRMB    RewardType = "rmb"    // 人民币酬劳
 	RewardObject RewardType = "object" // 实物酬劳
 )
 
 // TaskStatus 任务状态
 const (
-	TaskStatusDraft   TaskStatus = "draft"   // 草稿
-	TaskStatusWait    TaskStatus = "wait"    // 等待接受
-	TaskStatusClose   TaskStatus = "close"   // 已关闭
-	TaskStatusFinish  TaskStatus = "finish"  // 已完成
+	TaskStatusDraft  TaskStatus = "draft"  // 草稿
+	TaskStatusWait   TaskStatus = "wait"   // 等待接受
+	TaskStatusClose  TaskStatus = "close"  // 已关闭
+	TaskStatusFinish TaskStatus = "finish" // 已完成
 )
 
 // TaskSchema Task 基本数据结构
 type TaskSchema struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"` // 任务ID
-	Publisher primitive.ObjectID `bson:"publisher"`     // 任务发布者 [索引]
+	Publisher primitive.ObjectID `bson:"publisher"`               // 任务发布者 [索引]
 
-	Title      string               `bson:"title"`      // 任务名称
-	Type       TaskType             `bson:"type"`       // 任务类型
-	Content    string               `bson:"content"`    // 任务内容
-	Status     TaskStatus           `bson:"status"`     // 任务状态
-	Location   []string             `bson:"location"`   // 任务地点 (非问卷类任务)
-	Tags       []string             `bson:"tags"`       // 标签 (作为关键词，改进搜索体验)
-	TopTime    int64                `bson:"top_time"`   // 置顶时间(默认为0)，如果当前时间小于置顶时间，即将任务置顶
+	Title    string     `bson:"title"`    // 任务名称
+	Type     TaskType   `bson:"type"`     // 任务类型
+	Content  string     `bson:"content"`  // 任务内容
+	Status   TaskStatus `bson:"status"`   // 任务状态
+	Location []string   `bson:"location"` // 任务地点 (非问卷类任务)
+	Tags     []string   `bson:"tags"`     // 标签 (作为关键词，改进搜索体验)
+	TopTime  int64      `bson:"top_time"` // 置顶时间(默认为0)，如果当前时间小于置顶时间，即将任务置顶
 
 	Reward       RewardType `bson:"reward"`        // 酬劳类型
 	RewardValue  float32    `bson:"reward_value"`  // 酬劳数值
@@ -70,10 +70,10 @@ type TaskSchema struct {
 	MaxPlayer   int64 `bson:"max_player"`   // 参与用户上限, -1为无限制
 	AutoAccept  bool  `bson:"auto_accept"`  // 自动同意领取任务
 
-	ViewCount    int64                `bson:"view_count"`    // 任务浏览数
-	CollectCount int64                `bson:"collect_count"` // 收藏数
-	CommentCount int64                `bson:"comment_count"` // 评论数(冗余)
-	LikeCount    int64                `bson:"like_count"`    // 点赞数(冗余)
+	ViewCount    int64 `bson:"view_count"`    // 任务浏览数
+	CollectCount int64 `bson:"collect_count"` // 收藏数
+	CommentCount int64 `bson:"comment_count"` // 评论数(冗余)
+	LikeCount    int64 `bson:"like_count"`    // 点赞数(冗余)
 
 	// 由[浏览量、评论数、收藏数、参与人数、时间、置顶、酬劳、发布者粉丝、信用]等数据加权计算，10分钟更新一次，用于排序
 	Hot int64 `bson:"hot"` // 任务热度
@@ -85,7 +85,7 @@ func (m *TaskModel) AddTask(publisherID primitive.ObjectID, status TaskStatus) (
 	res, err := m.Collection.InsertOne(ctx, &TaskSchema{
 		Publisher:   publisherID,
 		PublishDate: time.Now().Unix(),
-		Status: status,
+		Status:      status,
 	})
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -161,8 +161,6 @@ func (m *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 	ctx, over := GetCtx()
 	defer over()
 
-
-
 	var keywordsRegex string
 	for i, str := range keywords {
 		keywordsRegex += "(" + str + ")"
@@ -174,12 +172,12 @@ func (m *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 	// TODO 关键词筛选
 	// 按类型、状态、酬劳类型、关键词筛选
 	filter := bson.M{
-		"type":    bson.M{"$in": taskTypes},
-		"status":  bson.M{"$in": statuses},
+		"type":   bson.M{"$in": taskTypes},
+		"status": bson.M{"$in": statuses},
 		//"tags":    bson.M{"$in": keywords},
-		"reward":  bson.M{"$in": rewards}}
-		//"title":   bson.M{"$regex": keywordsRegex},
-		//"content": bson.M{"$regex": keywordsRegex}}
+		"reward": bson.M{"$in": rewards}}
+	//"title":   bson.M{"$regex": keywordsRegex},
+	//"content": bson.M{"$regex": keywordsRegex}}
 
 	// 筛选发布者
 	if user != "" {
@@ -225,5 +223,27 @@ func (m *TaskModel) RemoveTask(taskID primitive.ObjectID) error {
 	if res.DeletedCount == 0 {
 		return ErrNotExist
 	}
+	return nil
+}
+
+type TaskCountType string
+
+const (
+	ViewCount    TaskCountType = "view_count"    // 任务浏览数
+	CollectCount TaskCountType = "collect_count" // 收藏数
+	CommentCount TaskCountType = "comment_count" // 评论数(冗余)
+	LikeCount    TaskCountType = "like_count"    // 点赞数(冗余)
+)
+
+func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name TaskCountType, count int) error {
+	ctx, over := GetCtx()
+	defer over()
+	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": taskID}, bson.M{"$inc": bson.M{string(name): count}})
+	if err != nil {
+		return  err
+	} else if res.ModifiedCount == 0 {
+		return ErrNotExist
+	}
+
 	return nil
 }

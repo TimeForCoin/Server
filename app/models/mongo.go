@@ -86,7 +86,7 @@ func initCollection() error {
 		{name: "messages", indexes: []bson.M{{"user_1": 1}, {"user_2": 1}}},
 		{name: "tasks", indexes: []bson.M{{"publisher": 1}}},
 		{name: "logs", indexes: []bson.M{{"user_id": 1}}},
-		{name: "task_status", indexes: []bson.M{{"task": 1}, {"owner": 1}}},
+		{name: "task_status", indexes: []bson.M{{"task": 1}, {"player": 1}}},
 		{name: "files", indexes: []bson.M{{"owner_id": 1}}},
 	}
 	for _, i := range DBIndexes {

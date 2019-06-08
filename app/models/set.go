@@ -52,3 +52,16 @@ func (m *SetModel) AddToSet(userID, targetID primitive.ObjectID, kind SetKind) e
 	}
 	return nil
 }
+
+func (m *SetModel) RemoveFromSet(userID, targetID primitive.ObjectID, kind SetKind) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": userID},
+		bson.M{"$pull": bson.M{string(kind): targetID}})
+	if err != nil {
+		return err
+	} else if res.ModifiedCount == 0 {
+		return errors.New("exist")
+	}
+	return nil
+}

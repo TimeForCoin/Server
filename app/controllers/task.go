@@ -203,3 +203,26 @@ func (c* TaskController) DeleteBy(id string) int {
 	c.Service.RemoveTask(userID, taskID)
 	return iris.StatusOK
 }
+
+func (c *TaskController) PostByView(id string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.AddView(taskID)
+	return iris.StatusOK
+}
+
+func (c *TaskController) PostByLike(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.ChangeLike(taskID, userID, true)
+	return iris.StatusOK
+}
+
+func (c *TaskController) DeleteByLike(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.ChangeLike(taskID, userID, false)
+	return iris.StatusOK
+}
