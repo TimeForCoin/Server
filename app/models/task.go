@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -160,7 +159,7 @@ func (model *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err
 
 // 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
 func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
-	statuses []TaskStatus, rewards []RewardType, keywords []string) (tasks []TaskSchema, err error) {
+	statuses []TaskStatus, rewards []RewardType, keywords []string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
 
@@ -172,6 +171,7 @@ func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 		}
 	}
 
+	// TODO 关键词筛选
 	// 按类型、状态、酬劳类型、关键词筛选
 	filter := bson.M{
 		"type":    bson.M{"$in": taskTypes},
@@ -181,11 +181,17 @@ func (model *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 		//"title":   bson.M{"$regex": keywordsRegex},
 		//"content": bson.M{"$regex": keywordsRegex}}
 
-	fmt.Println(filter)
+	count, err = model.Collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return
+	}
 
-	cursor, err := model.Collection.Find(ctx, filter, options.Find().SetSort(bson.M{sort: -1}))
+	cursor, err := model.Collection.Find(ctx, filter, options.Find().SetSort(bson.M{sort: -1}).SetSkip(skip).SetLimit(limit))
+	if err != nil {
+		return
+	}
+
 	defer cursor.Close(ctx)
-
 	for cursor.Next(ctx) {
 		task := TaskSchema{}
 		err = cursor.Decode(&task)

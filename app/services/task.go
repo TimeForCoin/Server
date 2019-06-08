@@ -16,8 +16,8 @@ type TaskService interface {
 	SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema)
 	// SetTaskFile(taskID primitive.ObjectID, files []primitive.ObjectID)
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
-	GetTasks(page, size int, sortRule, taskType,
-		status , reward , user , keyword, userID string) (taskCount int, tasks []TaskDetail)
+	GetTasks(page, size int64, sortRule, taskType,
+		status , reward , user , keyword, userID string) (taskCount int64, tasks []TaskDetail)
 }
 
 // NewUserService 初始化
@@ -83,6 +83,8 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 
 	images, err := s.fileModel.GetFileByContent(taskID, models.FileImage)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	task.Images = []ImagesData{}
 	for _, i := range images {
 		task.Images = append(task.Images, ImagesData{
 			ID:  i.ID.Hex(),
@@ -92,6 +94,9 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 
 	attachment, err := s.fileModel.GetFileByContent(taskID, models.FileFile)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	if attachment == nil {
+		attachment = []models.FileSchema{}
+	}
 	task.Attachment = attachment
 
 	if userID != "" {
@@ -106,8 +111,8 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 }
 
 // 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
-func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
-	status , reward , user , keyword, userID string) (totalPages int, taskCards []TaskDetail) {
+func (s *taskService) GetTasks(page, size int64, sortRule , taskType ,
+	status , reward , user , keyword, userID string) (taskCount int64, taskCards []TaskDetail) {
 
 	var taskTypes []models.TaskType
 	split := strings.Split(taskType, ",")
@@ -124,14 +129,13 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 	split = strings.Split(status, ",")
 	sort.Strings(split)
 	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
-		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusDraft, models.TaskStatusFinish,
+		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusFinish,
 			models.TaskStatusOverdue, models.TaskStatusRun, models.TaskStatusWait}
 	} else {
 		for _, str := range split {
 			statuses = append(statuses, models.TaskStatus(str))
 		}
 	}
-	draft := sort.SearchStrings(split, string(models.TaskStatusDraft)) != -1
 
 	var rewards []models.RewardType
 	split = strings.Split(reward, ",")
@@ -150,19 +154,8 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 		sortRule = "publish_date"
 	}
 
-	tasks, err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords)
+	tasks, taskCount , err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords, (page - 1) * size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
-
-	// 过滤掉非当前用户的草稿
-	var tmp []models.TaskSchema
-	if draft {
-		for _, task := range tasks {
-			if task.Status != models.TaskStatusDraft {
-				tmp = append(tmp, task)
-			}
-		}
-	}
-	tasks = tmp
 
 	// 筛选用户类型
 	//for _, task := range tasks {
@@ -190,9 +183,9 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 	//		taskCards = append(taskCards, taskCard)
 	//	}
 	//}
-	for _, t := range tasks {
+	for i, t := range tasks {
 		var task TaskDetail
-		task.TaskSchema = &t
+		task.TaskSchema = &tasks[i]
 
 		user, err := s.cache.GetUserBaseInfo(t.Publisher)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
@@ -200,6 +193,8 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 
 		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Images = []ImagesData{}
+		task.Attachment = []models.FileSchema{}
 		for _, i := range images {
 			task.Images = append(task.Images, ImagesData{
 				ID:  i.ID.Hex(),
@@ -215,18 +210,6 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 		}
 		taskCards = append(taskCards, task)
 	}
-
-	// TODO 待修复
-	totalPages = len(taskCards)
-
-	// 选择第几页
-	var upper int
-	if len(tasks) < page*size {
-		upper = len(tasks)
-	} else {
-		upper = page * size
-	}
-	tasks = tasks[(page-1)*size : upper]
 
 	return
 }

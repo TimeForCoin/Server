@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
@@ -89,6 +88,7 @@ func (c *TaskController) Post() int {
 	c.Server.AddTask(id, taskInfo, req.Publish)
 	return iris.StatusOK
 }
+
 func (c *TaskController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
@@ -141,9 +141,9 @@ type GetTasksReq struct {
 }
 
 type PaginationRes struct {
-	Page  int
-	Size  int
-	Total int
+	Page  int64
+	Size  int64
+	Total int64
 }
 
 type TasksListRes struct {
@@ -152,12 +152,11 @@ type TasksListRes struct {
 }
 
 func (c *TaskController) Get() int {
-
 	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.Atoi(pageStr)
+	page, err := strconv.ParseInt(pageStr, 10 ,64)
 	libs.AssertErr(err, "invalid_page", 400)
 	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.Atoi(sizeStr)
+	size, err := strconv.ParseInt(sizeStr, 10 ,64)
 	libs.AssertErr(err, "invalid_size", 400)
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
@@ -167,11 +166,12 @@ func (c *TaskController) Get() int {
 	userFilter := c.Ctx.URLParamDefault("user", "all")
 	keyword := c.Ctx.URLParamDefault("keyword", "")
 
-	fmt.Println(page)
-
 	taskCount, tasksData := c.Server.GetTasks(page, size, sort,
 		taskType, status, reward, userFilter, keyword, c.Session.GetString("id"))
 
+	if tasksData == nil {
+		tasksData = []services.TaskDetail{}
+	}
 
 	res := TasksListRes{
 		Pagination: PaginationRes{
