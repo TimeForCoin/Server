@@ -16,7 +16,7 @@ import (
 // UserController 用户控制
 type UserController struct {
 	BaseController
-	Server services.UserService
+	Service services.UserService
 }
 
 // BindUserController 绑定用户控制器
@@ -78,7 +78,7 @@ func (c *UserController) GetInfoBy(userID string) int {
 		id, err = primitive.ObjectIDFromHex(userID)
 		libs.AssertErr(err, "invalid_session", 401)
 	}
-	user := c.Server.GetUser(id)
+	user := c.Service.GetUser(id)
 	res := GetInfoByIDRes{
 		ID:           user.ID.Hex(),
 		VioletName:   user.VioletName,
@@ -114,7 +114,7 @@ func (c *UserController) GetInfoBy(userID string) int {
 // PostAttend 用户签到
 func (c *UserController) PostAttend() int {
 	id := c.checkLogin()
-	c.Server.UserAttend(id)
+	c.Service.UserAttend(id)
 	return iris.StatusOK
 }
 
@@ -160,7 +160,7 @@ func (c *UserController) PutInfo() int {
 	}
 	libs.Assert(count != 0, "invalid_value", 400)
 
-	c.Server.SetUserInfo(id, *req.UserInfoSchema)
+	c.Service.SetUserInfo(id, *req.UserInfoSchema)
 
 	if c.Session.GetString("status") == "wechat_new" {
 		c.Session.Set("status", "wechat")
@@ -195,6 +195,6 @@ func (c *UserController) PutTypeByID(userID string) int {
 	libs.Assert(libs.IsID(req.ID), "invalid_id", 400)
 	libs.Assert(libs.IsUserType(req.Type) , "invalid_type", 400)
 	libs.Assert(req.Type != string(models.UserTypeRoot), "not_allow_type", 403)
-	c.Server.SetUserType(id, opID, models.UserType(req.Type))
+	c.Service.SetUserType(id, opID, models.UserType(req.Type))
 	return iris.StatusOK
 }

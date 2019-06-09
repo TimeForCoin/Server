@@ -15,6 +15,8 @@ type PlayerStatus string
 
 // PlayerStatus 参与用户状态
 const (
+	PlayerWait    PlayerStatus = "wait"    // 等待同意加入
+	PlayerRefuse  PlayerStatus = "refuse"  // 拒绝加入
 	PlayerClose   PlayerStatus = "close"   // 发布者关闭任务
 	PlayerRunning PlayerStatus = "running" // 用户进行中
 	PlayerFinish  PlayerStatus = "finish"  // 用户已完成
@@ -27,10 +29,9 @@ const (
 type TaskStatusSchema struct {
 	ID     primitive.ObjectID `bson:"_id,omitempty"` // 任务状态ID
 	Task   primitive.ObjectID `bson:"task"`          // 任务 ID [索引]
-	Owner  primitive.ObjectID `bson:"owner"`         // 用户 ID [索引]
+	Player  primitive.ObjectID `bson:"player"`         // 用户 ID [索引]
 	Status PlayerStatus       // 状态
 	Note   string             // 申请备注
-	Accept bool               // 是否同意加入
 	// 完成后的评价
 	Degree int    // 完成度
 	Remark string // 评语

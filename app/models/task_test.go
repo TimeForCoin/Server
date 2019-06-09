@@ -9,6 +9,14 @@ import (
 func TestTaskModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 	t.Run("testTask", testTaskModelAll)
+
+	ctx, finish := GetCtx()
+	defer finish()
+	err := model.Task.Collection.Drop(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 
@@ -44,4 +52,12 @@ func testTaskModelAll(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(task)
+
+	err = model.Task.RemoveTask(tid)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("")
+
+
 }

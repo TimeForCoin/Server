@@ -5,6 +5,14 @@ import "testing"
 func TestSystemModel(t *testing.T) {
 	t.Run("InitDB", testInitDB)
 	t.Run("testExistAutoEmail", testExistAutoEmail)
+
+	ctx, finish := GetCtx()
+	defer finish()
+	err := model.System.Collection.Drop(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
 	t.Run("DisconnectDB", testDisconnectDB)
 }
 

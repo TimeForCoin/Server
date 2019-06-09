@@ -9,8 +9,8 @@ GET http://127.0.0.1:30233/session/violet?code=8f48c80107e95a232629c7301f3ac3300
 https://coin.zhenly.cn/api/session/status
 
 ### 获取用户信息
-// GET http://127.0.0.1:30233/users/info/me
-GET https://coin.zhenly.cn/api/users/info/me
+GET http://127.0.0.1:30233/users/info/me
+//GET https://coin.zhenly.cn/api/users/info/me
 
 
 ### 获取用户信息
@@ -24,9 +24,7 @@ PUT http://127.0.0.1:30233/users/info
 Content-Type: application/json
 
 {
-  "nickname": "WeChat",
-  "email": "a@zhenly.cn",
-  "school": "SYSU",
+  "nickname": "BBShow🐷"
 }
 
 ### 修改用户类型
@@ -40,11 +38,11 @@ Content-Type: application/json
 
 ### 微信登陆
 // POST http://127.0.0.1:30233/session/wechat
-POST  https://coin.zhenly.cn/api/session/wechat
+POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "023I5XwV1YuxXY0W6azV1dBTwV1I5Xwm"
+  "code": "043EMBGb19k3Vv0Ns8Ib1OOUGb1EMBGL"
 }
 
 ### 微信二维码
@@ -69,28 +67,22 @@ POST http://127.0.0.1:30233/tasks
 Content-Type: application/json
 
 {
-  "title": "帮我洗澡",
-  "content": "过来至二634洗澡澡",
-  "attachment": [
-    "5c9ecbbba4a3f52e3195fa68"
-  ],
+  "title": "睡觉",
+  "content": "到底什么时候睡觉啊",
   "type": "run",
-  "reward": "rmb",
-  "reward_value": 100,
-  "reward_object": "一个吻",
+  "reward": "object",
+  "reward_object": "觉",
   "location": [
-    "中山大学"
+    "床上"
   ],
   "tags": [
-    "打游戏"
+    "睡觉"
   ],
-  "top_time": 1559797723,
-  "start_date": 1571797723,
-  "end_date": 1579797723,
-  "max_player": 30,
-  "max_finish": 30,
+  "start_date": 1579797713,
+  "end_date": 1579797724,
+  "max_player": 2,
   "auto_accept": true,
-  "publish": true
+  "publish": false
 }
 
 ### 获取任务列表
@@ -98,10 +90,55 @@ GET http://127.0.0.1:30233/tasks?page=1&size=10
 // Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
-GET http://127.0.0.1:30233/tasks/5cf92124fab3ed88a669eb3b
+GET http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
 
+### 修改任务信息
 
+PUT http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
+Content-Type: application/json
 
+{
+  "tags": ["起床", "睡觉"]
+}
 
+### 删除任务
+DELETE http://127.0.0.1:30233/tasks/5cfbcb2836ef7fc31418d916
 
+### 添加阅读量
+POST http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/view
 
+### 任务点赞
+POST http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
+
+### 取消点赞
+DELETE http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
+
+### 获取评论列表
+GET http://127.0.0.1:30233/comments/5cfba56596a3b91b06b6dc3e
+
+### 添加评论
+POST http://127.0.0.1:30233/comments/5cfba56596a3b91b06b6dc3e
+Content-Type: application/json
+
+{
+  "type": "task",
+  "content": "这是第二条评论哦🐷"
+}
+
+### 添加回复
+POST http://127.0.0.1:30233/comments/5cfcac1d899659486b1ac02b
+Content-Type: application/json
+
+{
+  "type": "comment",
+  "content": "这是一个回复哦❤"
+}
+
+### 删除评论/回复
+DELETE http://127.0.0.1:30233/comments/5cfcac1d899659486b1ac02b
+
+### 点赞评论/回复
+POST http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
+
+### 删除点赞评论/回复
+DELETE http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like

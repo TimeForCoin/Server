@@ -45,7 +45,7 @@ func GetModel() *Model {
 
 // GetCtx 获取并发上下文(默认10秒超时)
 func GetCtx() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 10*time.Second)
+	return context.WithTimeout(context.Background(), 15*time.Second)
 }
 
 // createIndexes 检查并创建索引
@@ -86,7 +86,7 @@ func initCollection() error {
 		{name: "messages", indexes: []bson.M{{"user_1": 1}, {"user_2": 1}}},
 		{name: "tasks", indexes: []bson.M{{"publisher": 1}}},
 		{name: "logs", indexes: []bson.M{{"user_id": 1}}},
-		{name: "task_status", indexes: []bson.M{{"task": 1}, {"owner": 1}}},
+		{name: "task_status", indexes: []bson.M{{"task": 1}, {"player": 1}}},
 		{name: "files", indexes: []bson.M{{"owner_id": 1}}},
 	}
 	for _, i := range DBIndexes {

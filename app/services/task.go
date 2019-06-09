@@ -1,23 +1,25 @@
 package services
 
 import (
-	"github.com/kataras/iris"
-	"sort"
 	"strings"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
+	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // TaskService 用户逻辑
 type TaskService interface {
 	AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool)
-	SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema)
+	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema)
 	// SetTaskFile(taskID primitive.ObjectID, files []primitive.ObjectID)
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
-	GetTasks(page, size int, sortRule, taskType,
-		status , reward , user , keyword, userID string) (taskCount int, tasks []TaskDetail)
+	GetTasks(page, size int64, sortRule, taskType,
+		status, reward, keyword, user, userID string) (taskCount int64, tasks []TaskDetail)
+	RemoveTask(userID, taskID primitive.ObjectID)
+	AddView(taskID primitive.ObjectID)
+	ChangeLike(taskID, userID primitive.ObjectID, like bool)
 }
 
 // NewUserService 初始化
@@ -27,15 +29,27 @@ func newTaskService() TaskService {
 		userModel: models.GetModel().User,
 		fileModel: models.GetModel().File,
 		cache:     models.GetRedis().Cache,
+		set:       models.GetModel().Set,
 	}
 }
 
+type taskService struct {
+	model     *models.TaskModel
+	userModel *models.UserModel
+	fileModel *models.FileModel
+	cache     *models.CacheModel
+	set       *models.SetModel
+}
+
+// ImagesData 图片数据
 type ImagesData struct {
 	ID  string `json:"id"`
 	URL string `json:"url"`
 }
 
 type omit *struct{}
+
+// TaskDetail 任务数据
 type TaskDetail struct {
 	*models.TaskSchema
 	// 额外项
@@ -46,13 +60,6 @@ type TaskDetail struct {
 	Collected  bool
 	// 排除项
 	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
-}
-
-type taskService struct {
-	model     *models.TaskModel
-	userModel *models.UserModel
-	fileModel *models.FileModel
-	cache     *models.CacheModel
 }
 
 func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool) {
@@ -66,8 +73,35 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-func (s *taskService) SetTaskInfo(taskID primitive.ObjectID, info models.TaskSchema) {
-	err := s.model.SetTaskInfoByID(taskID, info)
+func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema) {
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+
+	libs.Assert(task.Status == models.TaskStatusDraft ||
+		task.Status == models.TaskStatusWait, "not_allow_edit", 403)
+
+	libs.Assert(string(info.Status) == "" ||
+		info.Status == models.TaskStatusWait ||
+		info.Status == models.TaskStatusClose ||
+		info.Status == models.TaskStatusFinish, "not_allow_status", 403)
+	if info.Status == models.TaskStatusWait {
+		libs.Assert(task.Status == models.TaskStatusDraft, "not_allow_status", 403)
+	} else if info.Status == models.TaskStatusClose || info.Status == models.TaskStatusFinish {
+		libs.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
+	}
+
+	libs.Assert(info.MaxPlayer == 0 || info.MaxPlayer > task.PlayerCount, "not_allow_max_player", 403)
+
+	if task.Status != models.TaskStatusDraft && task.Reward != models.RewardObject {
+		libs.Assert(info.RewardValue > task.RewardValue, "not_allow_reward_value", 403)
+	}
+
+	//libs.Assert(task.Status == models.TaskStatusDraft ||
+	//	task.Status == models.TaskStatusWait ||
+	//	task.Status == models.TaskStatusRun, "not_allow_edit", 403)
+
+	err = s.model.SetTaskInfoByID(taskID, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
@@ -83,6 +117,8 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 
 	images, err := s.fileModel.GetFileByContent(taskID, models.FileImage)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	task.Images = []ImagesData{}
 	for _, i := range images {
 		task.Images = append(task.Images, ImagesData{
 			ID:  i.ID.Hex(),
@@ -92,11 +128,14 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 
 	attachment, err := s.fileModel.GetFileByContent(taskID, models.FileFile)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	if attachment == nil {
+		attachment = []models.FileSchema{}
+	}
 	task.Attachment = attachment
 
 	if userID != "" {
 		id, err := primitive.ObjectIDFromHex(userID)
-		if err != nil {
+		if err == nil {
 			task.Liked = s.cache.IsLikeTask(id, task.ID)
 			task.Collected = s.cache.IsCollectTask(id, task.ID)
 		}
@@ -106,40 +145,39 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 }
 
 // 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
-func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
-	status , reward , user , keyword, userID string) (totalPages int, taskCards []TaskDetail) {
+func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
+	status, reward, keyword, user, userID string) (taskCount int64, taskCards []TaskDetail) {
 
 	var taskTypes []models.TaskType
-	split := strings.Split(taskType, ",")
-	sort.Strings(split)
-	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
-		taskTypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
-	} else {
-		for _, str := range split {
-			taskTypes = append(taskTypes, models.TaskType(str))
-		}
-	}
-
 	var statuses []models.TaskStatus
-	split = strings.Split(status, ",")
-	sort.Strings(split)
-	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
-		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusDraft, models.TaskStatusFinish,
-			models.TaskStatusOverdue, models.TaskStatusRun, models.TaskStatusWait}
-	} else {
-		for _, str := range split {
-			statuses = append(statuses, models.TaskStatus(str))
-		}
-	}
-	draft := sort.SearchStrings(split, string(models.TaskStatusDraft)) != -1
-
 	var rewards []models.RewardType
-	split = strings.Split(reward, ",")
-	sort.Strings(split)
-	if sort.SearchStrings(split, "all") != -1 || sortRule == "user" {
+	if sortRule == "user" {
+		taskTypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
+		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusFinish, models.TaskStatusWait}
 		rewards = []models.RewardType{models.RewardMoney, models.RewardObject, models.RewardRMB}
 	} else {
+		split := strings.Split(taskType, ",")
 		for _, str := range split {
+			if str == "all" {
+				taskTypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
+				break
+			}
+			taskTypes = append(taskTypes, models.TaskType(str))
+		}
+		split = strings.Split(status, ",")
+		for _, str := range split {
+			if str == "all" {
+				statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusFinish, models.TaskStatusWait}
+				break
+			}
+			statuses = append(statuses, models.TaskStatus(str))
+		}
+		split = strings.Split(reward, ",")
+		for _, str := range split {
+			if str == "all" {
+				rewards = []models.RewardType{models.RewardMoney, models.RewardObject, models.RewardRMB}
+				break
+			}
 			rewards = append(rewards, models.RewardType(str))
 		}
 	}
@@ -150,49 +188,12 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 		sortRule = "publish_date"
 	}
 
-	tasks, err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords)
+	tasks, taskCount, err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
-	// 过滤掉非当前用户的草稿
-	var tmp []models.TaskSchema
-	if draft {
-		for _, task := range tasks {
-			if task.Status != models.TaskStatusDraft {
-				tmp = append(tmp, task)
-			}
-		}
-	}
-	tasks = tmp
-
-	// 筛选用户类型
-	//for _, task := range tasks {
-	//	userSchema, err := s.userModel.GetUserByID(id)
-	//	libs.Assert(err != nil, err.Error(), 500)
-	//	if user == "certification" &&
-	//		userSchema.Certification.Identity != models.IdentityNone || // 筛选已认证用户
-	//		user == "credit" || // TODO 筛选高信誉用户
-	//		user == "all" ||
-	//		user == "" { // 筛选所有用户
-	//
-	//		taskCard := models.TaskCard{
-	//			ID:           task.ID.String(),
-	//			Publisher:    task.Publisher.String(),
-	//			Avatar:       userSchema.Info.Avatar,
-	//			Credit:       userSchema.Data.Credit,
-	//			Title:        task.Title,
-	//			TopTime:      task.TopTime,
-	//			EndDate:      task.EndDate,
-	//			Reward:       string(task.Reward),
-	//			RewardValue:  task.RewardValue,
-	//			RewardObject: string(task.RewardObject),
-	//		}
-	//
-	//		taskCards = append(taskCards, taskCard)
-	//	}
-	//}
-	for _, t := range tasks {
+	for i, t := range tasks {
 		var task TaskDetail
-		task.TaskSchema = &t
+		task.TaskSchema = &tasks[i]
 
 		user, err := s.cache.GetUserBaseInfo(t.Publisher)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
@@ -200,6 +201,8 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 
 		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Images = []ImagesData{}
+		task.Attachment = []models.FileSchema{}
 		for _, i := range images {
 			task.Images = append(task.Images, ImagesData{
 				ID:  i.ID.Hex(),
@@ -208,25 +211,45 @@ func (s *taskService) GetTasks(page, size int, sortRule , taskType ,
 		}
 		if userID != "" {
 			id, err := primitive.ObjectIDFromHex(userID)
-			if err != nil {
+			if err == nil {
 				task.Liked = s.cache.IsLikeTask(id, t.ID)
 				task.Collected = s.cache.IsCollectTask(id, t.ID)
 			}
 		}
+
 		taskCards = append(taskCards, task)
 	}
 
-	// TODO 待修复
-	totalPages = len(taskCards)
-
-	// 选择第几页
-	var upper int
-	if len(tasks) < page*size {
-		upper = len(tasks)
-	} else {
-		upper = page * size
-	}
-	tasks = tasks[(page-1)*size : upper]
-
 	return
+}
+
+func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
+	err = s.model.RemoveTask(taskID)
+	libs.AssertErr(err, "", 500)
+}
+
+func (s *taskService) AddView(taskID primitive.ObjectID) {
+	err := s.model.InsertCount(taskID, models.ViewCount, 1)
+	libs.AssertErr(err, "faked_task", 403)
+}
+
+func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
+	_, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	if like {
+		err = s.set.AddToSet(userID, taskID, models.SetOfLikeTask)
+		libs.AssertErr(err, "exist_like", 403)
+		err = s.model.InsertCount(taskID, models.LikeCount, 1)
+	} else {
+		err = s.set.RemoveFromSet(userID, taskID, models.SetOfLikeTask)
+		libs.AssertErr(err, "faked_like", 403)
+		err = s.model.InsertCount(taskID, models.LikeCount, -1)
+	}
+	libs.AssertErr(err, "", 500)
+	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
+	libs.AssertErr(err, "", 500)
 }

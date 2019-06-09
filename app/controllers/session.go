@@ -9,7 +9,7 @@ import (
 // SessionController 用户登陆状态控制
 type SessionController struct {
 	BaseController
-	Server services.UserService
+	Service services.UserService
 }
 
 // GetSessionRes 获取登陆URL返回值
@@ -19,7 +19,7 @@ type GetSessionRes struct {
 
 // Get 获取 Violet 登陆授权 URL
 func (c *SessionController) Get() int {
-	loginURL, state := c.Server.GetLoginURL()
+	loginURL, state := c.Service.GetLoginURL()
 	c.Session.Set("state", state)
 	c.Session.Set("login", "running")
 	libs.JSON(c.Ctx, GetSessionRes{
@@ -44,7 +44,7 @@ func (c *SessionController) GetViolet() int {
 	libs.Assert(state == rightState, "状态校验失败，请重试")
 	c.Session.Delete("state")
 
-	id, _ := c.Server.LoginByViolet(code)
+	id, _ := c.Service.LoginByViolet(code)
 	libs.Assert(id != "", "登陆已过期，请重试")
 
 	c.Session.Set("id", id)
@@ -68,7 +68,7 @@ func (c *SessionController) PostWechat() int {
 	err := c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil && req.Code != "", "invalid_code", 400)
 
-	id, newUser := c.Server.LoginByWechat(req.Code)
+	id, newUser := c.Service.LoginByWechat(req.Code)
 	c.JSON(PostWechatRes{
 		New: newUser,
 	})

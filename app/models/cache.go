@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
@@ -43,12 +42,16 @@ func (c *CacheModel) IsLikeTask(userID, taskID primitive.ObjectID) bool {
 	if exist == 0 {
 		// 从数据库读取
 		set := GetModel().Set.GetSets(userID, SetOfLikeTask)
-		var setID []string
-		for _, id := range set.LikeTaskID {
-			setID = append(setID, id.Hex())
+		if len(set.LikeTaskID) > 0 {
+			var setID []string
+			for _, id := range set.LikeTaskID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
 		}
-		err = c.Redis.SAdd(setName, setID).Err()
-		fmt.Println(err)
 	}
 	val, err := c.Redis.SIsMember(setName, taskID.Hex()).Result()
 	return val
@@ -64,12 +67,16 @@ func (c *CacheModel) IsLikeComment(userID, commentID primitive.ObjectID) bool {
 	if exist == 0 {
 		// 从数据库读取
 		set := GetModel().Set.GetSets(userID, SetOfLikeComment)
-		var setID []string
-		for _, id := range set.LikeCommentID {
-			setID = append(setID, id.Hex())
+		if len(set.LikeCommentID ) > 0 {
+			var setID []string
+			for _, id := range set.LikeCommentID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
 		}
-		err = c.Redis.SAdd(setName, setID).Err()
-		fmt.Println(err)
 	}
 	val, err := c.Redis.SIsMember(setName, commentID.Hex()).Result()
 	return val
@@ -85,12 +92,16 @@ func (c *CacheModel) IsCollectTask(userID, taskID primitive.ObjectID) bool {
 	if exist == 0 {
 		// 从数据库读取
 		set := GetModel().Set.GetSets(userID, SetOfCollectTask)
-		var setID []string
-		for _, id := range set.CollectTaskID {
-			setID = append(setID, id.Hex())
+		if len(set.CollectTaskID) > 0 {
+			var setID []string
+			for _, id := range set.CollectTaskID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
 		}
-		err = c.Redis.SAdd(setName, setID).Err()
-		fmt.Println(err)
 	}
 	val, err := c.Redis.SIsMember(setName, taskID.Hex()).Result()
 	return val
