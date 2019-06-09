@@ -1,8 +1,10 @@
 package models
 
 import (
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"reflect"
 )
 
 // QuestionnaireModel 问卷数据库
@@ -113,4 +115,58 @@ type QuestionnaireSchema struct {
 	Anonymous   bool               // 匿名收集
 	Problems    []ProblemSchema    // 问卷问题
 	Data        []StatisticsSchema // 问题统计数据
+}
+
+func (model *QuestionnaireModel) AddQuestionnaire(info QuestionnaireSchema) (primitive.ObjectID, error) {
+	ctx, over := GetCtx()
+	defer over()
+	res, err := model.Collection.InsertOne(ctx, &info)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+	return res.InsertedID.(primitive.ObjectID), nil
+}
+
+func (model *QuestionnaireModel) GetQuestionnaireInfoByID(id primitive.ObjectID) (questionnaire QuestionnaireSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&questionnaire)
+	return
+}
+
+func (model *QuestionnaireModel) SetQuestionnaireInfoByID(info QuestionnaireSchema) (err error) {
+	ctx, over := GetCtx()
+	defer over()
+	updateItem := bson.M{}
+	names := reflect.TypeOf(info)
+	values := reflect.ValueOf(info)
+	for i := 0; i < names.NumField(); i++ {
+		name := names.Field(i).Tag.Get("bson")
+		if name == "title" || name == "description" {
+			updateItem[name] = values.Field(i).String()
+		} else if name == "anonymous" {
+			updateItem[name] = values.Field(i).Bool()
+		}
+	}
+	res, err := model.Collection.UpdateOne(ctx,
+		bson.M{"_id": info.TaskID},
+		bson.M{"$set": updateItem})
+	if err != nil {
+		return
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+func (model *QuestionnaireModel) GetQuestionnaireQuestionsByID(id primitive.ObjectID) (problems []ProblemSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	var questionnaire QuestionnaireSchema
+	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&questionnaire)
+	if err != nil {
+		return
+	}
+	problems = questionnaire.Problems
+	return
 }
