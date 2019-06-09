@@ -57,11 +57,22 @@ func (c *TaskController) Post() int {
 
 	libs.Assert(req.Title != "", "invalid_title", 400)
 	libs.Assert(req.Content != "", "invalid_content", 400)
-	libs.Assert(req.Title != "", "invalid_title", 400)
 
 	libs.CheckDateDuring(req.StartDate, req.EndDate)
 
 	libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
+
+	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
+	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
+
+	for _, l := range req.Location {
+		libs.Assert(len(l) < 64, "location_too_long", 403)
+	}
+
+	for _, t := range req.Tags {
+		libs.Assert(len(t) < 16, "tag_too_long", 403)
+	}
 
 	var files []primitive.ObjectID
 	req.Images = append(req.Images, req.Attachment...)
@@ -105,8 +116,20 @@ func (c *TaskController) PutBy(id string) int {
 
 	req := AddTaskReq{}
 	err = c.Ctx.ReadJSON(&req)
-
 	libs.AssertErr(err, "invalid_value", 400)
+
+	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
+	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
+
+	for _, l := range req.Location {
+		libs.Assert(len(l) < 64, "location_too_long", 403)
+	}
+
+	for _, t := range req.Tags {
+		libs.Assert(len(t) < 16, "tag_too_long", 403)
+	}
+
 	taskInfo := models.TaskSchema {
 		Title:        req.Title,
 		Content:      req.Content,

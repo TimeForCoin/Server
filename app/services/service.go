@@ -6,6 +6,7 @@ type ServiceManger struct {
 	User UserService
 	Task TaskService
 	File FileService
+	Comment CommentService
 }
 
 func GetServiceManger() *ServiceManger {
@@ -14,6 +15,7 @@ func GetServiceManger() *ServiceManger {
 			User: newUserService(),
 			Task: newTaskService(),
 			File: newFileService(),
+			Comment: newCommentService(),
 		}
 	}
 	return service

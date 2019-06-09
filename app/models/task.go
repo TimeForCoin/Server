@@ -226,21 +226,22 @@ func (m *TaskModel) RemoveTask(taskID primitive.ObjectID) error {
 	return nil
 }
 
-type TaskCountType string
+type ContentCountType string
 
 const (
-	ViewCount    TaskCountType = "view_count"    // 任务浏览数
-	CollectCount TaskCountType = "collect_count" // 收藏数
-	CommentCount TaskCountType = "comment_count" // 评论数(冗余)
-	LikeCount    TaskCountType = "like_count"    // 点赞数(冗余)
+	ViewCount    ContentCountType = "view_count"    // 任务浏览数
+	CollectCount ContentCountType = "collect_count" // 收藏数
+	CommentCount ContentCountType = "comment_count" // 评论数(冗余)
+	LikeCount    ContentCountType = "like_count"    // 点赞数(冗余)
+	ReplyCount   ContentCountType = "reply_count"   // 回复数
 )
 
-func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name TaskCountType, count int) error {
+func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name ContentCountType, count int) error {
 	ctx, over := GetCtx()
 	defer over()
 	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": taskID}, bson.M{"$inc": bson.M{string(name): count}})
 	if err != nil {
-		return  err
+		return err
 	} else if res.ModifiedCount == 0 {
 		return ErrNotExist
 	}

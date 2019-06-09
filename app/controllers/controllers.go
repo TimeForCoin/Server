@@ -30,6 +30,7 @@ func NewApp() *iris.Application {
 	BindUserController(app)
 	BindTaskController(app)
 	BindFileController(app)
+	BindCommentController(app)
 
 	return app
 }

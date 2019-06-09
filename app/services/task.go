@@ -1,11 +1,12 @@
 package services
 
 import (
+	"strings"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"strings"
 )
 
 // TaskService 用户逻辑
@@ -40,12 +41,15 @@ type taskService struct {
 	set       *models.SetModel
 }
 
+// ImagesData 图片数据
 type ImagesData struct {
 	ID  string `json:"id"`
 	URL string `json:"url"`
 }
 
 type omit *struct{}
+
+// TaskDetail 任务数据
 type TaskDetail struct {
 	*models.TaskSchema
 	// 额外项
