@@ -48,6 +48,8 @@ func (b *BaseController) checkLogin() primitive.ObjectID {
 	id := b.Session.GetString("id")
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "invalid_session", 401)
+	login := b.Session.GetString("login")
+	libs.Assert(login != "wechat_new", "invalid_session", 401)
 	return _id
 }
 

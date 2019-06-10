@@ -125,10 +125,11 @@ type UserInfoReq struct {
 
 // PatchInfo 修改用户信息
 func (c *UserController) PutInfo() int {
-	id := c.checkLogin()
+	id, err := primitive.ObjectIDFromHex(c.Session.GetString("id"))
+	libs.Assert(err == nil, "invalid_session", 401)
 	// 解析
 	req := UserInfoReq{}
-	err := c.Ctx.ReadJSON(&req)
+	err = c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(req.Email == "" || libs.IsEmail(req.Email), "invalid_email", 400)
 	libs.Assert(req.Gender == "" || libs.IsGender(string(req.Gender)), "invalid_gender", 400)

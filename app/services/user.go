@@ -117,7 +117,7 @@ func (s *userService) LoginByWechat(code string) (id string, new bool) {
 	libs.AssertErr(err, "", 403)
 	// 账号已存在，直接返回 ID
 	if u, err := s.model.GetUserByWechat(openID); err == nil {
-		return u.ID.Hex(), false
+		return u.ID.Hex(), u.Info.Nickname == ""
 	}
 	// 账号不存在，新建账号
 	userID, err := s.model.AddUserByWechat(openID)
