@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"strconv"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
@@ -38,15 +40,14 @@ func BindUserController(app *iris.Application) {
 
 // GetInfoByIDRes 获取用户信息返回值
 type GetInfoByIDRes struct {
-	ID           string `json:"id"`
-	VioletName   string `json:"violet_name,omitempty"`
-	WechatName   string `json:"wechat_name,omitempty"`
-	RegisterTime int64
-	Info         models.UserInfoSchema
-	Data         *UserDataRes
+	ID            string `json:"id"`
+	VioletName    string `json:"violet_name,omitempty"`
+	WechatName    string `json:"wechat_name,omitempty"`
+	RegisterTime  int64
+	Info          models.UserInfoSchema
+	Data          *UserDataRes
 	Certification *UserCertification
 }
-
 
 // UserDataRes 用户数据返回值
 type UserDataRes struct {
@@ -61,11 +62,11 @@ type UserDataRes struct {
 
 // UserCertification 用户认证信息
 type UserCertification struct {
-	Type models.UserIdentity
+	Type   models.UserIdentity
 	Status models.CertificationStatus
-	Email string
-	Data string
-	Date int64
+	Email  string
+	Data   string
+	Date   int64
 }
 
 // GetInfoBy 获取用户信息
@@ -89,11 +90,11 @@ func (c *UserController) GetInfoBy(userID string) int {
 			UserDataSchema: &user.Data,
 		},
 		Certification: &UserCertification{
-			Type: user.Certification.Identity,
+			Type:   user.Certification.Identity,
 			Status: user.Certification.Status,
-			Email: user.Certification.Email,
-			Data: user.Certification.Data,
-			Date: user.Certification.Date,
+			Email:  user.Certification.Email,
+			Data:   user.Certification.Data,
+			Date:   user.Certification.Date,
 		},
 	}
 	nowTime := time.Now()
@@ -136,8 +137,8 @@ func (c *UserController) PutInfo() int {
 	if req.AvatarURL != "" {
 		req.Avatar = req.AvatarURL
 	} else if req.Avatar != "" {
-		libs.Assert(strings.HasPrefix(req.Avatar,"data:image/png;base64,"), "invalid_avatar", 400)
-		url, err := libs.GetCOS().SaveBase64("avatar-" + id.Hex() + ".png", req.Avatar[len("data:image/png;base64,"):])
+		libs.Assert(strings.HasPrefix(req.Avatar, "data:image/png;base64,"), "invalid_avatar", 400)
+		url, err := libs.GetCOS().SaveBase64("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
@@ -171,7 +172,7 @@ func (c *UserController) PutInfo() int {
 
 // UserDataRes 用户数据返回值
 type UseTypeReq struct {
-	ID string `json:"id"`
+	ID   string `json:"id"`
 	Type string `json:"type"`
 }
 
@@ -193,8 +194,48 @@ func (c *UserController) PutTypeByID(userID string) int {
 
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(libs.IsID(req.ID), "invalid_id", 400)
-	libs.Assert(libs.IsUserType(req.Type) , "invalid_type", 400)
+	libs.Assert(libs.IsUserType(req.Type), "invalid_type", 400)
 	libs.Assert(req.Type != string(models.UserTypeRoot), "not_allow_type", 403)
 	c.Service.SetUserType(id, opID, models.UserType(req.Type))
+	return iris.StatusOK
+}
+
+func (c *UserController) GetCollect() int {
+	pageStr := c.Ctx.URLParamDefault("page", "1")
+	page, err := strconv.ParseInt(pageStr, 10, 64)
+	libs.AssertErr(err, "invalid_page", 400)
+	sizeStr := c.Ctx.URLParamDefault("size", "10")
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
+	libs.AssertErr(err, "invalid_size", 400)
+	userIDString := c.Ctx.URLParamDefault("user_id", "")
+	libs.Assert(userIDString != "", "string")
+	var userID primitive.ObjectID
+	if userIDString == "me" {
+		userID = c.checkLogin()
+	} else {
+		userID, err = primitive.ObjectIDFromHex(userIDString)
+		libs.AssertErr(err, "invalid_user", 403)
+	}
+
+	sort := c.Ctx.URLParamDefault("sort", "new")
+	taskType := c.Ctx.URLParamDefault("type", "all")
+	status := c.Ctx.URLParamDefault("status", "wait")
+	reward := c.Ctx.URLParamDefault("reward", "all")
+
+	taskCount, tasksData := c.Service.GetUserCollections(userID, page, size, sort,
+		taskType, status, reward)
+	if tasksData == nil {
+		tasksData = []services.TaskDetail{}
+	}
+
+	res := TasksListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: taskCount,
+		},
+		Tasks: tasksData,
+	}
+	c.JSON(res)
 	return iris.StatusOK
 }

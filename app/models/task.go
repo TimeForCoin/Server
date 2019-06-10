@@ -1,12 +1,13 @@
 package models
 
 import (
+	"reflect"
+	"time"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"reflect"
-	"time"
 )
 
 // TaskModel Task 任务 数据库
@@ -156,7 +157,7 @@ func (m *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err err
 //}
 
 // 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
-func (m *TaskModel) GetTasks(sort string, taskTypes []TaskType,
+func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskTypes []TaskType,
 	statuses []TaskStatus, rewards []RewardType, keywords []string, user string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -171,11 +172,21 @@ func (m *TaskModel) GetTasks(sort string, taskTypes []TaskType,
 
 	// TODO 关键词筛选
 	// 按类型、状态、酬劳类型、关键词筛选
-	filter := bson.M{
-		"type":   bson.M{"$in": taskTypes},
-		"status": bson.M{"$in": statuses},
-		//"tags":    bson.M{"$in": keywords},
-		"reward": bson.M{"$in": rewards}}
+	filter := bson.M{}
+	if len(taskIDs) > 0 {
+		filter = bson.M{
+			"_id":    bson.M{"$in": taskIDs},
+			"type":   bson.M{"$in": taskTypes},
+			"status": bson.M{"$in": statuses},
+			//"tags":    bson.M{"$in": keywords},
+			"reward": bson.M{"$in": rewards}}
+	} else {
+		filter = bson.M{
+			"type":   bson.M{"$in": taskTypes},
+			"status": bson.M{"$in": statuses},
+			//"tags":    bson.M{"$in": keywords},
+			"reward": bson.M{"$in": rewards}}
+	}
 	//"title":   bson.M{"$regex": keywordsRegex},
 	//"content": bson.M{"$regex": keywordsRegex}}
 
@@ -240,7 +251,7 @@ func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name TaskCountType, c
 	defer over()
 	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": taskID}, bson.M{"$inc": bson.M{string(name): count}})
 	if err != nil {
-		return  err
+		return err
 	} else if res.ModifiedCount == 0 {
 		return ErrNotExist
 	}

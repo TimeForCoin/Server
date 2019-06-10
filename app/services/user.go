@@ -1,10 +1,11 @@
 package services
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
@@ -27,34 +28,42 @@ type UserService interface {
 	CheckCertification(id primitive.ObjectID, code string) string
 	SendCertificationEmail(id primitive.ObjectID, email string)
 	AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string)
+	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
+		status string, reward string) (taskCount int64, taskCards []TaskDetail)
 }
 
 // NewUserService 初始化
 func newUserService() UserService {
 	return &userService{
-		cache: models.GetRedis().Cache,
-		model: models.GetModel().User,
-		system: models.GetModel().System,
-		oAuth: libs.GetOAuth(),
+		cache:     models.GetRedis().Cache,
+		model:     models.GetModel().User,
+		system:    models.GetModel().System,
+		oAuth:     libs.GetOAuth(),
+		taskModel: models.GetModel().Task,
+		setModel:  models.GetModel().Set,
+		fileModel: models.GetModel().File,
 	}
 }
 
 type userService struct {
-	cache *models.CacheModel
-	system *models.SystemModel
-	model *models.UserModel
-	oAuth *libs.OAuthService
+	cache     *models.CacheModel
+	system    *models.SystemModel
+	model     *models.UserModel
+	oAuth     *libs.OAuthService
+	taskModel *models.TaskModel
+	setModel  *models.SetModel
+	fileModel *models.FileModel
 }
 
 func (s *userService) GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo {
 	user, err := s.cache.GetUserBaseInfo(id)
 	if err != nil {
 		return models.UserBaseInfo{
-			ID: primitive.NewObjectID().Hex(),
-			Avatar: "",
+			ID:       primitive.NewObjectID().Hex(),
+			Avatar:   "",
 			Nickname: "匿名用户",
-			Gender: models.GenderOther,
-			Type: models.UserTypeBan,
+			Gender:   models.GenderOther,
+			Type:     models.UserTypeBan,
 		}
 	}
 	return user
@@ -81,7 +90,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		return u.ID.Hex(), false
 	}
 	// 账号不存在，创建新账号
-	userID, err := s.model.AddUserByViolet(res.UserID);
+	userID, err := s.model.AddUserByViolet(res.UserID)
 	if err != nil {
 		return "", false
 	}
@@ -201,10 +210,10 @@ func (s *userService) AddEmailCertification(identity models.UserIdentity, id pri
 	libs.Assert(s.model.CheckCertificationEmail(email), "exist_email", 403)
 	err = s.model.SetUserCertification(id, models.UserCertificationSchema{
 		Identity: identity,
-		Data: data,
-		Status: models.CertificationCheckEmail,
-		Date: time.Now().Unix(),
-		Email: email,
+		Data:     data,
+		Status:   models.CertificationCheckEmail,
+		Date:     time.Now().Unix(),
+		Email:    email,
 	})
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	s.SendCertificationEmail(id, email)
@@ -220,7 +229,7 @@ func (s *userService) SendCertificationEmail(id primitive.ObjectID, email string
 		libs.Assert(user.Certification.Email != "", "faked_email", 403)
 		email = user.Certification.Email
 	}
-	exist, _ := models.GetRedis().Cache.CheckCertification(id,"","", false)
+	exist, _ := models.GetRedis().Cache.CheckCertification(id, "", "", false)
 	libs.Assert(!exist, "limit_email", 403)
 	token := libs.GetRandomString(64)
 	code := libs.GetHash(token + "&" + email)
@@ -259,4 +268,68 @@ func (s *userService) CheckCertification(id primitive.ObjectID, code string) str
 	err = s.model.SetUserCertification(id, user.Certification)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	return "认证已通过"
+}
+
+func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
+	status string, reward string) (taskCount int64, taskCards []TaskDetail) {
+	var taskTypes []models.TaskType
+	var statuses []models.TaskStatus
+	var rewards []models.RewardType
+	var keywords []string
+	split := strings.Split(taskType, ",")
+	for _, str := range split {
+		if str == "all" {
+			taskTypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
+			break
+		}
+		taskTypes = append(taskTypes, models.TaskType(str))
+	}
+	split = strings.Split(status, ",")
+	for _, str := range split {
+		if str == "all" {
+			statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusFinish, models.TaskStatusWait}
+			break
+		}
+		statuses = append(statuses, models.TaskStatus(str))
+	}
+	split = strings.Split(reward, ",")
+	for _, str := range split {
+		if str == "all" {
+			rewards = []models.RewardType{models.RewardMoney, models.RewardObject, models.RewardRMB}
+			break
+		}
+		rewards = append(rewards, models.RewardType(str))
+	}
+
+	if sortRule == "new" {
+		sortRule = "publish_date"
+	}
+	collectionTasks := s.setModel.GetSets(id, "collect_task_id")
+	tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	for i, t := range tasks {
+		var task TaskDetail
+		task.TaskSchema = &tasks[i]
+
+		user, err := s.cache.GetUserBaseInfo(t.Publisher)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Publisher = user
+
+		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Images = []ImagesData{}
+		task.Attachment = []models.FileSchema{}
+		for _, i := range images {
+			task.Images = append(task.Images, ImagesData{
+				ID:  i.ID.Hex(),
+				URL: i.URL,
+			})
+		}
+		task.Liked = s.cache.IsLikeTask(id, t.ID)
+		task.Collected = s.cache.IsCollectTask(id, t.ID)
+
+		taskCards = append(taskCards, task)
+	}
+
+	return
 }

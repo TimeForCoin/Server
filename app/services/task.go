@@ -1,11 +1,12 @@
 package services
 
 import (
+	"strings"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"strings"
 )
 
 // TaskService 用户逻辑
@@ -19,6 +20,7 @@ type TaskService interface {
 	RemoveTask(userID, taskID primitive.ObjectID)
 	AddView(taskID primitive.ObjectID)
 	ChangeLike(taskID, userID primitive.ObjectID, like bool)
+	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
 }
 
 // NewUserService 初始化
@@ -147,6 +149,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	var taskTypes []models.TaskType
 	var statuses []models.TaskStatus
 	var rewards []models.RewardType
+	var taskIDs []primitive.ObjectID
 	if sortRule == "user" {
 		taskTypes = []models.TaskType{models.TaskTypeRunning, models.TaskTypeQuestionnaire, models.TaskTypeInfo}
 		statuses = []models.TaskStatus{models.TaskStatusClose, models.TaskStatusFinish, models.TaskStatusWait}
@@ -184,7 +187,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 		sortRule = "publish_date"
 	}
 
-	tasks, taskCount, err := s.model.GetTasks(sortRule, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
+	tasks, taskCount, err := s.model.GetTasks(sortRule, taskIDs, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
 	for i, t := range tasks {
@@ -244,6 +247,25 @@ func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 		err = s.set.RemoveFromSet(userID, taskID, models.SetOfLikeTask)
 		libs.AssertErr(err, "faked_like", 403)
 		err = s.model.InsertCount(taskID, models.LikeCount, -1)
+	}
+	libs.AssertErr(err, "", 500)
+	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
+	libs.AssertErr(err, "", 500)
+}
+
+func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collect bool) {
+	_, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	if collect {
+		err = s.set.AddToSet(userID, taskID, models.SetOfCollectTask)
+		libs.AssertErr(err, "exist_collect", 403)
+		err = s.model.InsertCount(taskID, models.CollectCount, 1)
+		err = s.userModel.AddCollectTask(userID, taskID)
+	} else {
+		err = s.set.RemoveFromSet(userID, taskID, models.SetOfCollectTask)
+		libs.AssertErr(err, "faked_collect", 403)
+		err = s.model.InsertCount(taskID, models.CollectCount, -1)
+		err = s.userModel.RemoveCollectTask(userID, taskID)
 	}
 	libs.AssertErr(err, "", 500)
 	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
