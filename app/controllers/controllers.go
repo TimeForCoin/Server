@@ -30,6 +30,8 @@ func NewApp() *iris.Application {
 	BindUserController(app)
 	BindTaskController(app)
 	BindFileController(app)
+	BindQuestionnaireController(app)
+	BindCommentController(app)
 
 	return app
 }
@@ -46,6 +48,8 @@ func (b *BaseController) checkLogin() primitive.ObjectID {
 	id := b.Session.GetString("id")
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "invalid_session", 401)
+	login := b.Session.GetString("login")
+	libs.Assert(login != "wechat_new", "invalid_session", 401)
 	return _id
 }
 
@@ -69,7 +73,7 @@ func InitSession(config libs.SessionConfig, dbConfig libs.RedisConfig) {
 		MaxIdle:     0,
 		MaxActive:   0,
 		IdleTimeout: time.Duration(5) * time.Minute,
-		Prefix:      "session"})
+		Prefix:      "session-"})
 
 	// close connection when control+C/cmd+C
 	iris.RegisterOnInterrupt(func() {
@@ -86,8 +90,6 @@ func getSession() *sessions.Sessions {
 			Cookie:  "coin-for-time",
 			Expires: time.Hour * time.Duration(15*24),
 		})
-
-		// sessionManager.UseDatabase()
 	}
 	return sessionManager
 }

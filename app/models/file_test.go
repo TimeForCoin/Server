@@ -25,14 +25,13 @@ func testAddFile(t *testing.T) {
 	if err == nil {
 		t.Error(res)
 	}
-	id, err := GetModel().File.AddFile(newID, FileForTask, FileImage,
+	err = GetModel().File.AddFile(newID, newID, FileForTask, FileImage,
 		"文件","附件","https://xx.com/a.zip", 10085,true, true)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log(id)
 
-	res, err = GetModel().File.GetFile(id)
+	res, err = GetModel().File.GetFile(newID)
 	if err != nil {
 		t.Error(err)
 	}

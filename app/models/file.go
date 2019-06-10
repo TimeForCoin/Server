@@ -44,19 +44,20 @@ type FileSchema struct {
 	Description string             // 文件描述
 	Size        int64              // 文件大小
 	Public      bool               // 公开，非公开文件需要验证权限
-	URL         string			   // 下载链接
+	URL         string             // 下载链接
 }
 
 // 添加文件
-func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileType FileType,
-	name, description, url string, size int64, public, used bool) (primitive.ObjectID, error) {
+func (m *FileModel) AddFile(fileID, ownerID primitive.ObjectID, owner OwnerType, fileType FileType,
+	name, description, url string, size int64, public, used bool) error {
 	ctx, finish := GetCtx()
 	defer finish()
 	usedNum := 0
 	if used {
 		usedNum = 1
 	}
-	res, err := m.Collection.InsertOne(ctx, &FileSchema{
+	_, err := m.Collection.InsertOne(ctx, &FileSchema{
+		ID:          fileID,
 		Time:        time.Now().Unix(),
 		OwnerID:     ownerID,
 		Owner:       owner,
@@ -70,9 +71,9 @@ func (m *FileModel) AddFile(ownerID primitive.ObjectID, owner OwnerType, fileTyp
 	})
 	fmt.Println("err", err)
 	if err != nil {
-		return primitive.NewObjectID(), err
+		return  err
 	}
-	return res.InsertedID.(primitive.ObjectID), nil
+	return nil
 }
 
 // 获取文件信息
@@ -111,14 +112,39 @@ func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType ...FileType
 }
 
 // 将文件绑定到任务中
-func (m *FileModel) BindTask(userID, taskID, fileID primitive.ObjectID) error {
+func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
 	if res, err := m.Collection.UpdateOne(ctx,
-		bson.M{"_id": fileID, "owner_id": userID},
-		bson.M{"$set": bson.M{"owner_id": taskID}}); err != nil {
+		bson.M{"_id": fileID},
+		bson.M{"$set": bson.M{"owner_id": taskID, "owner": FileForTask}, "$inc": bson.M{"used": 1}}); err != nil {
 		return err
 	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	if res, err := m.Collection.DeleteOne(ctx,
+		bson.M{"_id": fileID}); err != nil {
+		return err
+	} else if res.DeletedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+func (m *FileModel) SetFileInfo(fileID primitive.ObjectID, name, description string, public bool) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	if res, err := m.Collection.UpdateOne(ctx,
+		bson.M{"_id": fileID},
+		bson.M{"$set": bson.M{"name": name, "description": description, "public": public}}); err != nil {
+		return err
+	} else if res.ModifiedCount < 1 {
 		return ErrNotExist
 	}
 	return nil

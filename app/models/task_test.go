@@ -23,7 +23,7 @@ func TestTaskModel(t *testing.T) {
 func testTaskModelAll(t *testing.T) {
 	// 新建任务
 	uid := primitive.NewObjectID()
-	tid, err := model.Task.AddTask(uid, TaskStatusWait)
+	tid, err := model.Task.AddTask(uid, uid, TaskStatusWait)
 	if err != nil {
 		t.Error(err)
 	}
@@ -58,6 +58,4 @@ func testTaskModelAll(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("")
-
-
 }

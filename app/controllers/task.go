@@ -58,18 +58,34 @@ func (c *TaskController) Post() int {
 
 	libs.Assert(req.Title != "", "invalid_title", 400)
 	libs.Assert(req.Content != "", "invalid_content", 400)
-	libs.Assert(req.Title != "", "invalid_title", 400)
 
 	libs.CheckDateDuring(req.StartDate, req.EndDate)
 
 	libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
 
-	var files []primitive.ObjectID
-	req.Images = append(req.Images, req.Attachment...)
+	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
+	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
+
+	for _, l := range req.Location {
+		libs.Assert(len(l) < 64, "location_too_long", 403)
+	}
+
+	for _, t := range req.Tags {
+		libs.Assert(len(t) < 16, "tag_too_long", 403)
+	}
+
+	var images []primitive.ObjectID
 	for _, file := range req.Images {
 		fileID, err := primitive.ObjectIDFromHex(file)
 		libs.AssertErr(err, "invalid_file", 400)
-		files = append(files, fileID)
+		images = append(images, fileID)
+	}
+	var attachments []primitive.ObjectID
+	for _, attachment := range req.Attachment {
+		fileID, err := primitive.ObjectIDFromHex(attachment)
+		libs.AssertErr(err, "invalid_file", 400)
+		attachments = append(attachments, fileID)
 	}
 
 	taskInfo := models.TaskSchema{
@@ -86,7 +102,7 @@ func (c *TaskController) Post() int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Service.AddTask(id, taskInfo, req.Publish)
+	c.Service.AddTask(id, taskInfo, images, attachments, req.Publish)
 	return iris.StatusOK
 }
 
@@ -106,9 +122,34 @@ func (c *TaskController) PutBy(id string) int {
 
 	req := AddTaskReq{}
 	err = c.Ctx.ReadJSON(&req)
-
 	libs.AssertErr(err, "invalid_value", 400)
-	taskInfo := models.TaskSchema{
+
+	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
+	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
+
+	for _, l := range req.Location {
+		libs.Assert(len(l) < 64, "location_too_long", 403)
+	}
+
+	for _, t := range req.Tags {
+		libs.Assert(len(t) < 16, "tag_too_long", 403)
+	}
+
+	var images []primitive.ObjectID
+	for _, file := range req.Images {
+		fileID, err := primitive.ObjectIDFromHex(file)
+		libs.AssertErr(err, "invalid_file", 400)
+		images = append(images, fileID)
+	}
+	var attachments []primitive.ObjectID
+	for _, attachment := range req.Attachment {
+		fileID, err := primitive.ObjectIDFromHex(attachment)
+		libs.AssertErr(err, "invalid_file", 400)
+		attachments = append(attachments, fileID)
+	}
+
+	taskInfo := models.TaskSchema {
 		Title:        req.Title,
 		Content:      req.Content,
 		Location:     req.Location,
@@ -120,7 +161,7 @@ func (c *TaskController) PutBy(id string) int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Service.SetTaskInfo(userID, taskID, taskInfo)
+	c.Service.SetTaskInfo(userID, taskID, taskInfo, images, attachments)
 	return iris.StatusOK
 }
 

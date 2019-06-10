@@ -86,8 +86,8 @@ Content-Type: application/json
 }
 
 ### 获取任务列表
-GET http://127.0.0.1:30233/tasks?page=1&size=10
-// Get https://coin.zhenly.cn/api/tasks?page=1&size=10
+// GET http://127.0.0.1:30233/tasks?page=1&size=10
+Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
 GET http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
@@ -113,3 +113,32 @@ POST http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
 ### 取消点赞
 DELETE http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
 
+### 获取评论列表
+GET http://127.0.0.1:30233/comments/5cfba56596a3b91b06b6dc3e
+
+### 添加评论
+POST http://127.0.0.1:30233/comments/5cfba56596a3b91b06b6dc3e
+Content-Type: application/json
+
+{
+  "type": "task",
+  "content": "这是第二条评论哦🐷"
+}
+
+### 添加回复
+POST http://127.0.0.1:30233/comments/5cfcac1d899659486b1ac02b
+Content-Type: application/json
+
+{
+  "type": "comment",
+  "content": "这是一个回复哦❤"
+}
+
+### 删除评论/回复
+DELETE http://127.0.0.1:30233/comments/5cfcac1d899659486b1ac02b
+
+### 点赞评论/回复
+POST http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
+
+### 删除点赞评论/回复
+DELETE http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like

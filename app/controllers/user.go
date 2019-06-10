@@ -121,21 +121,23 @@ func (c *UserController) PostAttend() int {
 
 type UserInfoReq struct {
 	*models.UserInfoSchema
-	AvatarURL string `json:"avatarUrl"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 // PatchInfo 修改用户信息
 func (c *UserController) PutInfo() int {
-	id := c.checkLogin()
+	id, err := primitive.ObjectIDFromHex(c.Session.GetString("id"))
+	libs.Assert(err == nil, "invalid_session", 401)
 	// 解析
 	req := UserInfoReq{}
-	err := c.Ctx.ReadJSON(&req)
+	err = c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(req.Email == "" || libs.IsEmail(req.Email), "invalid_email", 400)
 	libs.Assert(req.Gender == "" || libs.IsGender(string(req.Gender)), "invalid_gender", 400)
-	// TODO 获取头像链接保存在本地存储库中
 	if req.AvatarURL != "" {
-		req.Avatar = req.AvatarURL
+		url, err := libs.GetCOS().SaveURLFile("avatar-" + id.Hex() + ".png", req.AvatarURL)
+		libs.AssertErr(err, "", 400)
+		req.Avatar = url
 	} else if req.Avatar != "" {
 		libs.Assert(strings.HasPrefix(req.Avatar, "data:image/png;base64,"), "invalid_avatar", 400)
 		url, err := libs.GetCOS().SaveBase64("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
@@ -163,8 +165,8 @@ func (c *UserController) PutInfo() int {
 
 	c.Service.SetUserInfo(id, *req.UserInfoSchema)
 
-	if c.Session.GetString("status") == "wechat_new" {
-		c.Session.Set("status", "wechat")
+	if c.Session.GetString("login") == "wechat_new" {
+		c.Session.Set("login", "wechat")
 	}
 
 	return iris.StatusOK
