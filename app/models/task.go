@@ -79,10 +79,11 @@ type TaskSchema struct {
 	Hot int64 `bson:"hot"` // 任务热度
 }
 
-func (m *TaskModel) AddTask(publisherID primitive.ObjectID, status TaskStatus) (primitive.ObjectID, error) {
+func (m *TaskModel) AddTask(taskID, publisherID primitive.ObjectID, status TaskStatus) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
 	res, err := m.Collection.InsertOne(ctx, &TaskSchema{
+		ID: taskID,
 		Publisher:   publisherID,
 		PublishDate: time.Now().Unix(),
 		Status:      status,

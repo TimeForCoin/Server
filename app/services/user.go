@@ -81,7 +81,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		return u.ID.Hex(), false
 	}
 	// 账号不存在，创建新账号
-	userID, err := s.model.AddUserByViolet(res.UserID);
+	userID, err := s.model.AddUserByViolet(res.UserID)
 	if err != nil {
 		return "", false
 	}
@@ -98,11 +98,14 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		} else if info.Gender == 2 {
 			gender = models.GenderOther
 		}
+		// 保存头像到云存储
+		url, err := libs.GetCOS().SaveURLFile("avatar-" + userID.Hex() + ".png", info.Avatar)
+		libs.AssertErr(err, "", 500)
 		_ = s.model.SetUserInfoByID(userID, models.UserInfoSchema{
 			Email:    info.Email,
 			Phone:    info.Phone,
 			Nickname: info.Nickname,
-			Avatar:   info.Avatar,
+			Avatar:   url,
 			Bio:      info.Bio,
 			Birthday: birthday,
 			Gender:   gender,

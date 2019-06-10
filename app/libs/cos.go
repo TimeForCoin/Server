@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"github.com/rs/zerolog/log"
 	"github.com/tencentyun/cos-go-sdk-v5"
+	"gopkg.in/resty.v1"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 )
@@ -38,11 +40,27 @@ func GetCOS () *COSService {
 	return cosService
 }
 
-func (s *COSService) SaveFile(name string, data []byte) (url string, err error) {
+func (s *COSService) DeleteFile(name string) error {
+	_, err := s.Client.Object.Delete(context.Background(), name)
+	return err
+}
+
+func (s *COSService) SaveFile(name string, file multipart.File) (url string, err error) {
+	_, err = s.Client.Object.Put(context.Background(), name, file, nil)
+	url = s.URL +"/"+ name
+	return
+}
+
+func (s *COSService) SaveByteFile(name string, data []byte) (url string, err error) {
 	r := bytes.NewReader(data)
 	_, err = s.Client.Object.Put(context.Background(), name, r, nil)
 	url = s.URL + "/" + name
 	return
+}
+
+func (s *COSService) SaveURLFile(name string, fileURL string) (url string, err error){
+	resp, err := resty.R().Get(fileURL)
+	return s.SaveByteFile(name, resp.Body())
 }
 
 func (s *COSService) SaveBase64(name, base string) (url string, err error) {
@@ -50,5 +68,5 @@ func (s *COSService) SaveBase64(name, base string) (url string, err error) {
 	if err != nil {
 		return "", err
 	}
-	return s.SaveFile(name, decodeBytes)
+	return s.SaveByteFile(name, decodeBytes)
 }

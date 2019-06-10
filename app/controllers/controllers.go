@@ -73,7 +73,7 @@ func InitSession(config libs.SessionConfig, dbConfig libs.RedisConfig) {
 		MaxIdle:     0,
 		MaxActive:   0,
 		IdleTimeout: time.Duration(5) * time.Minute,
-		Prefix:      "session"})
+		Prefix:      "session-"})
 
 	// close connection when control+C/cmd+C
 	iris.RegisterOnInterrupt(func() {
@@ -90,8 +90,6 @@ func getSession() *sessions.Sessions {
 			Cookie:  "coin-for-time",
 			Expires: time.Hour * time.Duration(15*24),
 		})
-
-		// sessionManager.UseDatabase()
 	}
 	return sessionManager
 }

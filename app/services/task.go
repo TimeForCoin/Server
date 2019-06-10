@@ -11,9 +11,10 @@ import (
 
 // TaskService 用户逻辑
 type TaskService interface {
-	AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool)
-	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema)
-	// SetTaskFile(taskID primitive.ObjectID, files []primitive.ObjectID)
+	AddTask(userID primitive.ObjectID, info models.TaskSchema,
+		images,attachments []primitive.ObjectID,  publish bool)
+	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
+			images, attachments []primitive.ObjectID )
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
 	GetTasks(page, size int64, sortRule, taskType,
 		status, reward, keyword, user, userID string) (taskCount int64, tasks []TaskDetail)
@@ -62,18 +63,39 @@ type TaskDetail struct {
 	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
 }
 
-func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema, publish bool) {
+func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
+		images, attachments []primitive.ObjectID,  publish bool) {
 	status := models.TaskStatusDraft
 	if publish {
 		status = models.TaskStatusWait
 	}
-	id, err := s.model.AddTask(userID, status)
+
+	taskID := primitive.NewObjectID()
+
+	var files []FileBaseInfo
+	for _, image := range images {
+		files = append(files, FileBaseInfo{
+			ID: image,
+			Type: models.FileImage,
+		})
+	}
+	for _, attachment := range attachments {
+		files = append(files, FileBaseInfo{
+			ID: attachment,
+			Type: models.FileFile,
+		})
+	}
+	GetServiceManger().File.BindFilesToTask(userID, taskID, files)
+
+	id, err := s.model.AddTask(taskID, userID, status)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
 	err = s.model.SetTaskInfoByID(id, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema) {
+func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
+		images, attachments []primitive.ObjectID ) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Publisher == userID, "permission_deny", 403)
@@ -97,12 +119,86 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		libs.Assert(info.RewardValue > task.RewardValue, "not_allow_reward_value", 403)
 	}
 
-	//libs.Assert(task.Status == models.TaskStatusDraft ||
-	//	task.Status == models.TaskStatusWait ||
-	//	task.Status == models.TaskStatusRun, "not_allow_edit", 403)
+	// 更新附件
+	var toRemove []primitive.ObjectID
+
+	var imageFiles []FileBaseInfo
+	if len(images) > 0 {
+		oldImages, err := s.fileModel.GetFileByContent(taskID, models.FileImage)
+		libs.AssertErr(err, "", 500)
+		for _, image := range images {
+			// 原来是否存在
+			exist := false
+			for _, old := range oldImages {
+				if old.ID == image {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				imageFiles = append(imageFiles, FileBaseInfo{
+					ID: image,
+					Type: models.FileImage,
+				})
+			}
+		}
+		for _, image := range oldImages {
+			exist := false
+			for _, file := range imageFiles {
+				if file.ID == image.ID {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				toRemove = append(toRemove, image.ID)
+			}
+		}
+	}
+
+	var attachmentFiles []FileBaseInfo
+	if len(attachments) > 0 {
+		oldAttachment, err := s.fileModel.GetFileByContent(taskID, models.FileFile)
+		libs.AssertErr(err, "", 500)
+		for _, attachment := range attachments {
+			// 原来是否存在
+			exist := false
+			for _, old := range oldAttachment {
+				if old.ID == attachment {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				attachmentFiles = append(attachmentFiles, FileBaseInfo{
+					ID: attachment,
+					Type: models.FileFile,
+				})
+			}
+		}
+		for _, attachment := range oldAttachment {
+			exist := false
+			for _, file := range attachmentFiles {
+				if file.ID == attachment.ID {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				toRemove = append(toRemove, attachment.ID)
+			}
+		}
+	}
+
+	GetServiceManger().File.BindFilesToTask(userID, taskID, append(imageFiles, attachmentFiles...))
 
 	err = s.model.SetTaskInfoByID(taskID, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	// 删除无用文件
+	for _, file := range toRemove {
+		GetServiceManger().File.RemoveFiles(file)
+	}
 }
 
 func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail) {

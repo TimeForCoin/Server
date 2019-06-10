@@ -74,12 +74,17 @@ func (c *TaskController) Post() int {
 		libs.Assert(len(t) < 16, "tag_too_long", 403)
 	}
 
-	var files []primitive.ObjectID
-	req.Images = append(req.Images, req.Attachment...)
+	var images []primitive.ObjectID
 	for _, file := range req.Images {
 		fileID, err := primitive.ObjectIDFromHex(file)
 		libs.AssertErr(err, "invalid_file", 400)
-		files = append(files, fileID)
+		images = append(images, fileID)
+	}
+	var attachments []primitive.ObjectID
+	for _, attachment := range req.Attachment {
+		fileID, err := primitive.ObjectIDFromHex(attachment)
+		libs.AssertErr(err, "invalid_file", 400)
+		attachments = append(attachments, fileID)
 	}
 
 	taskInfo := models.TaskSchema{
@@ -96,7 +101,7 @@ func (c *TaskController) Post() int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Service.AddTask(id, taskInfo, req.Publish)
+	c.Service.AddTask(id, taskInfo, images, attachments, req.Publish)
 	return iris.StatusOK
 }
 
@@ -130,6 +135,19 @@ func (c *TaskController) PutBy(id string) int {
 		libs.Assert(len(t) < 16, "tag_too_long", 403)
 	}
 
+	var images []primitive.ObjectID
+	for _, file := range req.Images {
+		fileID, err := primitive.ObjectIDFromHex(file)
+		libs.AssertErr(err, "invalid_file", 400)
+		images = append(images, fileID)
+	}
+	var attachments []primitive.ObjectID
+	for _, attachment := range req.Attachment {
+		fileID, err := primitive.ObjectIDFromHex(attachment)
+		libs.AssertErr(err, "invalid_file", 400)
+		attachments = append(attachments, fileID)
+	}
+
 	taskInfo := models.TaskSchema {
 		Title:        req.Title,
 		Content:      req.Content,
@@ -142,7 +160,7 @@ func (c *TaskController) PutBy(id string) int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Service.SetTaskInfo(userID, taskID, taskInfo)
+	c.Service.SetTaskInfo(userID, taskID, taskInfo, images, attachments)
 	return iris.StatusOK
 }
 
