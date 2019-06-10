@@ -163,8 +163,8 @@ func (c *UserController) PutInfo() int {
 
 	c.Service.SetUserInfo(id, *req.UserInfoSchema)
 
-	if c.Session.GetString("status") == "wechat_new" {
-		c.Session.Set("status", "wechat")
+	if c.Session.GetString("login") == "wechat_new" {
+		c.Session.Set("login", "wechat")
 	}
 
 	return iris.StatusOK
