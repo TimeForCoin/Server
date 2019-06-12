@@ -77,3 +77,8 @@ func (c *FileController) PutBy(id string) int {
 
 	return iris.StatusOK
 }
+// 清除未使用文件
+func (c *FileController) Delete() int {
+	// userID := c.checkLogin()
+	return iris.StatusOK
+}

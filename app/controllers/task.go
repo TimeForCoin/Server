@@ -62,7 +62,7 @@ func (c *TaskController) Post() int {
 
 	libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
 
-	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
 	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
 	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
 
