@@ -316,10 +316,10 @@ func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
 	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$addToSet": bson.M{string("collect_tasks"): taskID}})
+		bson.M{"$addToSet": bson.M{"collect_tasks": taskID}})
 	if err != nil {
 		return err
-	} else if res.UpsertedCount == 0 && res.ModifiedCount == 0 {
+	} else if res.ModifiedCount == 0 {
 		return errors.New("exist")
 	}
 	return nil
@@ -330,11 +330,11 @@ func (model *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
 	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$pull": bson.M{string("collect_tasks"): taskID}})
+		bson.M{"$pull": bson.M{"collect_tasks": taskID}})
 	if err != nil {
 		return err
-	} else if res.UpsertedCount == 0 && res.ModifiedCount == 0 {
-		return errors.New("exist")
+	} else if res.ModifiedCount == 0 {
+		return ErrNotExist
 	}
 	return nil
 }

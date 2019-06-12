@@ -53,7 +53,8 @@ type GetInfoByIDRes struct {
 type UserDataRes struct {
 	*models.UserDataSchema
 	// 额外项
-	Attendance bool
+	Attendance   bool  // 是否签到
+	CollectCount int64 // 收藏任务数
 	// 排除项
 	AttendanceDate omit `json:"attendance_date,omitempty"`
 	CollectTasks   omit `json:"collect_tasks,omitempty"`
@@ -88,6 +89,7 @@ func (c *UserController) GetInfoBy(userID string) int {
 		Info:         user.Info,
 		Data: &UserDataRes{
 			UserDataSchema: &user.Data,
+			CollectCount:   int64(len(user.Data.CollectTasks)),
 		},
 		Certification: &UserCertification{
 			Type:   user.Certification.Identity,

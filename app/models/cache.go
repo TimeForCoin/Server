@@ -89,7 +89,7 @@ func (c *CacheModel) IsLikeComment(userID, commentID primitive.ObjectID) bool {
 	return val
 }
 
-// IsLikeComment 用户是否收藏任务
+// IsCollectTask 用户是否收藏任务
 func (c *CacheModel) IsCollectTask(userID, taskID primitive.ObjectID) bool {
 	setName := string(KindOfCollectTask) + userID.Hex()
 	exist, err := c.Redis.Exists(setName).Result()

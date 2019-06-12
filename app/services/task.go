@@ -198,7 +198,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	// 删除无用文件
 	for _, file := range toRemove {
-		GetServiceManger().File.RemoveFiles(file)
+		GetServiceManger().File.RemoveFile(file)
 	}
 }
 
@@ -364,11 +364,13 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 		err = s.set.AddToSet(userID, taskID, models.SetOfCollectTask)
 		libs.AssertErr(err, "exist_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, 1)
+		libs.AssertErr(err, "", 500)
 		err = s.userModel.AddCollectTask(userID, taskID)
 	} else {
 		err = s.set.RemoveFromSet(userID, taskID, models.SetOfCollectTask)
 		libs.AssertErr(err, "faked_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, -1)
+		libs.AssertErr(err, "", 500)
 		err = s.userModel.RemoveCollectTask(userID, taskID)
 	}
 	libs.AssertErr(err, "", 500)

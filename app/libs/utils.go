@@ -1,9 +1,12 @@
 package libs
 
 import (
+	"crypto/md5"
 	"crypto/sha512"
 	"encoding/hex"
+	"io"
 	"math/rand"
+	"mime/multipart"
 	"time"
 )
 
@@ -25,4 +28,18 @@ func GetHash(data string) string {
 	h.Write([]byte(data))
 	md := h.Sum(nil)
 	return hex.EncodeToString(md)
+}
+
+// GetFileHash 获取文件 Hash
+func GetFileHash(file multipart.File) (string, error) {
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	_, err := file.Seek(0, 0)
+	if err != nil {
+		return "", err
+	}
+	md := hash.Sum(nil)
+	return hex.EncodeToString(md), nil
 }
