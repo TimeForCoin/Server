@@ -1,13 +1,14 @@
 package controllers
 
 import (
+	"strconv"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"strconv"
 )
 
 type TaskController struct {
@@ -188,10 +189,10 @@ type TasksListRes struct {
 
 func (c *TaskController) Get() int {
 	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10 ,64)
+	page, err := strconv.ParseInt(pageStr, 10, 64)
 	libs.AssertErr(err, "invalid_page", 400)
 	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10 ,64)
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	libs.AssertErr(err, "invalid_size", 400)
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
@@ -220,7 +221,6 @@ func (c *TaskController) Get() int {
 	taskCount, tasksData := c.Service.GetTasks(page, size, sort,
 		taskType, status, reward, keyword, user, c.Session.GetString("id"))
 
-
 	if tasksData == nil {
 		tasksData = []services.TaskDetail{}
 	}
@@ -237,7 +237,7 @@ func (c *TaskController) Get() int {
 	return iris.StatusOK
 }
 
-func (c* TaskController) DeleteBy(id string) int {
+func (c *TaskController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -265,5 +265,21 @@ func (c *TaskController) DeleteByLike(id string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 	c.Service.ChangeLike(taskID, userID, false)
+	return iris.StatusOK
+}
+
+func (c *TaskController) PostByCollect(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.ChangeCollection(taskID, userID, true)
+	return iris.StatusOK
+}
+
+func (c *TaskController) DeleteByCollect(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.ChangeCollection(taskID, userID, false)
 	return iris.StatusOK
 }

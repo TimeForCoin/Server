@@ -1,12 +1,14 @@
 package models
 
 import (
+	"errors"
 	"reflect"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // UserModel User 数据库
@@ -100,13 +102,13 @@ type UserDataSchema struct {
 
 // UserCertificationSchema 用户认证信息
 type UserCertificationSchema struct {
-	Identity   UserIdentity         `bson:"identity"`    // 认证身份类型
-	Data       string               `bson:"data"`        // 认证内容
-	Status     CertificationStatus  `bson:"status"`      // 认证状态
-	Date       int64                `bson:"date"`        // 认证时间
-	Material   []primitive.ObjectID `bson:"material"`    // 人工认证材料
-	Feedback   string               `bson:"feedback"`    // 审核不通过后的反馈
-	Email      string               `bson:"email"`       // 邮箱认证
+	Identity UserIdentity         `bson:"identity"` // 认证身份类型
+	Data     string               `bson:"data"`     // 认证内容
+	Status   CertificationStatus  `bson:"status"`   // 认证状态
+	Date     int64                `bson:"date"`     // 认证时间
+	Material []primitive.ObjectID `bson:"material"` // 人工认证材料
+	Feedback string               `bson:"feedback"` // 审核不通过后的反馈
+	Email    string               `bson:"email"`    // 邮箱认证
 }
 
 // UserSchema User 基本数据结构
@@ -149,8 +151,8 @@ func (model *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, erro
 	defer finish()
 	userID := primitive.NewObjectID()
 	_, err := model.Collection.InsertOne(ctx, &UserSchema{
-		ID: userID,
-		WechatID: openid,
+		ID:           userID,
+		WechatID:     openid,
 		RegisterTime: time.Now().Unix(),
 		Data: UserDataSchema{
 			Type: UserTypeNormal,
@@ -285,7 +287,7 @@ func (model *UserModel) SetUserAttend(id primitive.ObjectID) error {
 	return nil
 }
 
-func (model *UserModel) SetUserCertification (id primitive.ObjectID, data UserCertificationSchema) error {
+func (model *UserModel) SetUserCertification(id primitive.ObjectID, data UserCertificationSchema) error {
 	ctx, over := GetCtx()
 	defer over()
 	if res, err := model.Collection.UpdateOne(ctx,
@@ -299,7 +301,7 @@ func (model *UserModel) SetUserCertification (id primitive.ObjectID, data UserCe
 }
 
 // 是否存在邮箱认证
-func (model *UserModel) CheckCertificationEmail (email string) bool {
+func (model *UserModel) CheckCertificationEmail(email string) bool {
 	ctx, over := GetCtx()
 	defer over()
 	if res, err := model.Collection.CountDocuments(ctx,
@@ -307,6 +309,36 @@ func (model *UserModel) CheckCertificationEmail (email string) bool {
 		return true
 	}
 	return false
+}
+
+func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
+	ctx, over := GetCtx()
+	defer over()
+	opt := options.Update()
+	opt.SetUpsert(true)
+	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
+		bson.M{"$addToSet": bson.M{string("collect_tasks"): taskID}}, opt)
+	if err != nil {
+		return err
+	} else if res.UpsertedCount == 0 && res.ModifiedCount == 0 {
+		return errors.New("exist")
+	}
+	return nil
+}
+
+func (model *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
+	ctx, over := GetCtx()
+	defer over()
+	opt := options.Update()
+	opt.SetUpsert(true)
+	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
+		bson.M{"$pull": bson.M{string("collect_tasks"): taskID}})
+	if err != nil {
+		return err
+	} else if res.UpsertedCount == 0 && res.ModifiedCount == 0 {
+		return errors.New("exist")
+	}
+	return nil
 }
 
 // TODO 添加关注
