@@ -10,13 +10,13 @@ import (
 
 var redisInst *Redis
 
-// Cache Redis 缓存
+// Redis 缓存
 type Redis struct {
 	Client *redis.Client
 	Cache  *CacheModel
 }
 
-// GetCache 获取缓存实例
+// GetRedis 获取缓存实例
 func GetRedis() *Redis {
 	return redisInst
 }

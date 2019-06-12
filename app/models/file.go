@@ -47,7 +47,7 @@ type FileSchema struct {
 	URL         string             // 下载链接
 }
 
-// 添加文件
+// AddFile 添加文件
 func (m *FileModel) AddFile(fileID, ownerID primitive.ObjectID, owner OwnerType, fileType FileType,
 	name, description, url string, size int64, public, used bool) error {
 	ctx, finish := GetCtx()
@@ -71,12 +71,12 @@ func (m *FileModel) AddFile(fileID, ownerID primitive.ObjectID, owner OwnerType,
 	})
 	fmt.Println("err", err)
 	if err != nil {
-		return  err
+		return err
 	}
 	return nil
 }
 
-// 获取文件信息
+// GetFile 获取文件信息
 func (m *FileModel) GetFile(id primitive.ObjectID) (res FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -84,7 +84,7 @@ func (m *FileModel) GetFile(id primitive.ObjectID) (res FileSchema, err error) {
 	return
 }
 
-// 获取内容文件
+// GetFileByContent 获取内容相关的文件
 func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType ...FileType) (res []FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -111,7 +111,7 @@ func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType ...FileType
 	return
 }
 
-// 将文件绑定到任务中
+// BindTask 将文件绑定到任务中
 func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -125,6 +125,7 @@ func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	return nil
 }
 
+// RemoveFile 删除文件
 func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -137,6 +138,7 @@ func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 	return nil
 }
 
+// SetFileInfo 设置文件信息
 func (m *FileModel) SetFileInfo(fileID primitive.ObjectID, name, description string, public bool) error {
 	ctx, finish := GetCtx()
 	defer finish()

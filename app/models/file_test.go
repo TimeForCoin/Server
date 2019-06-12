@@ -1,8 +1,9 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"testing"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestFileModel(t *testing.T) {
@@ -26,7 +27,7 @@ func testAddFile(t *testing.T) {
 		t.Error(res)
 	}
 	err = GetModel().File.AddFile(newID, newID, FileForTask, FileImage,
-		"文件","附件","https://xx.com/a.zip", 10085,true, true)
+		"文件", "附件", "https://xx.com/a.zip", 10085, true, true)
 	if err != nil {
 		t.Error(err)
 	}

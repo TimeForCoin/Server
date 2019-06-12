@@ -9,12 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// TaskService 用户逻辑
+// TaskService 任务服务
 type TaskService interface {
 	AddTask(userID primitive.ObjectID, info models.TaskSchema,
-		images,attachments []primitive.ObjectID,  publish bool)
+		images, attachments []primitive.ObjectID, publish bool)
 	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
-			images, attachments []primitive.ObjectID )
+		images, attachments []primitive.ObjectID)
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
 	GetTasks(page, size int64, sortRule, taskType,
 		status, reward, keyword, user, userID string) (taskCount int64, tasks []TaskDetail)
@@ -24,7 +24,6 @@ type TaskService interface {
 	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
 }
 
-// NewUserService 初始化
 func newTaskService() TaskService {
 	return &taskService{
 		model:     models.GetModel().Task,
@@ -64,8 +63,9 @@ type TaskDetail struct {
 	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
 }
 
+// AddTask 添加任务
 func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
-		images, attachments []primitive.ObjectID,  publish bool) {
+	images, attachments []primitive.ObjectID, publish bool) {
 	status := models.TaskStatusDraft
 	if publish {
 		status = models.TaskStatusWait
@@ -76,13 +76,13 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	var files []FileBaseInfo
 	for _, image := range images {
 		files = append(files, FileBaseInfo{
-			ID: image,
+			ID:   image,
 			Type: models.FileImage,
 		})
 	}
 	for _, attachment := range attachments {
 		files = append(files, FileBaseInfo{
-			ID: attachment,
+			ID:   attachment,
 			Type: models.FileFile,
 		})
 	}
@@ -96,7 +96,7 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 }
 
 func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
-		images, attachments []primitive.ObjectID ) {
+	images, attachments []primitive.ObjectID) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Publisher == userID, "permission_deny", 403)
@@ -138,7 +138,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 			}
 			if !exist {
 				imageFiles = append(imageFiles, FileBaseInfo{
-					ID: image,
+					ID:   image,
 					Type: models.FileImage,
 				})
 			}
@@ -172,7 +172,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 			}
 			if !exist {
 				attachmentFiles = append(attachmentFiles, FileBaseInfo{
-					ID: attachment,
+					ID:   attachment,
 					Type: models.FileFile,
 				})
 			}
@@ -202,6 +202,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	}
 }
 
+// GetTaskByID 获取任务信息
 func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail) {
 	var err error
 	taskItem, err := s.model.GetTaskByID(taskID)
@@ -241,7 +242,7 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 	return
 }
 
-// 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
+// GetTasks 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
 func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	status, reward, keyword, user, userID string) (taskCount int64, taskCards []TaskDetail) {
 
@@ -321,6 +322,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	return
 }
 
+// RemoveTask 删除任务
 func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
@@ -330,11 +332,13 @@ func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 	libs.AssertErr(err, "", 500)
 }
 
+// AddView 增加任务阅读量
 func (s *taskService) AddView(taskID primitive.ObjectID) {
 	err := s.model.InsertCount(taskID, models.ViewCount, 1)
 	libs.AssertErr(err, "faked_task", 403)
 }
 
+// ChangeLike 改变任务点赞状态
 func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 	_, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
@@ -352,6 +356,7 @@ func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 	libs.AssertErr(err, "", 500)
 }
 
+// ChangeCollection 改变收藏状态
 func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collect bool) {
 	_, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)

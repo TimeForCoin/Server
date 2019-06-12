@@ -119,28 +119,31 @@ func (c *UserController) PostAttend() int {
 	return iris.StatusOK
 }
 
-type UserInfoReq struct {
+// PutUserInfoReq 修改用户信息请求
+type PutUserInfoReq struct {
 	*models.UserInfoSchema
 	AvatarURL string `json:"avatar_url"`
 }
 
-// PatchInfo 修改用户信息
+// PutInfo 修改用户信息
 func (c *UserController) PutInfo() int {
 	id, err := primitive.ObjectIDFromHex(c.Session.GetString("id"))
 	libs.Assert(err == nil, "invalid_session", 401)
 	// 解析
-	req := UserInfoReq{}
+	req := PutUserInfoReq{}
 	err = c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(req.Email == "" || libs.IsEmail(req.Email), "invalid_email", 400)
 	libs.Assert(req.Gender == "" || libs.IsGender(string(req.Gender)), "invalid_gender", 400)
+
+	// 处理头像数据
 	if req.AvatarURL != "" {
-		url, err := libs.GetCOS().SaveURLFile("avatar-" + id.Hex() + ".png", req.AvatarURL)
+		url, err := libs.GetCOS().SaveURLFile("avatar-"+id.Hex()+".png", req.AvatarURL)
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	} else if req.Avatar != "" {
 		libs.Assert(strings.HasPrefix(req.Avatar, "data:image/png;base64,"), "invalid_avatar", 400)
-		url, err := libs.GetCOS().SaveBase64("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
+		url, err := libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
@@ -172,17 +175,16 @@ func (c *UserController) PutInfo() int {
 	return iris.StatusOK
 }
 
-// UserDataRes 用户数据返回值
-type UseTypeReq struct {
-	ID   string `json:"id"`
+// PutUserTypeReq 修改用户类型请求
+type PutUserTypeReq struct {
 	Type string `json:"type"`
 }
 
-// 修改用户信息
+// PutTypeByID 修改用户类型
 func (c *UserController) PutTypeByID(userID string) int {
 	id := c.checkLogin()
 	// 解析
-	req := UseTypeReq{}
+	req := PutUserTypeReq{}
 	err := c.Ctx.ReadJSON(&req)
 
 	var opID primitive.ObjectID
@@ -191,17 +193,17 @@ func (c *UserController) PutTypeByID(userID string) int {
 	} else {
 		var err error
 		opID, err = primitive.ObjectIDFromHex(userID)
-		libs.AssertErr(err, "invalid_session", 401)
+		libs.AssertErr(err, "invalid_id", 400)
 	}
 
 	libs.Assert(err == nil, "invalid_value", 400)
-	libs.Assert(libs.IsID(req.ID), "invalid_id", 400)
 	libs.Assert(libs.IsUserType(req.Type), "invalid_type", 400)
 	libs.Assert(req.Type != string(models.UserTypeRoot), "not_allow_type", 403)
 	c.Service.SetUserType(id, opID, models.UserType(req.Type))
 	return iris.StatusOK
 }
 
+// GetCollect 获取用户收藏
 func (c *UserController) GetCollect() int {
 	pageStr := c.Ctx.URLParamDefault("page", "1")
 	page, err := strconv.ParseInt(pageStr, 10, 64)

@@ -11,11 +11,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// TaskController 任务相关API
 type TaskController struct {
 	BaseController
 	Service services.TaskService
 }
 
+// BindTaskController 绑定任务控制器
 func BindTaskController(app *iris.Application) {
 	taskService := services.GetServiceManger().Task
 
@@ -24,6 +26,7 @@ func BindTaskController(app *iris.Application) {
 	taskRoute.Handle(new(TaskController))
 }
 
+// AddTaskReq 添加任务请求
 type AddTaskReq struct {
 	Title        string   `json:"title"`
 	Content      string   `json:"content"`
@@ -42,6 +45,7 @@ type AddTaskReq struct {
 	Publish      bool     `json:"publish"`
 }
 
+// Post 添加任务
 func (c *TaskController) Post() int {
 	id := c.checkLogin()
 	req := AddTaskReq{}
@@ -106,6 +110,7 @@ func (c *TaskController) Post() int {
 	return iris.StatusOK
 }
 
+// GetBy 获取指定任务详情
 func (c *TaskController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
@@ -115,6 +120,7 @@ func (c *TaskController) GetBy(id string) int {
 	return iris.StatusOK
 }
 
+// PutBy 修改指定任务信息
 func (c *TaskController) PutBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -149,7 +155,7 @@ func (c *TaskController) PutBy(id string) int {
 		attachments = append(attachments, fileID)
 	}
 
-	taskInfo := models.TaskSchema {
+	taskInfo := models.TaskSchema{
 		Title:        req.Title,
 		Content:      req.Content,
 		Location:     req.Location,
@@ -165,6 +171,7 @@ func (c *TaskController) PutBy(id string) int {
 	return iris.StatusOK
 }
 
+// GetTasksReq 获取任务列表请求
 type GetTasksReq struct {
 	Page    int
 	Size    int
@@ -176,17 +183,13 @@ type GetTasksReq struct {
 	Keyword string
 }
 
-type PaginationRes struct {
-	Page  int64
-	Size  int64
-	Total int64
-}
-
+// TasksListRes 任务列表数据
 type TasksListRes struct {
 	Pagination PaginationRes
 	Tasks      []services.TaskDetail
 }
 
+// Get 获取任务列表
 func (c *TaskController) Get() int {
 	pageStr := c.Ctx.URLParamDefault("page", "1")
 	page, err := strconv.ParseInt(pageStr, 10, 64)
@@ -237,6 +240,7 @@ func (c *TaskController) Get() int {
 	return iris.StatusOK
 }
 
+// DeleteBy 删除草稿任务
 func (c *TaskController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -245,6 +249,7 @@ func (c *TaskController) DeleteBy(id string) int {
 	return iris.StatusOK
 }
 
+// PostByView 添加任务阅读量
 func (c *TaskController) PostByView(id string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -252,6 +257,7 @@ func (c *TaskController) PostByView(id string) int {
 	return iris.StatusOK
 }
 
+// PostByLike 点赞任务
 func (c *TaskController) PostByLike(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -260,6 +266,7 @@ func (c *TaskController) PostByLike(id string) int {
 	return iris.StatusOK
 }
 
+// DeleteByLike 取消点赞任务
 func (c *TaskController) DeleteByLike(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -268,6 +275,7 @@ func (c *TaskController) DeleteByLike(id string) int {
 	return iris.StatusOK
 }
 
+// PostByCollect 添加收藏
 func (c *TaskController) PostByCollect(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -276,6 +284,7 @@ func (c *TaskController) PostByCollect(id string) int {
 	return iris.StatusOK
 }
 
+// DeleteByCollect 删除收藏
 func (c *TaskController) DeleteByCollect(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)

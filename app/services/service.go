@@ -2,6 +2,7 @@ package services
 
 var service *ServiceManger
 
+// ServiceManger 服务管理器
 type ServiceManger struct {
 	User          UserService
 	Task          TaskService
@@ -10,6 +11,7 @@ type ServiceManger struct {
 	Comment       CommentService
 }
 
+// GetServiceManger 获取服务管理器
 func GetServiceManger() *ServiceManger {
 	if service == nil {
 		service = &ServiceManger{

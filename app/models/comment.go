@@ -1,8 +1,9 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -28,7 +29,7 @@ type CommentSchema struct {
 	IsReply    bool               `bson:"id_reply" json:"is_reply"`       // 是否为回复
 }
 
-// 添加评论
+// AddComment 添加评论
 func (m *CommentModel) AddComment(contentID, contentOwn, userID primitive.ObjectID, content string, isReply bool) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -44,7 +45,7 @@ func (m *CommentModel) AddComment(contentID, contentOwn, userID primitive.Object
 	return err
 }
 
-// 分页获取评论
+// GetCommentsByContent 分页获取评论
 func (m *CommentModel) GetCommentsByContent(contentID primitive.ObjectID, page, size int64, sort bson.M) (res []CommentSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -66,6 +67,7 @@ func (m *CommentModel) GetCommentsByContent(contentID primitive.ObjectID, page, 
 	return
 }
 
+// GetCommentByID 获取指定评论
 func (m *CommentModel) GetCommentByID(commentID primitive.ObjectID) (res CommentSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -73,6 +75,7 @@ func (m *CommentModel) GetCommentByID(commentID primitive.ObjectID) (res Comment
 	return
 }
 
+// RemoveContentByID 删除评论
 func (m *CommentModel) RemoveContentByID(commentID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -86,6 +89,7 @@ func (m *CommentModel) RemoveContentByID(commentID primitive.ObjectID) error {
 	return nil
 }
 
+// InsertCount 增加计数
 func (m *CommentModel) InsertCount(commentID primitive.ObjectID, name ContentCountType, count int64) error {
 	ctx, finish := GetCtx()
 	defer finish()

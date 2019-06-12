@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// QuestionnaireService 问卷相关服务
 type QuestionnaireService interface {
 	AddQuestionnaire(info models.QuestionnaireSchema)
 	SetQuestionnaireInfo(info models.QuestionnaireSchema)
@@ -16,34 +17,30 @@ type QuestionnaireService interface {
 
 func newQuestionnaireService() QuestionnaireService {
 	return &questionnaireService{
-		model:		models.GetModel().Questionnaire,
-		userModel:	models.GetModel().User,
+		model:      models.GetModel().Questionnaire,
+		userModel:  models.GetModel().User,
 		cacheModel: models.GetRedis().Cache,
 	}
 }
 
 type questionnaireService struct {
-	model 		*models.QuestionnaireModel
-	userModel	*models.UserModel
-	cacheModel	*models.CacheModel
+	model      *models.QuestionnaireModel
+	userModel  *models.UserModel
+	cacheModel *models.CacheModel
 }
 
-type OwnerInfo	struct{
-	ID			string	`json:"id"`
-	NickName	string	`json:"nickname"`
-	Avatar		string	`json:"avatar"`
-}
-
+// QuestionnaireDetail 问卷详情信息
 type QuestionnaireDetail struct {
-	TaskID			string		`json:"id"`
-	Title			string		`json:"title"`
-	Owner			OwnerInfo	`json:"owner"`
-	Description		string		`json:"description"`
-	Anonymous		bool		`json:"anonymous"`
-	QuestionCount	int			`json:"question_count"`
-	Answer			int			`json:"answer"`
+	TaskID        string              `json:"id"`
+	Title         string              `json:"title"`
+	Owner         models.UserBaseInfo `json:"owner"`
+	Description   string              `json:"description"`
+	Anonymous     bool                `json:"anonymous"`
+	QuestionCount int                 `json:"question_count"`
+	Answer        int                 `json:"answer"`
 }
 
+// AddQuestionnaire 添加问卷
 func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema) {
 	_, err := s.model.AddQuestionnaire(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
@@ -51,11 +48,13 @@ func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
+// SetQuestionnaireInfo 设置问卷信息
 func (s *questionnaireService) SetQuestionnaireInfo(info models.QuestionnaireSchema) {
 	err := s.model.SetQuestionnaireInfoByID(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
+// GetQuestionnaireInfoByID 获取问卷信息
 func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (detail QuestionnaireDetail) {
 	questionnaire, err := s.model.GetQuestionnaireInfoByID(id)
 	libs.AssertErr(err, "faked_task", 400)
@@ -64,21 +63,18 @@ func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (
 	owner, err := s.cacheModel.GetUserBaseInfo(ownerID)
 	libs.AssertErr(err, "faked_task", 400)
 	detail = QuestionnaireDetail{
-		TaskID:		questionnaire.TaskID.String(),
-		Title:		questionnaire.Title,
-		Owner: 		OwnerInfo{
-			ID: questionnaire.Owner,
-			NickName: owner.Nickname,
-			Avatar: owner.Avatar,
-		},
-		Description:	questionnaire.Description,
-		Anonymous:		questionnaire.Anonymous,
-		QuestionCount:	len(questionnaire.Problems),
-		Answer:			len(questionnaire.Data),
+		TaskID:        questionnaire.TaskID.String(),
+		Title:         questionnaire.Title,
+		Owner:         owner,
+		Description:   questionnaire.Description,
+		Anonymous:     questionnaire.Anonymous,
+		QuestionCount: len(questionnaire.Problems),
+		Answer:        len(questionnaire.Data),
 	}
 	return
 }
 
+// GetQuestionnaireQuestionsByID 获取问卷问题
 func (s *questionnaireService) GetQuestionnaireQuestionsByID(id primitive.ObjectID) (questions []models.ProblemSchema) {
 	questions, err := s.model.GetQuestionnaireQuestionsByID(id)
 	libs.AssertErr(err, "faked_task", 400)

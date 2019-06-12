@@ -29,7 +29,7 @@ const (
 type TaskStatusSchema struct {
 	ID     primitive.ObjectID `bson:"_id,omitempty"` // 任务状态ID
 	Task   primitive.ObjectID `bson:"task"`          // 任务 ID [索引]
-	Player  primitive.ObjectID `bson:"player"`         // 用户 ID [索引]
+	Player primitive.ObjectID `bson:"player"`        // 用户 ID [索引]
 	Status PlayerStatus       // 状态
 	Note   string             // 申请备注
 	// 完成后的评价

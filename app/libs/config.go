@@ -58,20 +58,23 @@ type VioletConfig struct {
 	Callback   string `yaml:"callback"`
 }
 
+// WechatConfig 微信小程序配置
 type WechatConfig struct {
 	AppID     string `yaml:"id"`
 	AppSecret string `yaml:"secret"`
 }
 
+// COSConfig 腾讯云 对象存储配置
 type COSConfig struct {
 	AppID     string `yaml:"id"`
 	AppSecret string `yaml:"secret"`
 	URL       string `yaml:"url"`
 }
 
+// EmailConfig 邮件服务配置
 type EmailConfig struct {
 	Host     string `yaml:"host"`
-	Port     int `yaml:"port"`
+	Port     int    `yaml:"port"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 	From     string `yaml:"from"`
@@ -79,7 +82,7 @@ type EmailConfig struct {
 
 var config *Config
 
-// GetConf 从文件读取配置信息
+// LoadConf 从文件读取配置信息
 func (c *Config) LoadConf(path string) *Config {
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -96,6 +99,7 @@ func (c *Config) LoadConf(path string) *Config {
 	return c
 }
 
+// GetConf 获取全局配置
 func GetConf() *Config {
 	return config
 }

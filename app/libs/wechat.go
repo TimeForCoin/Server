@@ -4,23 +4,26 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"time"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/resty.v1"
-	"time"
 )
 
-var wechat *WechatService
+var wechat *WeChatService
 
-type WechatService struct {
+// WeChatService 微信小程序服务
+type WeChatService struct {
 	AppID        string
 	AppSecret    string
 	AppToken     string
 	TokenExpires int64
 }
 
+// InitWeChat 初始化微信服务
 func InitWeChat(c WechatConfig) {
-	wechat = &WechatService{
+	wechat = &WeChatService{
 		AppID:        c.AppID,
 		AppSecret:    c.AppSecret,
 		AppToken:     "",
@@ -28,19 +31,21 @@ func InitWeChat(c WechatConfig) {
 	}
 }
 
+// WeChatError 微信错误码
 type WeChatError struct {
-	ErrCode     int    `json:"errcode"`
-	ErrMsg      string `json:"errmsg"`
-
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }
 
+// WeChatTokenRes 微信 Token 数据
 type WeChatTokenRes struct {
 	WeChatError
 	AccessToken string `json:"access_token"`
-	Expires     int64    `json:"expires_in"`
+	Expires     int64  `json:"expires_in"`
 }
 
-func (s *WechatService) getToken() (string, error) {
+// getToken 获取应用 Token
+func (s *WeChatService) getToken() (string, error) {
 	// Token 已过期
 	if time.Unix(s.TokenExpires, 0).Before(time.Now()) {
 		resp, err := resty.R().
@@ -64,11 +69,13 @@ func (s *WechatService) getToken() (string, error) {
 	return s.AppToken, nil
 }
 
+// WeChatMakeImageReq 生成微信小程序码请求
 type WeChatMakeImageReq struct {
 	Scene string `json:"scene"`
 }
 
-func (s *WechatService) MakeImage(data string) (string, error) {
+// MakeImage 生成小程序码
+func (s *WeChatService) MakeImage(data string) (string, error) {
 	token, err := s.getToken()
 	if err != nil {
 		return "", err
@@ -87,7 +94,8 @@ type WeChatSessionRes struct {
 	UnionID    string `json:"unionid"`
 }
 
-func (s *WechatService) GetOpenID(code string) (string, error) {
+// GetOpenID 获取用户 OpenID
+func (s *WeChatService) GetOpenID(code string) (string, error) {
 	resp, err := resty.R().
 		SetQueryParam("appid", s.AppID).
 		SetQueryParam("secret", s.AppSecret).
@@ -107,8 +115,9 @@ func (s *WechatService) GetOpenID(code string) (string, error) {
 	return res.OpenID, nil
 }
 
-func GetWechat() *WechatService {
-	if oauth == nil {
+// GetWeChat 获取微信服务
+func GetWeChat() *WeChatService {
+	if wechat == nil {
 		log.Panic().Msg("Wechat service is not init")
 	}
 	return wechat

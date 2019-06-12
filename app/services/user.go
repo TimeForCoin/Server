@@ -108,7 +108,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 			gender = models.GenderOther
 		}
 		// 保存头像到云存储
-		url, err := libs.GetCOS().SaveURLFile("avatar-" + userID.Hex() + ".png", info.Avatar)
+		url, err := libs.GetCOS().SaveURLFile("avatar-"+userID.Hex()+".png", info.Avatar)
 		libs.AssertErr(err, "", 500)
 		_ = s.model.SetUserInfoByID(userID, models.UserInfoSchema{
 			Email:    info.Email,
@@ -125,7 +125,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 }
 
 func (s *userService) LoginByWechat(code string) (id string, new bool) {
-	openID, err := libs.GetWechat().GetOpenID(code)
+	openID, err := libs.GetWeChat().GetOpenID(code)
 	libs.AssertErr(err, "", 403)
 	// 账号已存在，直接返回 ID
 	if u, err := s.model.GetUserByWechat(openID); err == nil {

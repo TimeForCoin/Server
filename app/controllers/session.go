@@ -52,17 +52,17 @@ func (c *SessionController) GetViolet() int {
 	return iris.StatusCreated
 }
 
-// GetVioletReq Violet 登陆参数
+// PostWechatRes 微信登陆数据
 type PostWechatRes struct {
 	New bool
 }
 
-// GetVioletReq Violet 登陆参数
+// PostWechatReq 温馨登陆请求
 type PostWechatReq struct {
 	Code string
 }
 
-// GetWechat 通过微信登陆
+// PostWechat 通过微信登陆
 func (c *SessionController) PostWechat() int {
 	req := PostWechatReq{}
 	err := c.Ctx.ReadJSON(&req)
@@ -80,7 +80,6 @@ func (c *SessionController) PostWechat() int {
 	}
 	return iris.StatusCreated
 }
-
 
 // GetSessionStatusRes 获取登陆状态返回值
 type GetSessionStatusRes struct {
@@ -107,19 +106,16 @@ func (c *SessionController) Delete() int {
 	return iris.StatusOK
 }
 
-// 测试
-func (c *SessionController) GetTest() string {
-	return "Test"
-}
-
+// GetWeChatImageRes 获取微信登陆位置码
 type GetWeChatImageRes struct {
 	Data string
 }
 
-// 微信登陆二维码
+// GetWechat 获取微信登陆二维码
 func (c *SessionController) GetWechat() int {
 	// id := c.checkLogin()
-	image, err := libs.GetWechat().MakeImage("hello")
+	// TODO 微信扫码登陆
+	image, err := libs.GetWeChat().MakeImage("hello")
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
 	c.JSON(GetWeChatImageRes{

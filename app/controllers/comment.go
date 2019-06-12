@@ -1,31 +1,35 @@
 package controllers
 
 import (
+	"strconv"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"strconv"
 )
 
+// CommentController 评论相关API
 type CommentController struct {
 	BaseController
 	Service services.CommentService
 }
 
+// BindCommentController 绑定评论API控制器
 func BindCommentController(app *iris.Application) {
 	fileRoute := mvc.New(app.Party("/comments"))
-	fileRoute.Register(services.GetServiceManger().Comment , getSession().Start)
+	fileRoute.Register(services.GetServiceManger().Comment, getSession().Start)
 	fileRoute.Handle(new(CommentController))
 }
 
+// GetBy 获取相关内容的评论
 func (c *CommentController) GetBy(id string) int {
 	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10 ,64)
+	page, err := strconv.ParseInt(pageStr, 10, 64)
 	libs.AssertErr(err, "invalid_page", 400)
 	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10 ,64)
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	libs.AssertErr(err, "invalid_size", 400)
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
@@ -33,16 +37,18 @@ func (c *CommentController) GetBy(id string) int {
 	contentID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 
-	res := c.Service.GetComments(contentID, c.Session.GetString("id"),  page, size, sort)
+	res := c.Service.GetComments(contentID, c.Session.GetString("id"), page, size, sort)
 	c.JSON(res)
 	return iris.StatusOK
 }
 
+// PostCommentReq 添加评论请求
 type PostCommentReq struct {
-	Type string
+	Type    string
 	Content string
 }
 
+// PostBy 添加评论
 func (c *CommentController) PostBy(id string) int {
 	userID := c.checkLogin()
 
@@ -66,6 +72,7 @@ func (c *CommentController) PostBy(id string) int {
 	return iris.StatusOK
 }
 
+// DeleteBy 删除评论
 func (c *CommentController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 
@@ -77,6 +84,7 @@ func (c *CommentController) DeleteBy(id string) int {
 	return iris.StatusOK
 }
 
+// PostByLike 评论点赞
 func (c *CommentController) PostByLike(id string) int {
 	userID := c.checkLogin()
 
@@ -88,6 +96,7 @@ func (c *CommentController) PostByLike(id string) int {
 	return iris.StatusOK
 }
 
+// DeleteByLike 取消点赞
 func (c *CommentController) DeleteByLike(id string) int {
 	userID := c.checkLogin()
 

@@ -9,11 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// FileController 文件相关API
 type FileController struct {
 	BaseController
 	Service services.FileService
 }
 
+// BindFileController 绑定文件控制器
 func BindFileController(app *iris.Application) {
 	fileService := services.GetServiceManger().File
 
@@ -22,10 +24,12 @@ func BindFileController(app *iris.Application) {
 	fileRoute.Handle(new(FileController))
 }
 
+// PostFileRes 新建文件请求
 type PostFileRes struct {
 	ID string `json:"id"`
 }
 
+// Post 新建文件
 func (c *FileController) Post() int {
 	id := c.checkLogin()
 
@@ -58,12 +62,14 @@ func (c *FileController) Post() int {
 	return iris.StatusOK
 }
 
+// PutFileReq 更新附件信息请求
 type PutFileReq struct {
-	Name string
+	Name        string
 	Description string
-	Public bool
+	Public      bool
 }
 
+// PutBy 更新附件信息
 func (c *FileController) PutBy(id string) int {
 	userID := c.checkLogin()
 
@@ -77,7 +83,8 @@ func (c *FileController) PutBy(id string) int {
 
 	return iris.StatusOK
 }
-// 清除未使用文件
+
+// Delete 清除未使用文件
 func (c *FileController) Delete() int {
 	// userID := c.checkLogin()
 	return iris.StatusOK

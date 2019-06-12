@@ -1,10 +1,11 @@
 package controllers
 
 import (
+	"time"
+
 	"github.com/kataras/iris/sessions/sessiondb/redis"
 	"github.com/kataras/iris/sessions/sessiondb/redis/service"
 	"github.com/rs/zerolog/log"
-	"time"
 
 	irisRecover "github.com/kataras/iris/middleware/recover"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -37,10 +38,18 @@ func NewApp() *iris.Application {
 }
 
 type omit *struct{}
+
 // BaseController 控制基类
 type BaseController struct {
 	Ctx     iris.Context
 	Session *sessions.Session
+}
+
+// PaginationRes 分页数据结构
+type PaginationRes struct {
+	Page  int64
+	Size  int64
+	Total int64
 }
 
 // 检查登陆状态
@@ -77,7 +86,7 @@ func InitSession(config libs.SessionConfig, dbConfig libs.RedisConfig) {
 
 	// close connection when control+C/cmd+C
 	iris.RegisterOnInterrupt(func() {
-		if 	err := db.Close(); err != nil {
+		if err := db.Close(); err != nil {
 			log.Error().Msg(err.Error())
 		}
 	})

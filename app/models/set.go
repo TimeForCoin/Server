@@ -7,26 +7,30 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// LikeModel 集合数据库
+// SetModel 集合数据库
 type SetModel struct {
 	Collection *mongo.Collection
 }
 
-// LikeSchemas 集合数据结构
+// SetSchemas 集合数据结构
 type SetSchemas struct {
-	UserID    primitive.ObjectID   `bson:"_id"`     // 用户ID
-	LikeTaskID    []primitive.ObjectID `bson:"like_task_id"` // 点赞的任务ID
+	UserID        primitive.ObjectID   `bson:"_id"`             // 用户ID
+	LikeTaskID    []primitive.ObjectID `bson:"like_task_id"`    // 点赞的任务ID
 	LikeCommentID []primitive.ObjectID `bson:"like_comment_id"` // 点赞的评论ID
 	CollectTaskID []primitive.ObjectID `bson:"collect_task_id"` // 收藏的任务ID
 }
 
+// SetKind 集合类型
 type SetKind string
+
+// SetKind 集合类型
 const (
-	SetOfLikeTask SetKind = "like_task_id"
+	SetOfLikeTask    SetKind = "like_task_id"
 	SetOfLikeComment SetKind = "like_comment_id"
 	SetOfCollectTask SetKind = "collect_task_id"
 )
 
+// GetSets 获取集合
 func (m *SetModel) GetSets(userID primitive.ObjectID, kind SetKind) (set SetSchemas) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -36,7 +40,7 @@ func (m *SetModel) GetSets(userID primitive.ObjectID, kind SetKind) (set SetSche
 	return
 }
 
-
+// AddToSet 添加到集合
 func (m *SetModel) AddToSet(userID, targetID primitive.ObjectID, kind SetKind) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -52,6 +56,7 @@ func (m *SetModel) AddToSet(userID, targetID primitive.ObjectID, kind SetKind) e
 	return nil
 }
 
+// RemoveFromSet 从集合中移除
 func (m *SetModel) RemoveFromSet(userID, targetID primitive.ObjectID, kind SetKind) error {
 	ctx, finish := GetCtx()
 	defer finish()

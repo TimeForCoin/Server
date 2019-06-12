@@ -1,10 +1,11 @@
 package services
 
 import (
+	"mime/multipart"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"mime/multipart"
 )
 
 // FileService 用户逻辑
@@ -20,16 +21,17 @@ type FileService interface {
 // NewUserService 初始化
 func newFileService() FileService {
 	return &fileService{
-		model: models.GetModel().File,
+		model:     models.GetModel().File,
 		taskModel: models.GetModel().Task,
 	}
 }
 
 type fileService struct {
-	model *models.FileModel
+	model     *models.FileModel
 	taskModel *models.TaskModel
 }
 
+// AddFile 添加文件
 func (s *fileService) AddFile(file multipart.File, head multipart.FileHeader, fileType models.FileType,
 	ownerType models.OwnerType, ownID primitive.ObjectID,
 	name, description string, public bool) primitive.ObjectID {
@@ -44,15 +46,17 @@ func (s *fileService) AddFile(file multipart.File, head multipart.FileHeader, fi
 	return fileID
 }
 
+// FileBaseInfo 文件基本信息
 type FileBaseInfo struct {
-	ID primitive.ObjectID
+	ID   primitive.ObjectID
 	Type models.FileType
 }
 
+// BindFilesToTask 添加文件到任务中
 func (s *fileService) BindFilesToTask(userID, taskID primitive.ObjectID, files []FileBaseInfo) {
 	// 验证权限
 	for _, file := range files {
-		f ,err := s.model.GetFile(file.ID)
+		f, err := s.model.GetFile(file.ID)
 		libs.AssertErr(err, "faked_file", 403)
 		libs.Assert(f.OwnerID == userID, "permission_deny", 403)
 		libs.Assert(f.Type == file.Type, "error_file_type", 403)
@@ -63,8 +67,9 @@ func (s *fileService) BindFilesToTask(userID, taskID primitive.ObjectID, files [
 	}
 }
 
+// RemoveFiles 移除文件
 func (s *fileService) RemoveFiles(fileID primitive.ObjectID) {
-	f ,err := s.model.GetFile(fileID)
+	f, err := s.model.GetFile(fileID)
 	libs.AssertErr(err, "", 500)
 	err = s.model.RemoveFile(fileID)
 	libs.AssertErr(err, "", 500)
@@ -72,8 +77,9 @@ func (s *fileService) RemoveFiles(fileID primitive.ObjectID) {
 	libs.AssertErr(err, "", 500)
 }
 
+// UpdateFileInfo 更新文件信息
 func (s *fileService) UpdateFileInfo(fileID, userID primitive.ObjectID, name, description string, public bool) {
-	file ,err := s.model.GetFile(fileID)
+	file, err := s.model.GetFile(fileID)
 	libs.AssertErr(err, "faked_file", 403)
 	// 检验权限
 	if file.Owner == models.FileForUser {

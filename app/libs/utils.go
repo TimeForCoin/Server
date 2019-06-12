@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-func  GetRandomString(l int) string {
+// GetRandomString 获取随机字符串
+func GetRandomString(l int) string {
 	str := "0123456789abcdefghijklmnopqrstuvwxyz"
 	bytes := []byte(str)
 	var result []byte
@@ -18,6 +19,7 @@ func  GetRandomString(l int) string {
 	return string(result)
 }
 
+// GetHash 获取字符串的 Hash
 func GetHash(data string) string {
 	h := sha512.New()
 	h.Write([]byte(data))

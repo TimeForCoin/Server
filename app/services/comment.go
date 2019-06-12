@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// CommentService 评论服务
 type CommentService interface {
 	AddCommentForTask(userID, taskID primitive.ObjectID, content string)
 	AddCommentForComment(userID, commentID primitive.ObjectID, content string)
@@ -32,7 +33,7 @@ type commentService struct {
 	cache     *models.CacheModel
 }
 
-// 为任务添加评论
+// AddCommentForTask 为任务添加评论
 func (s *commentService) AddCommentForTask(userID, taskID primitive.ObjectID, content string) {
 	task, err := s.taskModel.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_content", 403)
@@ -42,7 +43,7 @@ func (s *commentService) AddCommentForTask(userID, taskID primitive.ObjectID, co
 	libs.AssertErr(err, "", 500)
 }
 
-// 为评论添加回复
+// AddCommentForComment 为评论添加回复
 func (s *commentService) AddCommentForComment(userID, commentID primitive.ObjectID, content string) {
 	comment, err := s.model.GetCommentByID(commentID)
 	libs.AssertErr(err, "faked_content", 403)
@@ -53,7 +54,7 @@ func (s *commentService) AddCommentForComment(userID, commentID primitive.Object
 	libs.AssertErr(err, "", 500)
 }
 
-// 删除评论
+// RemoveComment 删除评论
 func (s *commentService) RemoveComment(userID, commentID primitive.ObjectID) {
 	comment, err := s.model.GetCommentByID(commentID)
 	libs.AssertErr(err, "faked_comment", 403)
@@ -66,7 +67,7 @@ func (s *commentService) RemoveComment(userID, commentID primitive.ObjectID) {
 	libs.AssertErr(err, "", 500)
 }
 
-// 改变点赞状态
+// ChangeLike 改变点赞状态
 func (s *commentService) ChangeLike(userID, commentID primitive.ObjectID, like bool) {
 	comment, err := s.model.GetCommentByID(commentID)
 	libs.AssertErr(err, "faked_comment", 403)
@@ -86,6 +87,7 @@ func (s *commentService) ChangeLike(userID, commentID primitive.ObjectID, like b
 	libs.AssertErr(err, "", 500)
 }
 
+// CommentWithUserInfo 带用户信息的评论数据
 type CommentWithUserInfo struct {
 	*models.CommentSchema
 	// 额外项
@@ -98,12 +100,13 @@ type CommentWithUserInfo struct {
 	IsReply    omit `json:"is_reply,omitempty"`
 }
 
+// CommentData 评论数据
 type CommentData struct {
 	*CommentWithUserInfo
 	Reply []CommentWithUserInfo
 }
 
-// 获取评论列表
+// GetComments 获取评论列表
 func (s *commentService) GetComments(contentID primitive.ObjectID, userID string, page, size int64, sort string) []CommentData {
 	sortRule := bson.M{}
 	if sort == "new" {

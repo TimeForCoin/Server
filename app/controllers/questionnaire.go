@@ -9,11 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// QuestionnaireController 问卷相关API
 type QuestionnaireController struct {
 	BaseController
 	Server services.QuestionnaireService
 }
 
+// BindQuestionnaireController 绑定问卷控制器
 func BindQuestionnaireController(app *iris.Application) {
 	questionnaireService := services.GetServiceManger().Questionnaire
 
@@ -22,16 +24,19 @@ func BindQuestionnaireController(app *iris.Application) {
 	questionnaireRoute.Handle(new(QuestionnaireController))
 }
 
+// AddQuestionnaireReq 添加问卷请求
 type AddQuestionnaireReq struct {
-	Title		string	`json:"title"`
-	Description	string	`json:"description"`
-	Anonymous	bool	`json:"anonymous"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Anonymous   bool   `json:"anonymous"`
 }
 
+// QuestionsRes 问卷问题数据
 type QuestionsRes struct {
-	Data	[]models.ProblemSchema	`json:"data"`
+	Data []models.ProblemSchema `json:"data"`
 }
 
+// Post 新建问卷
 func (c *QuestionnaireController) Post(id string) int {
 	userID := c.checkLogin()
 	req := AddQuestionnaireReq{}
@@ -46,16 +51,17 @@ func (c *QuestionnaireController) Post(id string) int {
 	libs.AssertErr(err, "invalid_id", 400)
 
 	questionnaire := models.QuestionnaireSchema{
-		TaskID: taskID,
-		Title: req.Title,
+		TaskID:      taskID,
+		Title:       req.Title,
 		Description: req.Description,
-		Owner: userID.String(),
-		Anonymous: req.Anonymous,
+		Owner:       userID.String(),
+		Anonymous:   req.Anonymous,
 	}
 	c.Server.AddQuestionnaire(questionnaire)
 	return iris.StatusOK
 }
 
+// GetByID 获取问卷信息
 func (c *QuestionnaireController) GetByID(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
@@ -67,6 +73,7 @@ func (c *QuestionnaireController) GetByID(id string) int {
 	return iris.StatusOK
 }
 
+// PatchBy 修改问卷信息
 func (c *QuestionnaireController) PatchBy(id string) int {
 	_ = c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -78,15 +85,16 @@ func (c *QuestionnaireController) PatchBy(id string) int {
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
 	questionnaireInfo := models.QuestionnaireSchema{
-		TaskID:			taskID,
-		Title:			req.Title,
-		Description:	req.Description,
-		Anonymous:		req.Anonymous,
+		TaskID:      taskID,
+		Title:       req.Title,
+		Description: req.Description,
+		Anonymous:   req.Anonymous,
 	}
 	c.Server.SetQuestionnaireInfo(questionnaireInfo)
 	return iris.StatusOK
 }
 
+// GetQuestionsBy 获取问卷问题
 func (c *QuestionnaireController) GetQuestionsBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
@@ -96,7 +104,7 @@ func (c *QuestionnaireController) GetQuestionsBy(id string) int {
 
 	questions := c.Server.GetQuestionnaireQuestionsByID(_id)
 	c.JSON(QuestionsRes{
-		Data:	questions,
+		Data: questions,
 	})
 	return iris.StatusOK
 }

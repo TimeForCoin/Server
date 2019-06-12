@@ -286,6 +286,7 @@ func (model *UserModel) SetUserAttend(id primitive.ObjectID) error {
 	return nil
 }
 
+// SetUserCertification 设置用户认证信息
 func (model *UserModel) SetUserCertification(id primitive.ObjectID, data UserCertificationSchema) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -299,7 +300,7 @@ func (model *UserModel) SetUserCertification(id primitive.ObjectID, data UserCer
 	return nil
 }
 
-// 是否存在邮箱认证
+// CheckCertificationEmail 是否存在邮箱认证
 func (model *UserModel) CheckCertificationEmail(email string) bool {
 	ctx, over := GetCtx()
 	defer over()
@@ -310,6 +311,7 @@ func (model *UserModel) CheckCertificationEmail(email string) bool {
 	return false
 }
 
+// AddCollectTask 添加任务收藏
 func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -323,6 +325,7 @@ func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 	return nil
 }
 
+// RemoveCollectTask 移除任务收藏
 func (model *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
