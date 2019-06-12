@@ -12,7 +12,7 @@ import (
 // TaskService 任务服务
 type TaskService interface {
 	AddTask(userID primitive.ObjectID, info models.TaskSchema,
-		images, attachments []primitive.ObjectID, publish bool)
+		images, attachments []primitive.ObjectID, publish bool) primitive.ObjectID
 	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
 		images, attachments []primitive.ObjectID)
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
@@ -65,7 +65,7 @@ type TaskDetail struct {
 
 // AddTask 添加任务
 func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
-	images, attachments []primitive.ObjectID, publish bool) {
+	images, attachments []primitive.ObjectID, publish bool) primitive.ObjectID {
 	status := models.TaskStatusDraft
 	if publish {
 		status = models.TaskStatusWait
@@ -93,6 +93,8 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 
 	err = s.model.SetTaskInfoByID(id, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	return id
 }
 
 func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,

@@ -106,7 +106,12 @@ func (c *TaskController) Post() int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Service.AddTask(id, taskInfo, images, attachments, req.Publish)
+	taskID := c.Service.AddTask(id, taskInfo, images, attachments, req.Publish)
+	c.JSON(struct {
+		ID string `json:"id"`
+	}{
+		ID: taskID.Hex(),
+	})
 	return iris.StatusOK
 }
 
