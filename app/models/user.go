@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // UserModel User 数据库
@@ -314,10 +313,8 @@ func (model *UserModel) CheckCertificationEmail(email string) bool {
 func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
-	opt := options.Update()
-	opt.SetUpsert(true)
 	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$addToSet": bson.M{string("collect_tasks"): taskID}}, opt)
+		bson.M{"$addToSet": bson.M{string("collect_tasks"): taskID}})
 	if err != nil {
 		return err
 	} else if res.UpsertedCount == 0 && res.ModifiedCount == 0 {
@@ -329,8 +326,6 @@ func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 func (model *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
-	opt := options.Update()
-	opt.SetUpsert(true)
 	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
 		bson.M{"$pull": bson.M{string("collect_tasks"): taskID}})
 	if err != nil {
