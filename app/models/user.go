@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -255,6 +257,27 @@ func (model *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserData
 		return ErrNotExist
 	}
 	return nil
+}
+
+// GetUsers 按关键字搜索用户
+func (model *UserModel) GetUsers(key string, page, size int64) (res []UserSchema) {
+	ctx, over := GetCtx()
+	defer over()
+	cursor, err := model.Collection.Find(ctx, bson.M{"info.nickname": bson.M{"$regex": key, "$options": "$i" }},
+		options.Find().SetSkip((page-1)*size).SetLimit(size))
+	if err != nil {
+		return
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		user := UserSchema{}
+		err = cursor.Decode(&user)
+		if err != nil {
+			return
+		}
+		res = append(res, user)
+	}
+	return
 }
 
 // SetUserType 设置用户类型

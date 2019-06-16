@@ -149,7 +149,7 @@ func (m *FileModel) GetUselessFile(userID... primitive.ObjectID) (files []FileSc
 	return
 }
 
-// RemoveFile 删除无用文件
+// RemoveUselessFile 删除无用文件
 func (m *FileModel) RemoveUselessFile(userID... primitive.ObjectID) int64 {
 	ctx, finish := GetCtx()
 	defer finish()

@@ -142,3 +142,6 @@ POST http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
 
 ### 删除点赞评论/回复
 DELETE http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
+
+### 搜索用户
+GET http://127.0.0.1:30233/users?key=fish

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"math/rand"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ type UserService interface {
 	LoginByViolet(code string) (id string, new bool)
 	LoginByWechat(code string) (id string, new bool)
 	SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType)
+	SearchUser(key string, page, size int64) []models.UserSchema
 	// 认证相关
 	CancelCertification(id primitive.ObjectID)
 	UpdateCertification(id primitive.ObjectID, operate, data string)
@@ -144,6 +146,11 @@ func (s *userService) GetUser(id primitive.ObjectID) models.UserSchema {
 	return user
 }
 
+func (s *userService) SearchUser(key string, page, size int64) []models.UserSchema {
+	users := s.model.GetUsers(key, page, size)
+	return users
+}
+
 // UserAttend 用户签到
 func (s *userService) UserAttend(id primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
@@ -153,7 +160,12 @@ func (s *userService) UserAttend(id primitive.ObjectID) {
 	if lastAttend.Add(time.Hour*24).After(nowDate) && lastAttend.YearDay() == nowDate.YearDay() {
 		libs.Assert(false, "already_attend", 403)
 	}
-	libs.Assert(s.model.SetUserAttend(id) == nil, "unknown", iris.StatusInternalServerError)
+	err = s.model.UpdateUserDataCount(id, models.UserDataCount{
+		Value: rand.Int63n(20),
+	})
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	err = s.model.SetUserAttend(id)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // 设置用户信息

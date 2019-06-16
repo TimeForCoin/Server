@@ -70,17 +70,40 @@ type UserCertification struct {
 	Date   int64
 }
 
-// GetInfoBy 获取用户信息
-func (c *UserController) GetInfoBy(userID string) int {
-	var id primitive.ObjectID
-	if userID == "me" {
-		id = c.checkLogin()
-	} else {
-		var err error
-		id, err = primitive.ObjectIDFromHex(userID)
-		libs.AssertErr(err, "invalid_session", 401)
+// UserListRes 用户数据
+type UserListRes struct {
+	Pagination PaginationRes
+	Data      []GetInfoByIDRes
+}
+
+func (c *UserController) Get() int {
+	pageStr := c.Ctx.URLParamDefault("page", "1")
+	page, err := strconv.ParseInt(pageStr, 10, 64)
+	libs.AssertErr(err, "invalid_page", 400)
+	sizeStr := c.Ctx.URLParamDefault("size", "10")
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
+	libs.AssertErr(err, "invalid_size", 400)
+	key := c.Ctx.URLParamDefault("key", "")
+	libs.Assert(key != "", "invalid_key", 400)
+
+	users := c.Service.SearchUser(key, page, size)
+
+	res := []GetInfoByIDRes{}
+	for i := range users {
+		res = append(res, c.makeUserRes(users[i], false))
 	}
-	user := c.Service.GetUser(id)
+
+	c.JSON(UserListRes{
+		Pagination: PaginationRes{
+			Page: page,
+			Size: size,
+		},
+		Data: res,
+	})
+	return iris.StatusOK
+}
+
+func (c *UserController) makeUserRes(user models.UserSchema, isMe bool) GetInfoByIDRes {
 	res := GetInfoByIDRes{
 		ID:           user.ID.Hex(),
 		VioletName:   user.VioletName,
@@ -102,7 +125,7 @@ func (c *UserController) GetInfoBy(userID string) int {
 	nowTime := time.Now()
 	attendanceTime := time.Unix(user.Data.AttendanceDate, 0)
 	res.Data.Attendance = attendanceTime.Year() == nowTime.Year() && attendanceTime.YearDay() == nowTime.YearDay()
-	if userID != "me" {
+	if !isMe {
 		res.Certification.Email = ""
 		if res.Certification.Status != models.CertificationTrue {
 			res.Certification = &UserCertification{
@@ -110,7 +133,21 @@ func (c *UserController) GetInfoBy(userID string) int {
 			}
 		}
 	}
-	c.JSON(res)
+	return res
+}
+
+// GetInfoBy 获取用户信息
+func (c *UserController) GetInfoBy(userID string) int {
+	var id primitive.ObjectID
+	if userID == "me" {
+		id = c.checkLogin()
+	} else {
+		var err error
+		id, err = primitive.ObjectIDFromHex(userID)
+		libs.AssertErr(err, "invalid_session", 401)
+	}
+	user := c.Service.GetUser(id)
+	c.JSON(c.makeUserRes(user, userID == "me"))
 	return iris.StatusOK
 }
 
