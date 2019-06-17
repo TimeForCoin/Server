@@ -33,7 +33,6 @@ type Model struct {
 	TaskStatus    *TaskStatusModel
 	User          *UserModel
 	File          *FileModel
-	Relation      *RelationModel
 	Set           *SetModel
 	System        *SystemModel
 }
@@ -142,10 +141,6 @@ func InitDB(config *libs.DBConfig) error {
 	// 文件数据库
 	model.File = &FileModel{
 		Collection: model.db.Collection("files"),
-	}
-	// 关系数据库
-	model.Relation = &RelationModel{
-		Collection: model.db.Collection("relations"),
 	}
 	// 点赞数据库
 	model.Set = &SetModel{

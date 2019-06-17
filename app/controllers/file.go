@@ -79,7 +79,7 @@ func (c *FileController) DeleteUseless() int {
 	return iris.StatusOK
 }
 
-// DeleteUseless 删除所有未使用文件
+// DeleteUselessAll 删除所有未使用文件
 func (c *FileController) DeleteUselessAll() int {
 	userID := c.checkLogin()
 	count := c.Service.RemoveUselessFile(userID, true)

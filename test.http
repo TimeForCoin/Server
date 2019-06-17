@@ -160,3 +160,15 @@ GET http://127.0.0.1:30233/users/collect/me
 
 ### 取消收藏
 DELETE http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/collect
+
+### 获取用户粉丝列表
+GET http://127.0.0.1:30233/users/follower/me
+
+### 获取用户关注列表
+GET http://127.0.0.1:30233/users/following/me
+
+### 关注用户
+POST http://127.0.0.1:30233/users/following/5cfe5275c938ced30d43615d
+
+### 取消关注用户
+DELETE http://127.0.0.1:30233/users/following/5cfe5275c938ced30d43615d

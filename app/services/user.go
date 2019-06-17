@@ -24,16 +24,24 @@ type UserService interface {
 	LoginByWechat(code string) (id string, new bool)
 	SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType)
 	SearchUser(key string, page, size int64) []models.UserSchema
-	GetSearchHistory(id primitive.ObjectID) []string
-	ClearSearchHistory(id primitive.ObjectID)
 	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
 		status string, reward string) (taskCount int64, taskCards []TaskDetail)
+	// 搜索相关
+	GetSearchHistory(id primitive.ObjectID) []string
+	ClearSearchHistory(id primitive.ObjectID)
 	// 认证相关
 	CancelCertification(id primitive.ObjectID)
 	UpdateCertification(id primitive.ObjectID, operate, data string)
 	CheckCertification(id primitive.ObjectID, code string) string
 	SendCertificationEmail(id primitive.ObjectID, email string)
 	AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string)
+	// 关注相关
+	GetFollowing(id primitive.ObjectID, page, size int64) ([]models.UserBaseInfo, int64)
+	GetFollower(id primitive.ObjectID, page, size int64) ([]models.UserBaseInfo, int64)
+	FollowUser(userID, followID primitive.ObjectID)
+	UnFollowUser(userID, followID primitive.ObjectID)
+	IsFollower(userID, followID primitive.ObjectID) bool
+	IsFollowing(userID, followID primitive.ObjectID) bool
 }
 
 // NewUserService 初始化
@@ -346,4 +354,111 @@ func (s *userService) GetSearchHistory(id primitive.ObjectID) []string {
 func (s *userService) ClearSearchHistory(id primitive.ObjectID) {
 	err := s.model.ClearSearchHistory(id)
 	libs.AssertErr(err, "", 500)
+}
+
+// GetFollowing 获取用户关注列表
+func (s *userService) GetFollowing(id primitive.ObjectID, page, size int64) ([]models.UserBaseInfo, int64) {
+	set := s.setModel.GetSets(id, models.SetOfFollowingUser)
+	followingIDs := set.FollowingUserID
+	lenOfIDs := int64(len(followingIDs))
+	beginIndex := (page - 1) * size
+	endIndex := page * size
+	if lenOfIDs < beginIndex {
+		return []models.UserBaseInfo{}, lenOfIDs
+	}
+	if lenOfIDs > endIndex {
+		followingIDs = followingIDs[beginIndex:endIndex]
+	} else {
+		followingIDs = followingIDs[beginIndex:]
+	}
+	var res []models.UserBaseInfo
+	for _, id := range followingIDs {
+		user, _ := s.cache.GetUserBaseInfo(id)
+		res = append(res, user)
+	}
+	return res, lenOfIDs
+}
+
+// GetFollower 获取用户粉丝列表
+func (s *userService) GetFollower(id primitive.ObjectID, page, size int64) ([]models.UserBaseInfo, int64) {
+	set := s.setModel.GetSets(id, models.SetOfFollowerUser)
+	followerIDs := set.FollowerUserID
+	lenOfIDs := int64(len(followerIDs))
+	beginIndex := (page - 1) * size
+	endIndex := page * size
+	if lenOfIDs < beginIndex {
+		return []models.UserBaseInfo{}, lenOfIDs
+	}
+	if lenOfIDs > endIndex {
+		followerIDs = followerIDs[beginIndex:endIndex]
+	} else {
+		followerIDs = followerIDs[beginIndex:]
+	}
+	var res []models.UserBaseInfo
+	for _, id := range followerIDs {
+		user, _ := s.cache.GetUserBaseInfo(id)
+		res = append(res, user)
+	}
+	return res, lenOfIDs
+}
+
+// FollowUser 关注用户
+func (s *userService) FollowUser(userID, followID primitive.ObjectID) {
+	_, err := s.model.GetUserByID(followID)
+	libs.AssertErr(err, "faked_user", 403)
+
+	err = s.setModel.AddToSet(userID, followID, models.SetOfFollowingUser)
+	libs.AssertErr(err, "exist_relation", 403)
+
+	err = s.setModel.AddToSet(followID, userID, models.SetOfFollowerUser)
+	libs.AssertErr(err, "", 500)
+
+	err = s.model.UpdateUserDataCount(followID, models.UserDataCount{
+		FollowerCount: 1,
+	})
+	libs.AssertErr(err, "", 500)
+	err = s.model.UpdateUserDataCount(userID, models.UserDataCount{
+		FollowingCount: 1,
+	})
+	libs.AssertErr(err, "", 500)
+
+	err = s.cache.WillUpdate(userID, models.KindOfFollowing)
+	libs.AssertErr(err, "", 500)
+
+	err = s.cache.WillUpdate(followID, models.KindOfFollower)
+	libs.AssertErr(err, "", 500)
+}
+
+// UnFollowUser 取消关注用户
+func (s *userService) UnFollowUser(userID, followID primitive.ObjectID) {
+	err := s.setModel.RemoveFromSet(userID, followID, models.SetOfFollowingUser)
+	libs.AssertErr(err, "faked_relation", 403)
+
+	err = s.setModel.RemoveFromSet(followID, userID, models.SetOfFollowerUser)
+	libs.AssertErr(err, "", 500)
+
+	err = s.model.UpdateUserDataCount(followID, models.UserDataCount{
+		FollowerCount: -1,
+	})
+	libs.AssertErr(err, "", 500)
+	err = s.model.UpdateUserDataCount(userID, models.UserDataCount{
+		FollowingCount: -1,
+	})
+	libs.AssertErr(err, "", 500)
+
+	err = s.cache.WillUpdate(userID, models.KindOfFollowing)
+	libs.AssertErr(err, "", 500)
+
+	err = s.cache.WillUpdate(followID, models.KindOfFollower)
+	libs.AssertErr(err, "", 500)
+}
+
+
+func (s *userService)  IsFollower(userID, followID primitive.ObjectID) bool {
+	return s.cache.IsFollowerUser(userID, followID)
+}
+
+func (s *userService)  IsFollowing(userID, followID primitive.ObjectID) bool {
+	return s.cache.IsFollowingUser(userID, followID)
+
 }
