@@ -42,7 +42,7 @@ POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "043EMBGb19k3Vv0Ns8Ib1OOUGb1EMBGL"
+  "code": "033YEYKz0YRttd1WjMIz0Qn3Lz0YEYKh"
 }
 
 ### 微信二维码
@@ -86,8 +86,8 @@ Content-Type: application/json
 }
 
 ### 获取任务列表
-// GET http://127.0.0.1:30233/tasks?page=1&size=10
-Get https://coin.zhenly.cn/api/tasks?page=1&size=10
+GET http://127.0.0.1:30233/tasks?page=1&size=5
+// Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
 GET http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
@@ -145,3 +145,18 @@ DELETE http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
 
 ### 搜索用户
 GET http://127.0.0.1:30233/users?key=fish
+
+### 获取搜索记录
+GET  http://127.0.0.1:30233/users/history
+
+### 删除搜索记录
+DELETE http://127.0.0.1:30233/users/history
+
+### 收藏任务
+POST http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/collect
+
+### 获取用户收藏
+GET http://127.0.0.1:30233/users/collect/me
+
+### 取消收藏
+DELETE http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/collect

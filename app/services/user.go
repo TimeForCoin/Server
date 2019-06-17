@@ -24,14 +24,16 @@ type UserService interface {
 	LoginByWechat(code string) (id string, new bool)
 	SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType)
 	SearchUser(key string, page, size int64) []models.UserSchema
+	GetSearchHistory(id primitive.ObjectID) []string
+	ClearSearchHistory(id primitive.ObjectID)
+	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
+		status string, reward string) (taskCount int64, taskCards []TaskDetail)
 	// 认证相关
 	CancelCertification(id primitive.ObjectID)
 	UpdateCertification(id primitive.ObjectID, operate, data string)
 	CheckCertification(id primitive.ObjectID, code string) string
 	SendCertificationEmail(id primitive.ObjectID, email string)
 	AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string)
-	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
-		status string, reward string) (taskCount int64, taskCards []TaskDetail)
 }
 
 // NewUserService 初始化
@@ -234,7 +236,7 @@ func (s *userService) AddEmailCertification(identity models.UserIdentity, id pri
 	s.SendCertificationEmail(id, email)
 }
 
-// 发送认证邮件
+// SendCertificationEmail 发送认证邮件
 func (s *userService) SendCertificationEmail(id primitive.ObjectID, email string) {
 	if email == "" {
 		user, err := s.model.GetUserByID(id)
@@ -254,6 +256,7 @@ func (s *userService) SendCertificationEmail(id primitive.ObjectID, email string
 	libs.AssertErr(err, "error_redis", iris.StatusInternalServerError)
 }
 
+// CheckCertification 检查用户认证
 func (s *userService) CheckCertification(id primitive.ObjectID, code string) string {
 	user, err := s.model.GetUserByID(id)
 	if err != nil {
@@ -285,6 +288,7 @@ func (s *userService) CheckCertification(id primitive.ObjectID, code string) str
 	return "认证已通过"
 }
 
+// GetUserCollections 获取用户收藏
 func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
 	status string, reward string) (taskCount int64, taskCards []TaskDetail) {
 	var taskTypes []models.TaskType
@@ -319,32 +323,27 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 	if sortRule == "new" {
 		sortRule = "publish_date"
 	}
-	collectionTasks := s.setModel.GetSets(id, "collect_task_id")
-	tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
-	for i, t := range tasks {
-		var task TaskDetail
-		task.TaskSchema = &tasks[i]
-
-		user, err := s.cache.GetUserBaseInfo(t.Publisher)
+	collectionTasks := s.setModel.GetSets(id, models.SetOfCollectTask)
+	if len(collectionTasks.CollectTaskID) > 0{
+		tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Publisher = user
-
-		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Images = []ImagesData{}
-		task.Attachment = []models.FileSchema{}
-		for _, i := range images {
-			task.Images = append(task.Images, ImagesData{
-				ID:  i.ID.Hex(),
-				URL: i.URL,
-			})
+		for _, t := range tasks {
+			taskCards = append(taskCards, GetServiceManger().Task.makeTaskDetail(t, id.Hex()))
 		}
-		task.Liked = s.cache.IsLikeTask(id, t.ID)
-		task.Collected = s.cache.IsCollectTask(id, t.ID)
-
-		taskCards = append(taskCards, task)
+		return taskCount, taskCards
 	}
+	return 0, []TaskDetail{}
+}
 
-	return
+// GetSearchHistory 获取用户搜索历史
+func (s *userService) GetSearchHistory(id primitive.ObjectID) []string {
+	res, err := s.model.GetSearchHistory(id)
+	libs.AssertErr(err, "", 500)
+	return res
+}
+
+// ClearSearchHistory 清空用户搜索历史
+func (s *userService) ClearSearchHistory(id primitive.ObjectID) {
+	err := s.model.ClearSearchHistory(id)
+	libs.AssertErr(err, "", 500)
 }

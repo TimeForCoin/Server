@@ -162,25 +162,24 @@ func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskType
 		}
 	}
 
-	// TODO 关键词筛选
 	// 按类型、状态、酬劳类型、关键词筛选
-	filter := bson.M{}
-	if len(taskIDs) > 0 {
-		filter = bson.M{
-			"_id":    bson.M{"$in": taskIDs},
-			"type":   bson.M{"$in": taskTypes},
-			"status": bson.M{"$in": statuses},
-			//"tags":    bson.M{"$in": keywords},
-			"reward": bson.M{"$in": rewards}}
-	} else {
-		filter = bson.M{
-			"type":   bson.M{"$in": taskTypes},
-			"status": bson.M{"$in": statuses},
-			//"tags":    bson.M{"$in": keywords},
-			"reward": bson.M{"$in": rewards}}
+	filter := bson.M{
+		"type":   bson.M{"$in": taskTypes},
+		"status": bson.M{"$in": statuses},
+		"reward": bson.M{"$in": rewards},
 	}
-	//"title":   bson.M{"$regex": keywordsRegex},
-	//"content": bson.M{"$regex": keywordsRegex}}
+
+	if len(keywords) > 0 {
+		filter["$or"] = []bson.M{
+			{"tags": bson.M{"$in": keywords}},
+			{"title": bson.M{"$regex": keywordsRegex, "$options": "$i"}},
+			{"content": bson.M{"$regex": keywordsRegex, "$options": "$i"}},
+		}
+	}
+
+	if len(taskIDs) > 0 {
+		filter["_id"] = bson.M{"$in": taskIDs}
+	}
 
 	// 筛选发布者
 	if user != "" {

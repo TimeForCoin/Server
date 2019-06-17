@@ -243,14 +243,13 @@ func (c *UserController) PutTypeByID(userID string) int {
 }
 
 // GetCollect 获取用户收藏
-func (c *UserController) GetCollect() int {
+func (c *UserController) GetCollectBy(userIDString string) int {
 	pageStr := c.Ctx.URLParamDefault("page", "1")
 	page, err := strconv.ParseInt(pageStr, 10, 64)
 	libs.AssertErr(err, "invalid_page", 400)
 	sizeStr := c.Ctx.URLParamDefault("size", "10")
 	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	libs.AssertErr(err, "invalid_size", 400)
-	userIDString := c.Ctx.URLParamDefault("user_id", "")
 	libs.Assert(userIDString != "", "string")
 	var userID primitive.ObjectID
 	if userIDString == "me" {
@@ -267,9 +266,6 @@ func (c *UserController) GetCollect() int {
 
 	taskCount, tasksData := c.Service.GetUserCollections(userID, page, size, sort,
 		taskType, status, reward)
-	if tasksData == nil {
-		tasksData = []services.TaskDetail{}
-	}
 
 	res := TasksListRes{
 		Pagination: PaginationRes{
@@ -280,5 +276,29 @@ func (c *UserController) GetCollect() int {
 		Tasks: tasksData,
 	}
 	c.JSON(res)
+	return iris.StatusOK
+}
+
+// GetHistory 获取用户搜索历史
+func (c *UserController) GetHistory() int {
+	id := c.checkLogin()
+
+	history := c.Service.GetSearchHistory(id)
+	if history == nil {
+		history = []string{}
+	}
+
+	c.JSON(struct {
+		Data []string
+	}{
+		Data: history,
+	})
+
+	return iris.StatusOK
+}
+
+func (c *UserController) DeleteHistory() int {
+	id := c.checkLogin()
+	c.Service.ClearSearchHistory(id)
 	return iris.StatusOK
 }

@@ -22,6 +22,8 @@ type TaskService interface {
 	AddView(taskID primitive.ObjectID)
 	ChangeLike(taskID, userID primitive.ObjectID, like bool)
 	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
+	// 内部服务
+	makeTaskDetail(task models.TaskSchema, userID string) (res TaskDetail)
 }
 
 func newTaskService() TaskService {
@@ -283,7 +285,14 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 		}
 	}
 
-	keywords := strings.Split(keyword, " ")
+	keywords := strings.Split(keyword, ",")
+	if keyword != "" && userID != "" {
+		_userID, err := primitive.ObjectIDFromHex(userID)
+		if err == nil {
+			//noinspection GoUnhandledErrorResult
+			s.userModel.AddSearchHistory(_userID, keyword)
+		}
+	}
 
 	if sortRule == "new" {
 		sortRule = "publish_date"
@@ -292,35 +301,36 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	tasks, taskCount, err := s.model.GetTasks(sortRule, taskIDs, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
-	for i, t := range tasks {
-		var task TaskDetail
-		task.TaskSchema = &tasks[i]
-
-		user, err := s.cache.GetUserBaseInfo(t.Publisher)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Publisher = user
-
-		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Images = []ImagesData{}
-		task.Attachment = []models.FileSchema{}
-		for _, i := range images {
-			task.Images = append(task.Images, ImagesData{
-				ID:  i.ID.Hex(),
-				URL: i.URL,
-			})
-		}
-		if userID != "" {
-			id, err := primitive.ObjectIDFromHex(userID)
-			if err == nil {
-				task.Liked = s.cache.IsLikeTask(id, t.ID)
-				task.Collected = s.cache.IsCollectTask(id, t.ID)
-			}
-		}
-
-		taskCards = append(taskCards, task)
+	for _, t := range tasks {
+		taskCards = append(taskCards, s.makeTaskDetail(t, userID))
 	}
+	return
+}
 
+func (s *taskService) makeTaskDetail(task models.TaskSchema, userID string) (res TaskDetail) {
+	res.TaskSchema = &task
+
+	user, err := s.cache.GetUserBaseInfo(task.Publisher)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	res.Publisher = user
+
+	images, err := s.fileModel.GetFileByContent(task.ID, models.FileImage)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	res.Images = []ImagesData{}
+	res.Attachment = []models.FileSchema{}
+	for _, i := range images {
+		res.Images = append(res.Images, ImagesData{
+			ID:  i.ID.Hex(),
+			URL: i.URL,
+		})
+	}
+	if userID != "" {
+		id, err := primitive.ObjectIDFromHex(userID)
+		if err == nil {
+			res.Liked = s.cache.IsLikeTask(id, task.ID)
+			res.Collected = s.cache.IsCollectTask(id, task.ID)
+		}
+	}
 	return
 }
 
@@ -332,6 +342,12 @@ func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
 	err = s.model.RemoveTask(taskID)
 	libs.AssertErr(err, "", 500)
+	// 删除附件
+	files, err := s.fileModel.GetFileByContent(taskID)
+	libs.AssertErr(err, "", 500)
+	for _, file := range files {
+		GetServiceManger().File.RemoveFile(file.ID)
+	}
 }
 
 // AddView 增加任务阅读量
