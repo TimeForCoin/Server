@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"strconv"
-
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
@@ -80,12 +78,7 @@ type UserListRes struct {
 
 // Get 搜索用户
 func (c *UserController) Get() int {
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 	key := c.Ctx.URLParamDefault("key", "")
 	libs.Assert(key != "", "invalid_key", 400)
 
@@ -265,17 +258,13 @@ func (c *UserController) PutTypeByID(userID string) int {
 
 // GetCollectBy 获取用户收藏
 func (c *UserController) GetCollectBy(userIDString string) int {
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 	libs.Assert(userIDString != "", "string")
 	var userID primitive.ObjectID
 	if userIDString == "me" {
 		userID = c.checkLogin()
 	} else {
+		var err error
 		userID, err = primitive.ObjectIDFromHex(userIDString)
 		libs.AssertErr(err, "invalid_user", 403)
 	}
@@ -340,12 +329,7 @@ func (c *UserController) GetFollowerBy(id string) int {
 		userID, err = primitive.ObjectIDFromHex(id)
 		libs.AssertErr(err, "invalid_id", 400)
 	}
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 
 	followers, total := c.Service.GetFollower(userID, page, size)
 	if followers == nil {
@@ -373,12 +357,7 @@ func (c *UserController) GetFollowingBy(id string) int {
 		userID, err = primitive.ObjectIDFromHex(id)
 		libs.AssertErr(err, "invalid_id", 400)
 	}
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 
 	followings, total := c.Service.GetFollowing(userID, page, size)
 	if followings == nil {

@@ -401,3 +401,23 @@ func (m *UserModel) GetSearchHistory(id primitive.ObjectID) ([]string, error) {
 	}
 	return user.Data.SearchHistory, nil
 }
+
+// GetAllUser 获取所有用户ID
+func (m *UserModel) GetAllUser() (res []primitive.ObjectID) {
+	ctx, over := GetCtx()
+	defer over()
+	cur, err := m.Collection.Find(ctx, bson.M{}, options.Find().SetProjection(bson.M{"_id": 1}))
+	if err != nil {
+		return nil
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		user := UserSchema{}
+		err = cur.Decode(&user)
+		if err != nil {
+			return
+		}
+		res = append(res, user.ID)
+	}
+	return res
+}

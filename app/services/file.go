@@ -19,7 +19,7 @@ type FileService interface {
 	RemoveUselessFile(userID primitive.ObjectID, all bool) (removeCount int64)
 }
 
-// NewUserService 初始化
+// newFileService 初始化
 func newFileService() FileService {
 	return &fileService{
 		model:     models.GetModel().File,

@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"strconv"
-
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/kataras/iris"
@@ -25,12 +23,7 @@ func BindCommentController(app *iris.Application) {
 
 // GetBy 获取相关内容的评论
 func (c *CommentController) GetBy(id string) int {
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
 
