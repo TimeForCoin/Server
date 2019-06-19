@@ -1,8 +1,9 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"testing"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestCache(t *testing.T) {
@@ -26,7 +27,7 @@ func testAddLike(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if  redisInst.Cache.IsLikeTask(userID, primitive.NewObjectID()) == true {
+	if redisInst.Cache.IsLikeTask(userID, primitive.NewObjectID()) == true {
 		t.Error()
 	}
 	if redisInst.Cache.IsLikeTask(userID, taskID) == false {
@@ -49,7 +50,6 @@ func testAddLike(t *testing.T) {
 	if redisInst.Cache.IsLikeTask(userID, taskID) == false {
 		t.Error()
 	}
-
 
 }
 

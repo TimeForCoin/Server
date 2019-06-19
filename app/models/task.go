@@ -80,11 +80,12 @@ type TaskSchema struct {
 	Hot int64 `bson:"hot"` // 任务热度
 }
 
+// AddTask 添加任务
 func (m *TaskModel) AddTask(taskID, publisherID primitive.ObjectID, status TaskStatus) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
 	res, err := m.Collection.InsertOne(ctx, &TaskSchema{
-		ID: taskID,
+		ID:          taskID,
 		Publisher:   publisherID,
 		PublishDate: time.Now().Unix(),
 		Status:      status,
@@ -95,6 +96,7 @@ func (m *TaskModel) AddTask(taskID, publisherID primitive.ObjectID, status TaskS
 	return res.InsertedID.(primitive.ObjectID), nil
 }
 
+// SetTaskInfoByID 设置任务信息
 func (m *TaskModel) SetTaskInfoByID(id primitive.ObjectID, info TaskSchema) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -137,6 +139,8 @@ func (m *TaskModel) SetTaskInfoByID(id primitive.ObjectID, info TaskSchema) erro
 	// 更新缓存
 	return nil
 }
+
+// GetTaskByID 获取用户
 func (m *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -144,20 +148,7 @@ func (m *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err err
 	return
 }
 
-//type TaskCard struct {
-//	ID           string  // 任务ID
-//	Publisher    string  // 发布者ID
-//	Avatar       string  // 发布者头像
-//	Credit       int64   // 发布者信用度
-//	Title        string  // 任务标题
-//	TopTime      int64   `json:"top_time"` // 任务是否置顶
-//	EndDate      int64   `json:"end_date"` // 任务截止时间
-//	Reward       string  // 酬劳类型
-//	RewardValue  float32 `json:"reward_value, omitempty"`  // 酬劳数值
-//	RewardObject string  `json:"reward_object, omitempty"` // 酬劳物体
-//}
-
-// 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
+// GetTasks 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
 func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskTypes []TaskType,
 	statuses []TaskStatus, rewards []RewardType, keywords []string, user string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
 	ctx, over := GetCtx()
@@ -173,23 +164,23 @@ func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskType
 
 	// TODO 关键词筛选
 	// 按类型、状态、酬劳类型、关键词筛选
-	filter := bson.M{}
-	if len(taskIDs) > 0 {
-		filter = bson.M{
-			"_id":    bson.M{"$in": taskIDs},
-			"type":   bson.M{"$in": taskTypes},
-			"status": bson.M{"$in": statuses},
-			//"tags":    bson.M{"$in": keywords},
-			"reward": bson.M{"$in": rewards}}
-	} else {
-		filter = bson.M{
-			"type":   bson.M{"$in": taskTypes},
-			"status": bson.M{"$in": statuses},
-			//"tags":    bson.M{"$in": keywords},
-			"reward": bson.M{"$in": rewards}}
+	filter := bson.M{
+		"type":   bson.M{"$in": taskTypes},
+		"status": bson.M{"$in": statuses},
+		"reward": bson.M{"$in": rewards},
 	}
-	//"title":   bson.M{"$regex": keywordsRegex},
-	//"content": bson.M{"$regex": keywordsRegex}}
+
+	if len(keywords) > 0 {
+		filter["$or"] = []bson.M{
+			{"tags": bson.M{"$in": keywords}},
+			{"title": bson.M{"$regex": keywordsRegex, "$options": "$i"}},
+			{"content": bson.M{"$regex": keywordsRegex, "$options": "$i"}},
+		}
+	}
+
+	if len(taskIDs) > 0 {
+		filter["_id"] = bson.M{"$in": taskIDs}
+	}
 
 	// 筛选发布者
 	if user != "" {
@@ -224,6 +215,7 @@ func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskType
 	return
 }
 
+// RemoveTask 删除任务
 func (m *TaskModel) RemoveTask(taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -238,8 +230,10 @@ func (m *TaskModel) RemoveTask(taskID primitive.ObjectID) error {
 	return nil
 }
 
+// ContentCountType 计数内容类型
 type ContentCountType string
 
+// ContentCountType 计数内容类型
 const (
 	ViewCount    ContentCountType = "view_count"    // 任务浏览数
 	CollectCount ContentCountType = "collect_count" // 收藏数
@@ -248,6 +242,7 @@ const (
 	ReplyCount   ContentCountType = "reply_count"   // 回复数
 )
 
+// InsertCount 增加计数
 func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name ContentCountType, count int) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -259,4 +254,32 @@ func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name ContentCountType
 	}
 
 	return nil
+}
+
+// GetTasksByIDs 根据多个ID获取任务列表
+func (m *TaskModel) GetTasksByIDs(taskIDs []primitive.ObjectID) (tasks []TaskSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+
+	filter := bson.M{}
+	filter = bson.M{
+		"_id": bson.M{"$in": taskIDs},
+	}
+
+	cursor, err := m.Collection.Find(ctx, filter, options.Find())
+	if err != nil {
+		return
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		task := TaskSchema{}
+		err = cursor.Decode(&task)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	return
 }

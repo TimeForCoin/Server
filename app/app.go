@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+
 	"github.com/TimeForCoin/Server/app/controllers"
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
@@ -8,7 +10,6 @@ import (
 	"github.com/kataras/iris"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
 )
 
 func initService(config libs.Config) {
@@ -25,7 +26,7 @@ func initService(config libs.Config) {
 	// 初始化 Json 设置
 	// 自动转换成小写下划线风格
 	extra.SetNamingStrategy(extra.LowerCaseWithUnderscores)
-	// 初始化 Violet Oauth 系统
+	// 初始化 Violet OAuth 系统
 	libs.InitViolet(config.Violet)
 	// 初始化 微信 API
 	libs.InitWeChat(config.Wechat)

@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/kataras/iris/sessions/sessiondb/redis"
 	"github.com/kataras/iris/sessions/sessiondb/redis/service"
 	"github.com/rs/zerolog/log"
-	"time"
 
 	irisRecover "github.com/kataras/iris/middleware/recover"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -32,15 +34,24 @@ func NewApp() *iris.Application {
 	BindFileController(app)
 	BindQuestionnaireController(app)
 	BindCommentController(app)
+	BindMessageController(app)
 
 	return app
 }
 
 type omit *struct{}
+
 // BaseController 控制基类
 type BaseController struct {
 	Ctx     iris.Context
 	Session *sessions.Session
+}
+
+// PaginationRes 分页数据结构
+type PaginationRes struct {
+	Page  int64
+	Size  int64
+	Total int64
 }
 
 // 检查登陆状态
@@ -51,6 +62,19 @@ func (b *BaseController) checkLogin() primitive.ObjectID {
 	login := b.Session.GetString("login")
 	libs.Assert(login != "wechat_new", "invalid_session", 401)
 	return _id
+}
+
+func (b *BaseController) getPaginationData() (page, size int64) {
+	var err error
+	pageStr := b.Ctx.URLParamDefault("page", "1")
+	page, err = strconv.ParseInt(pageStr, 10, 64)
+	libs.AssertErr(err, "invalid_page", 400)
+	libs.Assert(page > 0, "invalid_page", 400)
+	sizeStr := b.Ctx.URLParamDefault("size", "10")
+	size, err = strconv.ParseInt(sizeStr, 10, 64)
+	libs.AssertErr(err, "invalid_size", 400)
+	libs.Assert(size > 0, "invalid_size", 400)
+	return
 }
 
 // JSON 使用 JSON 返回数据
@@ -77,7 +101,7 @@ func InitSession(config libs.SessionConfig, dbConfig libs.RedisConfig) {
 
 	// close connection when control+C/cmd+C
 	iris.RegisterOnInterrupt(func() {
-		if 	err := db.Close(); err != nil {
+		if err := db.Close(); err != nil {
 			log.Error().Msg(err.Error())
 		}
 	})

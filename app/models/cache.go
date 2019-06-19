@@ -1,37 +1,45 @@
 package models
 
 import (
+	"time"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
 )
 
 // 快速缓存
 
-// - 热门任务列表
-// - 任务浏览量(热度)
 // - 用户基本信息(头像、昵称)
-// - 点赞用户记录
+// - 用户点赞
+// - 用户收藏
+// - 用户关系
 
 // CacheModel 缓存数据库
 type CacheModel struct {
 	Redis *redis.Client
 }
 
+// DataKind 数据类型
 type DataKind string
+
+// DataKind 缓存数据类型
 const (
-	KindOfLikeTask  DataKind = "like-task-"
+	KindOfLikeTask    DataKind = "like-task-"
 	KindOfLikeComment DataKind = "like-comment-"
 	KindOfCollectTask DataKind = "collect-task-"
-	KindOfBaseInfo DataKind = "info-"
+	KindOfBaseInfo    DataKind = "info-"
+	KindOfFollower    DataKind = "follower-"
+	KindOfFollowing   DataKind = "following-"
 )
 
-func (c *CacheModel) WillUpdate(userID primitive.ObjectID, kind DataKind)  error{
+// WillUpdate 更新缓存数据
+func (c *CacheModel) WillUpdate(userID primitive.ObjectID, kind DataKind) error {
 	return c.Redis.Del(string(kind) + userID.Hex()).Err()
 }
 
+// IsLikeTask 用户是否点赞任务
 func (c *CacheModel) IsLikeTask(userID, taskID primitive.ObjectID) bool {
 	setName := string(KindOfLikeTask) + userID.Hex()
 	exist, err := c.Redis.Exists(setName).Result()
@@ -57,6 +65,7 @@ func (c *CacheModel) IsLikeTask(userID, taskID primitive.ObjectID) bool {
 	return val
 }
 
+// IsLikeComment 用户是否点赞评论
 func (c *CacheModel) IsLikeComment(userID, commentID primitive.ObjectID) bool {
 	setName := string(KindOfLikeComment) + userID.Hex()
 	exist, err := c.Redis.Exists(setName).Result()
@@ -67,7 +76,7 @@ func (c *CacheModel) IsLikeComment(userID, commentID primitive.ObjectID) bool {
 	if exist == 0 {
 		// 从数据库读取
 		set := GetModel().Set.GetSets(userID, SetOfLikeComment)
-		if len(set.LikeCommentID ) > 0 {
+		if len(set.LikeCommentID) > 0 {
 			var setID []string
 			for _, id := range set.LikeCommentID {
 				setID = append(setID, id.Hex())
@@ -82,6 +91,7 @@ func (c *CacheModel) IsLikeComment(userID, commentID primitive.ObjectID) bool {
 	return val
 }
 
+// IsCollectTask 用户是否收藏任务
 func (c *CacheModel) IsCollectTask(userID, taskID primitive.ObjectID) bool {
 	setName := string(KindOfCollectTask) + userID.Hex()
 	exist, err := c.Redis.Exists(setName).Result()
@@ -107,14 +117,66 @@ func (c *CacheModel) IsCollectTask(userID, taskID primitive.ObjectID) bool {
 	return val
 }
 
-type UserBaseInfo struct {
-	ID       string `json:"id"`
-	Nickname string
-	Avatar   string
-	Gender   UserGender
-	Type     UserType
+// IsCollectTask 用户是否被某人关注
+func (c *CacheModel) IsFollowerUser(userID, otherID primitive.ObjectID) bool {
+	setName := string(KindOfFollower) + userID.Hex()
+	exist, err := c.Redis.Exists(setName).Result()
+	if err != nil {
+		return false
+	}
+	// 不存在记录
+	if exist == 0 {
+		// 从数据库读取
+		set := GetModel().Set.GetSets(userID, SetOfFollowerUser)
+		if len(set.FollowerUserID) > 0 {
+			var setID []string
+			for _, id := range set.FollowerUserID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
+		}
+	}
+	val, err := c.Redis.SIsMember(setName, otherID.Hex()).Result()
+	return val
 }
 
+// IsCollectTask 用户是否已关注某人
+func (c *CacheModel) IsFollowingUser(userID, otherID primitive.ObjectID) bool {
+	setName := string(KindOfFollowing) + userID.Hex()
+	exist, err := c.Redis.Exists(setName).Result()
+	if err != nil {
+		return false
+	}
+	// 不存在记录
+	if exist == 0 {
+		// 从数据库读取
+		set := GetModel().Set.GetSets(userID, SetOfFollowingUser)
+		if len(set.FollowingUserID) > 0 {
+			var setID []string
+			for _, id := range set.FollowingUserID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
+		}
+	}
+	val, err := c.Redis.SIsMember(setName, otherID.Hex()).Result()
+	return val
+}
+
+// UserBaseInfo 用户基本信息数据
+type UserBaseInfo struct {
+	ID        string `json:"id"`
+	Nickname  string
+	Avatar    string
+	Gender    UserGender
+	Type      UserType
+}
 
 // GetUserBaseInfo 获取用户基本信息
 func (c *CacheModel) GetUserBaseInfo(id primitive.ObjectID) (UserBaseInfo, error) {
@@ -142,12 +204,12 @@ func (c *CacheModel) GetUserBaseInfo(id primitive.ObjectID) (UserBaseInfo, error
 	return baseInfo, err
 }
 
-// 设置认证
+// SetCertification 设置认证
 func (c *CacheModel) SetCertification(userID primitive.ObjectID, code string) error {
 	return c.Redis.Set("certification-"+userID.Hex(), code, time.Minute*30).Err()
 }
 
-// 检查认证
+// CheckCertification 检查认证
 func (c *CacheModel) CheckCertification(userID primitive.ObjectID, email, code string, use bool) (exist bool, right bool) {
 	token, err := c.Redis.Get("certification-" + userID.Hex()).Result()
 	if err != nil {

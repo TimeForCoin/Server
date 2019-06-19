@@ -1,9 +1,10 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"testing"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestUserModel(t *testing.T) {
@@ -52,13 +53,13 @@ func testUserModelAll(t *testing.T) {
 	t.Log(user)
 	// 修改信息
 	err = model.User.SetUserInfoByID(id, UserInfoSchema{
-		Gender:GenderMan,
-		Email: "abc@qq.com",
-		Phone:"188",
-		Avatar:"bbb",
-		Nickname:"ccc",
-		Bio:"ddd",
-		Location:"kkk",
+		Gender:   GenderMan,
+		Email:    "abc@qq.com",
+		Phone:    "188",
+		Avatar:   "bbb",
+		Nickname: "ccc",
+		Bio:      "ddd",
+		Location: "kkk",
 		Birthday: time.Now().Unix(),
 	})
 	if err != nil {
@@ -70,10 +71,10 @@ func testUserModelAll(t *testing.T) {
 	}
 	t.Log(user)
 	err = model.User.SetUserInfoByID(id, UserInfoSchema{
-		Gender: GenderWoman,
-		Email: "abc@qq.com",
-		Phone:"199",
-		Location:"location",
+		Gender:   GenderWoman,
+		Email:    "abc@qq.com",
+		Phone:    "199",
+		Location: "location",
 		Birthday: time.Now().Unix(),
 	})
 	if err != nil {
@@ -86,9 +87,9 @@ func testUserModelAll(t *testing.T) {
 	t.Log(user)
 
 	if err = model.User.UpdateUserDataCount(id, UserDataCount{
-		Money: 10,
-		Credit: -4,
-		FollowerCount: 1,
+		Money:          10,
+		Credit:         -4,
+		FollowerCount:  1,
 		FollowingCount: -1,
 	}); err != nil {
 		t.Error(err)

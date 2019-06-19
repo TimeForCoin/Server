@@ -1,9 +1,10 @@
 package models
 
 import (
+	"testing"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"testing"
 )
 
 func TestCommentModel(t *testing.T) {
@@ -35,7 +36,7 @@ func testAddComment(t *testing.T) {
 		t.Error(err)
 	}
 
-	res, err = model.Comment.GetCommentsByContent(contentID, 1 ,10, bson.M{"time": 1})
+	res, err = model.Comment.GetCommentsByContent(contentID, 1, 10, bson.M{"time": 1})
 	if err != nil {
 		t.Error(err)
 	}
@@ -46,7 +47,7 @@ func testAddComment(t *testing.T) {
 		t.Error(err)
 	}
 
-	res, err = model.Comment.GetCommentsByContent(contentID, 1 ,10, bson.M{"time": 1})
+	res, err = model.Comment.GetCommentsByContent(contentID, 1, 10, bson.M{"time": 1})
 	if err != nil {
 		t.Error(err)
 	}

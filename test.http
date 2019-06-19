@@ -12,7 +12,6 @@ https://coin.zhenly.cn/api/session/status
 GET http://127.0.0.1:30233/users/info/me
 //GET https://coin.zhenly.cn/api/users/info/me
 
-
 ### 获取用户信息
 GET http://127.0.0.1:30233/users/info/5cf6588cf629d9be71a64875
 
@@ -42,7 +41,7 @@ POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "043EMBGb19k3Vv0Ns8Ib1OOUGb1EMBGL"
+  "code": "033YEYKz0YRttd1WjMIz0Qn3Lz0YEYKh"
 }
 
 ### 微信二维码
@@ -86,8 +85,8 @@ Content-Type: application/json
 }
 
 ### 获取任务列表
-// GET http://127.0.0.1:30233/tasks?page=1&size=10
-Get https://coin.zhenly.cn/api/tasks?page=1&size=10
+GET http://127.0.0.1:30233/tasks?page=1&size=5
+// Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
 GET http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
@@ -142,3 +141,59 @@ POST http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
 
 ### 删除点赞评论/回复
 DELETE http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
+
+### 搜索用户
+GET http://127.0.0.1:30233/users?key=fish
+
+### 获取搜索记录
+GET  http://127.0.0.1:30233/users/history
+
+### 删除搜索记录
+DELETE http://127.0.0.1:30233/users/history
+
+### 收藏任务
+POST http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/collect
+
+### 获取用户收藏
+GET http://127.0.0.1:30233/users/collect/me
+
+### 取消收藏
+DELETE http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/collect
+
+### 获取用户粉丝列表
+GET http://127.0.0.1:30233/users/follower/me
+
+### 获取用户关注列表
+GET http://127.0.0.1:30233/users/following/me
+
+### 关注用户
+POST http://127.0.0.1:30233/users/following/5cfe5275c938ced30d43615d
+
+### 取消关注用户
+DELETE http://127.0.0.1:30233/users/following/5cfe5275c938ced30d43615d
+
+### 获取用户会话列表
+GET http://127.0.0.1:30233/messages
+
+### 发送系统消息
+POST http://127.0.0.1:30233/messages/system
+Content-Type: application/json
+
+{
+  "title": "Hello",
+  "content": "World"
+}
+
+### 获取会话信息
+GET http://127.0.0.1:30233/messages/5d07c34f9b0958884bdde14b
+
+### 将会话标记为已读
+PUT http://127.0.0.1:30233/messages/5d07c2779b0958884bdde0a2
+
+### 发送消息
+POST http://127.0.0.1:30233/messages/5cfe5275c938ced30d43615d
+Content-Type: application/json
+
+{
+  "content": "你真的好蔡啊"
+}

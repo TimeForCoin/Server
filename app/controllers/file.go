@@ -9,11 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// FileController 文件相关API
 type FileController struct {
 	BaseController
 	Service services.FileService
 }
 
+// BindFileController 绑定文件控制器
 func BindFileController(app *iris.Application) {
 	fileService := services.GetServiceManger().File
 
@@ -22,10 +24,7 @@ func BindFileController(app *iris.Application) {
 	fileRoute.Handle(new(FileController))
 }
 
-type PostFileRes struct {
-	ID string `json:"id"`
-}
-
+// Post 新建文件
 func (c *FileController) Post() int {
 	id := c.checkLogin()
 
@@ -34,36 +33,72 @@ func (c *FileController) Post() int {
 	defer file.Close()
 	libs.AssertErr(err, "invalid_data", 400)
 
-	owner := c.Ctx.FormValueDefault("owner", "")
-	libs.Assert(owner == "task" || owner == "user", "invalid_owner", 400)
 	fileType := c.Ctx.FormValueDefault("type", "")
 	libs.Assert(fileType == "image" || fileType == "file", "invalid_type", 400)
 
 	name := c.Ctx.FormValueDefault("name", head.Filename)
 	description := c.Ctx.FormValueDefault("description", "")
 	publicStr := c.Ctx.FormValueDefault("public", "false")
-	public := false
-	if publicStr == "true" {
-		public = true
-	}
+	public := publicStr == "true"
 
-	fileID := c.Service.AddFile(file, *head, models.FileType(fileType),
-		models.OwnerType(owner), id,
+	fileID := c.Service.AddFile(file, *head, models.FileType(fileType), id,
 		name, description, public)
 
-	c.JSON(&PostFileRes{
+	c.JSON(struct {
+		ID string `json:"id"`
+	}{
 		ID: fileID.Hex(),
 	})
 
 	return iris.StatusOK
 }
 
-type PutFileReq struct {
-	Name string
-	Description string
-	Public bool
+// DeleteBy 移除文件
+func (c *FileController) DeleteBy(id string) int {
+	userID := c.checkLogin()
+
+	fileID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.RemoveUserFile(userID, fileID)
+	return iris.StatusOK
+}
+// DeleteUselessReq 移除无用文件请求
+type DeleteUselessReq struct {
+	RemoveCount int64
 }
 
+// DeleteUseless 删除用户未使用文件
+func (c *FileController) DeleteUseless() int {
+	userID := c.checkLogin()
+	count := c.Service.RemoveUselessFile(userID, false)
+
+	c.JSON(DeleteUselessReq{
+		RemoveCount: count,
+	})
+
+	return iris.StatusOK
+}
+
+// DeleteUselessAll 删除所有未使用文件
+func (c *FileController) DeleteUselessAll() int {
+	userID := c.checkLogin()
+	count := c.Service.RemoveUselessFile(userID, true)
+
+	c.JSON(DeleteUselessReq{
+		RemoveCount: count,
+	})
+
+	return iris.StatusOK
+}
+
+// PutFileReq 更新附件信息请求
+type PutFileReq struct {
+	Name        string
+	Description string
+	Public      bool
+}
+
+// PutBy 更新附件信息
 func (c *FileController) PutBy(id string) int {
 	userID := c.checkLogin()
 

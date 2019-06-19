@@ -1,10 +1,11 @@
 package models
 
 import (
+	"reflect"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"reflect"
 )
 
 // QuestionnaireModel 问卷数据库
@@ -117,16 +118,18 @@ type QuestionnaireSchema struct {
 	Data        []StatisticsSchema // 问题统计数据
 }
 
-func (model *QuestionnaireModel) AddQuestionnaire(info QuestionnaireSchema) (error) {
+// AddQuestionnaire 添加问卷
+func (model *QuestionnaireModel) AddQuestionnaire(info QuestionnaireSchema) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
-	_, err := model.Collection.InsertOne(ctx, &info)
+	res, err := model.Collection.InsertOne(ctx, &info)
 	if err != nil {
-		return err
+		return primitive.ObjectID{}, err
 	}
-	return nil
+	return res.InsertedID.(primitive.ObjectID), nil
 }
 
+// GetQuestionnaireInfoByID 获取问卷信息
 func (model *QuestionnaireModel) GetQuestionnaireInfoByID(id primitive.ObjectID) (questionnaire QuestionnaireSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -134,6 +137,7 @@ func (model *QuestionnaireModel) GetQuestionnaireInfoByID(id primitive.ObjectID)
 	return
 }
 
+// SetQuestionnaireInfoByID 设置问卷信息
 func (model *QuestionnaireModel) SetQuestionnaireInfoByID(info QuestionnaireSchema) (err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -159,6 +163,7 @@ func (model *QuestionnaireModel) SetQuestionnaireInfoByID(info QuestionnaireSche
 	return nil
 }
 
+// GetQuestionnaireQuestionsByID 获取问卷问题
 func (model *QuestionnaireModel) GetQuestionnaireQuestionsByID(id primitive.ObjectID) (problems []ProblemSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()

@@ -1,8 +1,9 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"testing"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestSetModel(t *testing.T) {
@@ -75,7 +76,6 @@ func testAddToSet(t *testing.T) {
 		t.Error()
 	}
 	t.Log(res)
-
 
 	err = model.RemoveFromSet(userID, primitive.NewObjectID(), SetOfLikeComment)
 	if err == nil {

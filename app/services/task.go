@@ -9,12 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// TaskService 用户逻辑
+// TaskService 任务服务
 type TaskService interface {
 	AddTask(userID primitive.ObjectID, info models.TaskSchema,
-		images,attachments []primitive.ObjectID,  publish bool)
+		images, attachments []primitive.ObjectID, publish bool) primitive.ObjectID
 	SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
-			images, attachments []primitive.ObjectID )
+		images, attachments []primitive.ObjectID)
 	GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail)
 	GetTasks(page, size int64, sortRule, taskType,
 		status, reward, keyword, user, userID string) (taskCount int64, tasks []TaskDetail)
@@ -22,25 +22,31 @@ type TaskService interface {
 	AddView(taskID primitive.ObjectID)
 	ChangeLike(taskID, userID primitive.ObjectID, like bool)
 	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
+	ChangePlayer(taskID, userID, postUserID primitive.ObjectID, player bool)
+	SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema, accept bool)
+	GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr string, page, size int64) (taskCount int64, taskStatusList []TaskStatus)
+	// 内部服务
+	makeTaskDetail(task models.TaskSchema, userID string) (res TaskDetail)
 }
 
-// NewUserService 初始化
 func newTaskService() TaskService {
 	return &taskService{
-		model:     models.GetModel().Task,
-		userModel: models.GetModel().User,
-		fileModel: models.GetModel().File,
-		cache:     models.GetRedis().Cache,
-		set:       models.GetModel().Set,
+		model:           models.GetModel().Task,
+		userModel:       models.GetModel().User,
+		fileModel:       models.GetModel().File,
+		cache:           models.GetRedis().Cache,
+		set:             models.GetModel().Set,
+		taskStatusModel: models.GetModel().TaskStatus,
 	}
 }
 
 type taskService struct {
-	model     *models.TaskModel
-	userModel *models.UserModel
-	fileModel *models.FileModel
-	cache     *models.CacheModel
-	set       *models.SetModel
+	model           *models.TaskModel
+	userModel       *models.UserModel
+	fileModel       *models.FileModel
+	cache           *models.CacheModel
+	set             *models.SetModel
+	taskStatusModel *models.TaskStatusModel
 }
 
 // ImagesData 图片数据
@@ -64,8 +70,9 @@ type TaskDetail struct {
 	LikeID omit `json:"like_id,omitempty"` // 点赞用户ID
 }
 
+// AddTask 添加任务
 func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
-		images, attachments []primitive.ObjectID,  publish bool) {
+	images, attachments []primitive.ObjectID, publish bool) primitive.ObjectID {
 	status := models.TaskStatusDraft
 	if publish {
 		status = models.TaskStatusWait
@@ -76,13 +83,13 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	var files []FileBaseInfo
 	for _, image := range images {
 		files = append(files, FileBaseInfo{
-			ID: image,
+			ID:   image,
 			Type: models.FileImage,
 		})
 	}
 	for _, attachment := range attachments {
 		files = append(files, FileBaseInfo{
-			ID: attachment,
+			ID:   attachment,
 			Type: models.FileFile,
 		})
 	}
@@ -93,10 +100,12 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 
 	err = s.model.SetTaskInfoByID(id, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	return id
 }
 
 func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
-		images, attachments []primitive.ObjectID ) {
+	images, attachments []primitive.ObjectID) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Publisher == userID, "permission_deny", 403)
@@ -138,7 +147,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 			}
 			if !exist {
 				imageFiles = append(imageFiles, FileBaseInfo{
-					ID: image,
+					ID:   image,
 					Type: models.FileImage,
 				})
 			}
@@ -172,7 +181,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 			}
 			if !exist {
 				attachmentFiles = append(attachmentFiles, FileBaseInfo{
-					ID: attachment,
+					ID:   attachment,
 					Type: models.FileFile,
 				})
 			}
@@ -198,10 +207,11 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	// 删除无用文件
 	for _, file := range toRemove {
-		GetServiceManger().File.RemoveFiles(file)
+		GetServiceManger().File.RemoveFile(file)
 	}
 }
 
+// GetTaskByID 获取任务信息
 func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (task TaskDetail) {
 	var err error
 	taskItem, err := s.model.GetTaskByID(taskID)
@@ -241,7 +251,7 @@ func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string) (tas
 	return
 }
 
-// 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
+// GetTasks 分页获取任务列表，需要按类型/状态/酬劳类型/用户类型筛选，按关键词搜索，按不同规则排序
 func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	status, reward, keyword, user, userID string) (taskCount int64, taskCards []TaskDetail) {
 
@@ -280,7 +290,14 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 		}
 	}
 
-	keywords := strings.Split(keyword, " ")
+	keywords := strings.Split(keyword, ",")
+	if keyword != "" && userID != "" {
+		_userID, err := primitive.ObjectIDFromHex(userID)
+		if err == nil {
+			//noinspection GoUnhandledErrorResult
+			s.userModel.AddSearchHistory(_userID, keyword)
+		}
+	}
 
 	if sortRule == "new" {
 		sortRule = "publish_date"
@@ -289,38 +306,40 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	tasks, taskCount, err := s.model.GetTasks(sortRule, taskIDs, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
-	for i, t := range tasks {
-		var task TaskDetail
-		task.TaskSchema = &tasks[i]
-
-		user, err := s.cache.GetUserBaseInfo(t.Publisher)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Publisher = user
-
-		images, err := s.fileModel.GetFileByContent(t.ID, models.FileImage)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Images = []ImagesData{}
-		task.Attachment = []models.FileSchema{}
-		for _, i := range images {
-			task.Images = append(task.Images, ImagesData{
-				ID:  i.ID.Hex(),
-				URL: i.URL,
-			})
-		}
-		if userID != "" {
-			id, err := primitive.ObjectIDFromHex(userID)
-			if err == nil {
-				task.Liked = s.cache.IsLikeTask(id, t.ID)
-				task.Collected = s.cache.IsCollectTask(id, t.ID)
-			}
-		}
-
-		taskCards = append(taskCards, task)
+	for _, t := range tasks {
+		taskCards = append(taskCards, s.makeTaskDetail(t, userID))
 	}
-
 	return
 }
 
+func (s *taskService) makeTaskDetail(task models.TaskSchema, userID string) (res TaskDetail) {
+	res.TaskSchema = &task
+
+	user, err := s.cache.GetUserBaseInfo(task.Publisher)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	res.Publisher = user
+
+	images, err := s.fileModel.GetFileByContent(task.ID, models.FileImage)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	res.Images = []ImagesData{}
+	res.Attachment = []models.FileSchema{}
+	for _, i := range images {
+		res.Images = append(res.Images, ImagesData{
+			ID:  i.ID.Hex(),
+			URL: i.URL,
+		})
+	}
+	if userID != "" {
+		id, err := primitive.ObjectIDFromHex(userID)
+		if err == nil {
+			res.Liked = s.cache.IsLikeTask(id, task.ID)
+			res.Collected = s.cache.IsCollectTask(id, task.ID)
+		}
+	}
+	return
+}
+
+// RemoveTask 删除任务
 func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
@@ -328,13 +347,21 @@ func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
 	err = s.model.RemoveTask(taskID)
 	libs.AssertErr(err, "", 500)
+	// 删除附件
+	files, err := s.fileModel.GetFileByContent(taskID)
+	libs.AssertErr(err, "", 500)
+	for _, file := range files {
+		GetServiceManger().File.RemoveFile(file.ID)
+	}
 }
 
+// AddView 增加任务阅读量
 func (s *taskService) AddView(taskID primitive.ObjectID) {
 	err := s.model.InsertCount(taskID, models.ViewCount, 1)
 	libs.AssertErr(err, "faked_task", 403)
 }
 
+// ChangeLike 改变任务点赞状态
 func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 	_, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
@@ -352,6 +379,7 @@ func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 	libs.AssertErr(err, "", 500)
 }
 
+// ChangeCollection 改变收藏状态
 func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collect bool) {
 	_, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
@@ -359,14 +387,106 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 		err = s.set.AddToSet(userID, taskID, models.SetOfCollectTask)
 		libs.AssertErr(err, "exist_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, 1)
+		libs.AssertErr(err, "", 500)
 		err = s.userModel.AddCollectTask(userID, taskID)
 	} else {
 		err = s.set.RemoveFromSet(userID, taskID, models.SetOfCollectTask)
 		libs.AssertErr(err, "faked_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, -1)
+		libs.AssertErr(err, "", 500)
 		err = s.userModel.RemoveCollectTask(userID, taskID)
 	}
 	libs.AssertErr(err, "", 500)
 	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
 	libs.AssertErr(err, "", 500)
+}
+
+func (s *taskService) ChangePlayer(taskID, userID, postUserID primitive.ObjectID, player bool) {
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	taskStatus, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
+	if player {
+		libs.Assert(err != nil, "exist_player", 403)
+		taskStatusID := primitive.NewObjectID()
+		taskStatusID, err = s.taskStatusModel.AddTaskStatus(taskStatusID, taskID, userID)
+		libs.AssertErr(err, "", 500)
+	} else {
+		libs.Assert(err == nil, "faked_player", 403)
+		libs.Assert(task.Publisher == postUserID || postUserID == userID, "permission_deny", 403)
+		libs.Assert(task.Status != models.TaskStatusWait, "permission_deny", 403)
+		err = s.taskStatusModel.DeleteTaskStatus(taskStatus.ID)
+		libs.AssertErr(err, "", 500)
+	}
+}
+
+func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema, accept bool) {
+	taskStatusGet, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
+	libs.AssertErr(err, "faked_status", 403)
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	isPublisher := task.Publisher == postUserID
+	libs.Assert(isPublisher || userID == postUserID, "permission_deny", 403)
+	status := taskStatus.Status
+	degree := taskStatus.Degree
+	remark := taskStatus.Remark
+	score := taskStatus.Score
+	feedback := taskStatus.Feedback
+	if accept {
+		if taskStatusGet.Status == models.PlayerWait && status == "" {
+			taskStatus.Status = models.PlayerRunning
+		}
+	}
+
+	if isPublisher {
+		libs.Assert(score == 0 && feedback == "" && status != models.PlayerWait && status != models.PlayerGiveUp, "permission_deny", 403)
+	} else {
+		libs.Assert(degree == 0 && remark == "" && (status == "" || status == models.PlayerWait || status == models.PlayerGiveUp), "permission_deny", 403)
+	}
+	err = s.taskStatusModel.SetTaskStatus(taskStatus.ID, taskStatus)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+}
+
+func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr string, page, size int64) (taskCount int64, taskStatusList []TaskStatus) {
+	_, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	var statuses []models.PlayerStatus
+	split := strings.Split(status, ",")
+	for _, str := range split {
+		if str == "all" {
+			statuses = []models.PlayerStatus{models.PlayerWait, models.PlayerRefuse, models.PlayerClose, models.PlayerRunning, models.PlayerFinish, models.PlayerGiveUp, models.PlayerFailure}
+			break
+		}
+		statuses = append(statuses, models.PlayerStatus(str))
+	}
+	if acceptStr == "true" {
+		for i := 0; i < len(statuses); {
+			if statuses[i] == models.PlayerWait || statuses[i] == models.PlayerRefuse {
+				statuses = append(statuses[:i], statuses[i+1:]...)
+			} else {
+				i++
+			}
+		}
+	} else if acceptStr == "false" {
+		for i := 0; i < len(statuses); {
+			if statuses[i] != models.PlayerWait && statuses[i] != models.PlayerRefuse {
+				statuses = append(statuses[:i], statuses[i+1:]...)
+			} else {
+				i++
+			}
+		}
+	}
+
+	taskStatuses, taskCount, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, statuses, (page-1)*size, size)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	for i, t := range taskStatuses {
+		var taskStatus TaskStatus
+		taskStatus.TaskStatusSchema = &taskStatuses[i]
+
+		userPlayer, err := s.cache.GetUserBaseInfo(t.Player)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		taskStatus.Player = userPlayer
+
+		taskStatusList = append(taskStatusList, taskStatus)
+	}
+	return
 }

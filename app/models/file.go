@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -45,38 +44,23 @@ type FileSchema struct {
 	Size        int64              // 文件大小
 	Public      bool               // 公开，非公开文件需要验证权限
 	URL         string             // 下载链接
+	COSName     string             // 对象存储名字
+	Hash        string             // 文件哈希值
 }
 
-// 添加文件
-func (m *FileModel) AddFile(fileID, ownerID primitive.ObjectID, owner OwnerType, fileType FileType,
-	name, description, url string, size int64, public, used bool) error {
+// AddFile 添加文件
+func (m *FileModel) AddFile(data FileSchema) error {
 	ctx, finish := GetCtx()
 	defer finish()
-	usedNum := 0
-	if used {
-		usedNum = 1
-	}
-	_, err := m.Collection.InsertOne(ctx, &FileSchema{
-		ID:          fileID,
-		Time:        time.Now().Unix(),
-		OwnerID:     ownerID,
-		Owner:       owner,
-		Type:        fileType,
-		Name:        name,
-		Description: description,
-		Size:        size,
-		Public:      public,
-		Used:        usedNum,
-		URL:         url,
-	})
-	fmt.Println("err", err)
+	data.Time = time.Now().Unix()
+	_, err := m.Collection.InsertOne(ctx, data)
 	if err != nil {
-		return  err
+		return err
 	}
 	return nil
 }
 
-// 获取文件信息
+// GetFile 获取文件信息
 func (m *FileModel) GetFile(id primitive.ObjectID) (res FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -84,7 +68,7 @@ func (m *FileModel) GetFile(id primitive.ObjectID) (res FileSchema, err error) {
 	return
 }
 
-// 获取内容文件
+// GetFileByContent 获取内容相关的文件
 func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType ...FileType) (res []FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -111,7 +95,7 @@ func (m *FileModel) GetFileByContent(id primitive.ObjectID, fileType ...FileType
 	return
 }
 
-// 将文件绑定到任务中
+// BindTask 将文件绑定到任务中
 func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -125,6 +109,7 @@ func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	return nil
 }
 
+// RemoveFile 删除文件
 func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -137,6 +122,50 @@ func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 	return nil
 }
 
+// GetUselessFile 获取无用文件
+func (m *FileModel) GetUselessFile(userID... primitive.ObjectID) (files []FileSchema) {
+	ctx, finish := GetCtx()
+	defer finish()
+	filter :=  bson.M{"used": 0}
+	if len(userID) > 0 {
+		filter["own_id"] = userID[0]
+		filter["owner"] = "user"
+	}
+
+	cur, err := m.Collection.Find(ctx, filter)
+	if err != nil {
+		return
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		var result FileSchema
+		err = cur.Decode(&result)
+		if err != nil {
+			return
+		}
+		files = append(files, result)
+	}
+	err = cur.Err()
+	return
+}
+
+// RemoveUselessFile 删除无用文件
+func (m *FileModel) RemoveUselessFile(userID... primitive.ObjectID) int64 {
+	ctx, finish := GetCtx()
+	defer finish()
+	filter :=  bson.M{"used": 0}
+	if len(userID) > 0 {
+		filter["own_id"] = userID[0]
+		filter["owner"] = "user"
+	}
+	res, err := m.Collection.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0
+	}
+	return res.DeletedCount
+}
+
+// SetFileInfo 设置文件信息
 func (m *FileModel) SetFileInfo(fileID primitive.ObjectID, name, description string, public bool) error {
 	ctx, finish := GetCtx()
 	defer finish()
@@ -148,4 +177,11 @@ func (m *FileModel) SetFileInfo(fileID primitive.ObjectID, name, description str
 		return ErrNotExist
 	}
 	return nil
+}
+
+func (m *FileModel) GetFileByHash(hash string) (file FileSchema, err error) {
+	ctx, finish := GetCtx()
+	defer finish()
+	err = m.Collection.FindOne(ctx, bson.M{"hash": hash}).Decode(&file)
+	return
 }

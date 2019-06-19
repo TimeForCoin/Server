@@ -7,9 +7,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// QuestionnaireService 问卷相关服务
 type QuestionnaireService interface {
-	AddQuestionnaire(userID primitive.ObjectID, info models.QuestionnaireSchema)
-	SetQuestionnaireInfo(userID primitive.ObjectID, info models.QuestionnaireSchema)
+	AddQuestionnaire(info models.QuestionnaireSchema)
+	SetQuestionnaireInfo(info models.QuestionnaireSchema)
 	GetQuestionnaireInfoByID(id primitive.ObjectID) (detail QuestionnaireDetail)
 	GetQuestionnaireQuestionsByID(id primitive.ObjectID) (questions []models.ProblemSchema)
 	SetQuestionnaireQuestions(userID primitive.ObjectID, id primitive.ObjectID, questions []models.ProblemSchema)
@@ -21,32 +22,27 @@ func newQuestionnaireService() QuestionnaireService {
 	return &questionnaireService{
 		model:		models.GetModel().Questionnaire,
 		userModel:	models.GetModel().User,
-		taskModel:	models.GetModel().Task,
 		cacheModel: models.GetRedis().Cache,
+		taskModel:	models.GetModel().Task,
 	}
 }
 
 type questionnaireService struct {
-	model 		*models.QuestionnaireModel
-	userModel	*models.UserModel
+	model      	*models.QuestionnaireModel
+	userModel  	*models.UserModel
+	cacheModel 	*models.CacheModel
 	taskModel	*models.TaskModel
-	cacheModel	*models.CacheModel
 }
 
-type OwnerInfo	struct{
-	ID			string	`json:"id"`
-	NickName	string	`json:"nickname"`
-	Avatar		string	`json:"avatar"`
-}
-
+// QuestionnaireDetail 问卷详情信息
 type QuestionnaireDetail struct {
-	TaskID			string		`json:"id"`
-	Title			string		`json:"title"`
-	Owner			OwnerInfo	`json:"owner"`
-	Description		string		`json:"description"`
-	Anonymous		bool		`json:"anonymous"`
-	QuestionCount	int			`json:"question_count"`
-	Answer			int			`json:"answer"`
+	TaskID        string              `json:"id"`
+	Title         string              `json:"title"`
+	Owner         models.UserBaseInfo `json:"owner"`
+	Description   string              `json:"description"`
+	Anonymous     bool                `json:"anonymous"`
+	QuestionCount int                 `json:"question_count"`
+	Answer        int                 `json:"answer"`
 }
 
 type QuestionnaireStatisticsRes struct {
@@ -54,29 +50,21 @@ type QuestionnaireStatisticsRes struct {
 	Data	[]models.StatisticsSchema	`json:"data"`
 }
 
-func (s *questionnaireService) AddQuestionnaire(userID primitive.ObjectID, info models.QuestionnaireSchema) {
-	task, err := s.taskModel.GetTaskByID(info.TaskID)
-	libs.AssertErr(err, "faked_task", 400)
-	libs.Assert(task.Type == models.TaskTypeQuestionnaire, "not_allow", 403)
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
-
-	err = s.model.AddQuestionnaire(info)
+// AddQuestionnaire 添加问卷
+func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema) {
+	_, err := s.model.AddQuestionnaire(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	err = s.model.SetQuestionnaireInfoByID(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-func (s *questionnaireService) SetQuestionnaireInfo(userID primitive.ObjectID, info models.QuestionnaireSchema) {
-	task, err := s.taskModel.GetTaskByID(info.TaskID)
-	libs.AssertErr(err, "faked_task", 400)
-	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
-
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
-
-	err = s.model.SetQuestionnaireInfoByID(info)
+// SetQuestionnaireInfo 设置问卷信息
+func (s *questionnaireService) SetQuestionnaireInfo(info models.QuestionnaireSchema) {
+	err := s.model.SetQuestionnaireInfoByID(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
+// GetQuestionnaireInfoByID 获取问卷信息
 func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (detail QuestionnaireDetail) {
 	questionnaire, err := s.model.GetQuestionnaireInfoByID(id)
 	libs.AssertErr(err, "faked_task", 400)
@@ -85,21 +73,18 @@ func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (
 	owner, err := s.cacheModel.GetUserBaseInfo(ownerID)
 	libs.AssertErr(err, "faked_task", 400)
 	detail = QuestionnaireDetail{
-		TaskID:		questionnaire.TaskID.String(),
-		Title:		questionnaire.Title,
-		Owner: 		OwnerInfo{
-			ID: questionnaire.Owner,
-			NickName: owner.Nickname,
-			Avatar: owner.Avatar,
-		},
-		Description:	questionnaire.Description,
-		Anonymous:		questionnaire.Anonymous,
-		QuestionCount:	len(questionnaire.Problems),
-		Answer:			len(questionnaire.Data),
+		TaskID:        questionnaire.TaskID.String(),
+		Title:         questionnaire.Title,
+		Owner:         owner,
+		Description:   questionnaire.Description,
+		Anonymous:     questionnaire.Anonymous,
+		QuestionCount: len(questionnaire.Problems),
+		Answer:        len(questionnaire.Data),
 	}
 	return
 }
 
+// GetQuestionnaireQuestionsByID 获取问卷问题
 func (s *questionnaireService) GetQuestionnaireQuestionsByID(id primitive.ObjectID) (questions []models.ProblemSchema) {
 	questions, err := s.model.GetQuestionnaireQuestionsByID(id)
 	libs.AssertErr(err, "faked_task", 400)

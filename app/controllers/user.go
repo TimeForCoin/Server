@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"strconv"
-
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
@@ -53,7 +51,10 @@ type GetInfoByIDRes struct {
 type UserDataRes struct {
 	*models.UserDataSchema
 	// 额外项
-	Attendance bool
+	Attendance   bool  // 是否签到
+	CollectCount int64 // 收藏任务数
+	Follower     bool  // 是否为自己的粉丝
+	Following    bool  // 是否已关注
 	// 排除项
 	AttendanceDate omit `json:"attendance_date,omitempty"`
 	CollectTasks   omit `json:"collect_tasks,omitempty"`
@@ -69,17 +70,45 @@ type UserCertification struct {
 	Date   int64
 }
 
-// GetInfoBy 获取用户信息
-func (c *UserController) GetInfoBy(userID string) int {
-	var id primitive.ObjectID
-	if userID == "me" {
-		id = c.checkLogin()
-	} else {
-		var err error
-		id, err = primitive.ObjectIDFromHex(userID)
-		libs.AssertErr(err, "invalid_session", 401)
+// UserListRes 用户数据
+type UserListRes struct {
+	Pagination PaginationRes
+	Data       []GetInfoByIDRes
+}
+
+// Get 搜索用户
+func (c *UserController) Get() int {
+	page, size := c.getPaginationData()
+	key := c.Ctx.URLParamDefault("key", "")
+	libs.Assert(key != "", "invalid_key", 400)
+
+	users := c.Service.SearchUser(key, page, size)
+
+	// noinspection GoPreferNilSlice
+	res := []GetInfoByIDRes{}
+	for i := range users {
+		user := c.makeUserRes(users[i], false)
+		sessionUserID := c.Session.GetString("id")
+		if sessionUserID != "" {
+			sessionUser, err := primitive.ObjectIDFromHex(sessionUserID)
+			libs.AssertErr(err, "", 500)
+			user.Data.Follower = c.Service.IsFollower(sessionUser, users[i].ID)
+			user.Data.Following = c.Service.IsFollowing(sessionUser, users[i].ID)
+		}
+		res = append(res, user)
 	}
-	user := c.Service.GetUser(id)
+
+	c.JSON(UserListRes{
+		Pagination: PaginationRes{
+			Page: page,
+			Size: size,
+		},
+		Data: res,
+	})
+	return iris.StatusOK
+}
+
+func (c *UserController) makeUserRes(user models.UserSchema, isMe bool) GetInfoByIDRes {
 	res := GetInfoByIDRes{
 		ID:           user.ID.Hex(),
 		VioletName:   user.VioletName,
@@ -88,6 +117,7 @@ func (c *UserController) GetInfoBy(userID string) int {
 		Info:         user.Info,
 		Data: &UserDataRes{
 			UserDataSchema: &user.Data,
+			CollectCount:   int64(len(user.Data.CollectTasks)),
 		},
 		Certification: &UserCertification{
 			Type:   user.Certification.Identity,
@@ -100,7 +130,7 @@ func (c *UserController) GetInfoBy(userID string) int {
 	nowTime := time.Now()
 	attendanceTime := time.Unix(user.Data.AttendanceDate, 0)
 	res.Data.Attendance = attendanceTime.Year() == nowTime.Year() && attendanceTime.YearDay() == nowTime.YearDay()
-	if userID != "me" {
+	if !isMe {
 		res.Certification.Email = ""
 		if res.Certification.Status != models.CertificationTrue {
 			res.Certification = &UserCertification{
@@ -108,6 +138,29 @@ func (c *UserController) GetInfoBy(userID string) int {
 			}
 		}
 	}
+	return res
+}
+
+// GetInfoBy 获取用户信息
+func (c *UserController) GetInfoBy(userID string) int {
+	var id primitive.ObjectID
+	if userID == "me" {
+		id = c.checkLogin()
+	} else {
+		var err error
+		id, err = primitive.ObjectIDFromHex(userID)
+		libs.AssertErr(err, "invalid_session", 401)
+	}
+	user := c.Service.GetUser(id)
+	res := c.makeUserRes(user, userID == "me")
+	sessionUserID := c.Session.GetString("id")
+	if userID != "me" && sessionUserID != "" {
+		sessionUser, err := primitive.ObjectIDFromHex(sessionUserID)
+		libs.AssertErr(err, "", 500)
+		res.Data.Follower = c.Service.IsFollower(sessionUser, user.ID)
+		res.Data.Following = c.Service.IsFollowing(sessionUser, user.ID)
+	}
+
 	c.JSON(res)
 	return iris.StatusOK
 }
@@ -119,28 +172,31 @@ func (c *UserController) PostAttend() int {
 	return iris.StatusOK
 }
 
-type UserInfoReq struct {
+// PutUserInfoReq 修改用户信息请求
+type PutUserInfoReq struct {
 	*models.UserInfoSchema
 	AvatarURL string `json:"avatar_url"`
 }
 
-// PatchInfo 修改用户信息
+// PutInfo 修改用户信息
 func (c *UserController) PutInfo() int {
 	id, err := primitive.ObjectIDFromHex(c.Session.GetString("id"))
 	libs.Assert(err == nil, "invalid_session", 401)
 	// 解析
-	req := UserInfoReq{}
+	req := PutUserInfoReq{}
 	err = c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
 	libs.Assert(req.Email == "" || libs.IsEmail(req.Email), "invalid_email", 400)
 	libs.Assert(req.Gender == "" || libs.IsGender(string(req.Gender)), "invalid_gender", 400)
+
+	// 处理头像数据
 	if req.AvatarURL != "" {
-		url, err := libs.GetCOS().SaveURLFile("avatar-" + id.Hex() + ".png", req.AvatarURL)
+		url, err := libs.GetCOS().SaveURLFile("avatar-"+id.Hex()+".png", req.AvatarURL)
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	} else if req.Avatar != "" {
 		libs.Assert(strings.HasPrefix(req.Avatar, "data:image/png;base64,"), "invalid_avatar", 400)
-		url, err := libs.GetCOS().SaveBase64("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
+		url, err := libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
@@ -172,17 +228,16 @@ func (c *UserController) PutInfo() int {
 	return iris.StatusOK
 }
 
-// UserDataRes 用户数据返回值
-type UseTypeReq struct {
-	ID   string `json:"id"`
+// PutUserTypeReq 修改用户类型请求
+type PutUserTypeReq struct {
 	Type string `json:"type"`
 }
 
-// 修改用户信息
+// PutTypeByID 修改用户类型
 func (c *UserController) PutTypeByID(userID string) int {
 	id := c.checkLogin()
 	// 解析
-	req := UseTypeReq{}
+	req := PutUserTypeReq{}
 	err := c.Ctx.ReadJSON(&req)
 
 	var opID primitive.ObjectID
@@ -191,30 +246,25 @@ func (c *UserController) PutTypeByID(userID string) int {
 	} else {
 		var err error
 		opID, err = primitive.ObjectIDFromHex(userID)
-		libs.AssertErr(err, "invalid_session", 401)
+		libs.AssertErr(err, "invalid_id", 400)
 	}
 
 	libs.Assert(err == nil, "invalid_value", 400)
-	libs.Assert(libs.IsID(req.ID), "invalid_id", 400)
 	libs.Assert(libs.IsUserType(req.Type), "invalid_type", 400)
 	libs.Assert(req.Type != string(models.UserTypeRoot), "not_allow_type", 403)
 	c.Service.SetUserType(id, opID, models.UserType(req.Type))
 	return iris.StatusOK
 }
 
-func (c *UserController) GetCollect() int {
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
-	userIDString := c.Ctx.URLParamDefault("user_id", "")
+// GetCollectBy 获取用户收藏
+func (c *UserController) GetCollectBy(userIDString string) int {
+	page, size := c.getPaginationData()
 	libs.Assert(userIDString != "", "string")
 	var userID primitive.ObjectID
 	if userIDString == "me" {
 		userID = c.checkLogin()
 	} else {
+		var err error
 		userID, err = primitive.ObjectIDFromHex(userIDString)
 		libs.AssertErr(err, "invalid_user", 403)
 	}
@@ -226,9 +276,6 @@ func (c *UserController) GetCollect() int {
 
 	taskCount, tasksData := c.Service.GetUserCollections(userID, page, size, sort,
 		taskType, status, reward)
-	if tasksData == nil {
-		tasksData = []services.TaskDetail{}
-	}
 
 	res := TasksListRes{
 		Pagination: PaginationRes{
@@ -239,5 +286,148 @@ func (c *UserController) GetCollect() int {
 		Tasks: tasksData,
 	}
 	c.JSON(res)
+	return iris.StatusOK
+}
+
+// TasksStatusListRes 用户参与任务数据
+type TasksStatusListRes struct {
+	Pagination PaginationRes
+	Data       []services.TaskStatusDetail
+}
+
+// GetTaskBy 获取用户参与的任务列表
+func (c *UserController) GetTaskBy(userIDString string) int {
+	page, size := c.getPaginationData()
+	libs.Assert(userIDString != "", "string")
+	var userID primitive.ObjectID
+	var err error
+	if userIDString == "me" {
+		userID = c.checkLogin()
+	} else {
+		userID, err = primitive.ObjectIDFromHex(userIDString)
+		libs.AssertErr(err, "invalid_user", 403)
+	}
+
+	status := c.Ctx.URLParamDefault("status", "wait")
+
+	taskCount, taskStatusesData := c.Service.GetUserParticipate(userID, page, size, status)
+	if taskStatusesData == nil {
+		taskStatusesData = []services.TaskStatusDetail{}
+	}
+
+	res := TasksStatusListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: taskCount,
+		},
+		Data: taskStatusesData,
+	}
+	c.JSON(res)
+	return iris.StatusOK
+}
+
+// GetHistory 获取用户搜索历史
+func (c *UserController) GetHistory() int {
+	id := c.checkLogin()
+
+	history := c.Service.GetSearchHistory(id)
+	if history == nil {
+		history = []string{}
+	}
+
+	c.JSON(struct {
+		Data []string
+	}{
+		Data: history,
+	})
+
+	return iris.StatusOK
+}
+
+// DeleteHistory 清空用户搜索历史
+func (c *UserController) DeleteHistory() int {
+	id := c.checkLogin()
+	c.Service.ClearSearchHistory(id)
+	return iris.StatusOK
+}
+
+type FollowListRes struct {
+	Pagination PaginationRes
+	Data       []models.UserBaseInfo
+}
+
+// GetFollowerBy 获取用户粉丝列表
+func (c *UserController) GetFollowerBy(id string) int {
+	var userID primitive.ObjectID
+	if id == "me" {
+		userID = c.checkLogin()
+	} else {
+		var err error
+		userID, err = primitive.ObjectIDFromHex(id)
+		libs.AssertErr(err, "invalid_id", 400)
+	}
+	page, size := c.getPaginationData()
+
+	followers, total := c.Service.GetFollower(userID, page, size)
+	if followers == nil {
+		followers = []models.UserBaseInfo{}
+	}
+
+	c.JSON(FollowListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: total,
+		},
+		Data: followers,
+	})
+	return iris.StatusOK
+}
+
+// GetFollowingBy 获取用户关注者列表
+func (c *UserController) GetFollowingBy(id string) int {
+	var userID primitive.ObjectID
+	if id == "me" {
+		userID = c.checkLogin()
+	} else {
+		var err error
+		userID, err = primitive.ObjectIDFromHex(id)
+		libs.AssertErr(err, "invalid_id", 400)
+	}
+	page, size := c.getPaginationData()
+
+	followings, total := c.Service.GetFollowing(userID, page, size)
+	if followings == nil {
+		followings = []models.UserBaseInfo{}
+	}
+
+	c.JSON(FollowListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: total,
+		},
+		Data: followings,
+	})
+
+	return iris.StatusOK
+}
+
+// PostFollowingBy 添加关注
+func (c *UserController) PostFollowingBy(id string) int {
+	userID := c.checkLogin()
+	followingID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.FollowUser(userID, followingID)
+	return iris.StatusOK
+}
+
+// DeleteFollowingBy 取消关注
+func (c *UserController) DeleteFollowingBy(id string) int {
+	userID := c.checkLogin()
+	followingID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.UnFollowUser(userID, followingID)
 	return iris.StatusOK
 }

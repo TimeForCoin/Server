@@ -6,7 +6,8 @@ import (
 	"github.com/kataras/iris/context"
 )
 
-// JSON marshals the given interface object and writes the JSON response to the client.
+// JSON 格式化结构体为 JSON 并写入 Response Body
+// 自动将 Golang 中的驼峰命名法转换为 下划线命名法
 func JSON(ctx context.Context, v interface{}) {
 	b, err := jsoniter.Marshal(v)
 	Assert(err == nil, "Error", iris.StatusInternalServerError)

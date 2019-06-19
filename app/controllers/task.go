@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"strconv"
-
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
@@ -11,11 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// TaskController 任务相关API
 type TaskController struct {
 	BaseController
 	Service services.TaskService
 }
 
+// BindTaskController 绑定任务控制器
 func BindTaskController(app *iris.Application) {
 	taskService := services.GetServiceManger().Task
 
@@ -24,6 +24,7 @@ func BindTaskController(app *iris.Application) {
 	taskRoute.Handle(new(TaskController))
 }
 
+// AddTaskReq 添加任务请求
 type AddTaskReq struct {
 	Title        string   `json:"title"`
 	Content      string   `json:"content"`
@@ -42,6 +43,7 @@ type AddTaskReq struct {
 	Publish      bool     `json:"publish"`
 }
 
+// Post 添加任务
 func (c *TaskController) Post() int {
 	id := c.checkLogin()
 	req := AddTaskReq{}
@@ -63,7 +65,7 @@ func (c *TaskController) Post() int {
 
 	libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
 
-	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
 	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
 	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
 
@@ -102,10 +104,16 @@ func (c *TaskController) Post() int {
 		MaxPlayer:    req.MaxPlayer,
 		AutoAccept:   req.AutoAccept,
 	}
-	c.Service.AddTask(id, taskInfo, images, attachments, req.Publish)
+	taskID := c.Service.AddTask(id, taskInfo, images, attachments, req.Publish)
+	c.JSON(struct {
+		ID string `json:"id"`
+	}{
+		ID: taskID.Hex(),
+	})
 	return iris.StatusOK
 }
 
+// GetBy 获取指定任务详情
 func (c *TaskController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
@@ -115,6 +123,7 @@ func (c *TaskController) GetBy(id string) int {
 	return iris.StatusOK
 }
 
+// PutBy 修改指定任务信息
 func (c *TaskController) PutBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -149,7 +158,7 @@ func (c *TaskController) PutBy(id string) int {
 		attachments = append(attachments, fileID)
 	}
 
-	taskInfo := models.TaskSchema {
+	taskInfo := models.TaskSchema{
 		Title:        req.Title,
 		Content:      req.Content,
 		Location:     req.Location,
@@ -165,6 +174,7 @@ func (c *TaskController) PutBy(id string) int {
 	return iris.StatusOK
 }
 
+// GetTasksReq 获取任务列表请求
 type GetTasksReq struct {
 	Page    int
 	Size    int
@@ -176,24 +186,15 @@ type GetTasksReq struct {
 	Keyword string
 }
 
-type PaginationRes struct {
-	Page  int64
-	Size  int64
-	Total int64
-}
-
+// TasksListRes 任务列表数据
 type TasksListRes struct {
 	Pagination PaginationRes
 	Tasks      []services.TaskDetail
 }
 
+// Get 获取任务列表
 func (c *TaskController) Get() int {
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
 	taskType := c.Ctx.URLParamDefault("type", "all")
@@ -237,6 +238,7 @@ func (c *TaskController) Get() int {
 	return iris.StatusOK
 }
 
+// DeleteBy 删除草稿任务
 func (c *TaskController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -245,6 +247,7 @@ func (c *TaskController) DeleteBy(id string) int {
 	return iris.StatusOK
 }
 
+// PostByView 添加任务阅读量
 func (c *TaskController) PostByView(id string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -252,6 +255,7 @@ func (c *TaskController) PostByView(id string) int {
 	return iris.StatusOK
 }
 
+// PostByLike 点赞任务
 func (c *TaskController) PostByLike(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -260,6 +264,7 @@ func (c *TaskController) PostByLike(id string) int {
 	return iris.StatusOK
 }
 
+// DeleteByLike 取消点赞任务
 func (c *TaskController) DeleteByLike(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -268,6 +273,7 @@ func (c *TaskController) DeleteByLike(id string) int {
 	return iris.StatusOK
 }
 
+// PostByCollect 添加收藏
 func (c *TaskController) PostByCollect(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -276,10 +282,116 @@ func (c *TaskController) PostByCollect(id string) int {
 	return iris.StatusOK
 }
 
+// DeleteByCollect 删除收藏
 func (c *TaskController) DeleteByCollect(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 	c.Service.ChangeCollection(taskID, userID, false)
+	return iris.StatusOK
+}
+
+// PostByPlayer 增加任务参与人员
+func (c *TaskController) PostByPlayer(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.ChangePlayer(taskID, userID, userID, true)
+	return iris.StatusOK
+}
+
+// DeleteByPlayer 删除任务参与人员
+func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	postUserID := c.checkLogin()
+	var userID primitive.ObjectID
+	if userIDString == "me" {
+		userID = c.checkLogin()
+	} else {
+		userID, err = primitive.ObjectIDFromHex(userIDString)
+		libs.AssertErr(err, "invalid_id", 400)
+	}
+
+	c.Service.ChangePlayer(taskID, userID, postUserID, false)
+	return iris.StatusOK
+}
+
+type TaskStatusReq struct {
+	Status   string `json:"status"`
+	Note     string `json:"note"`
+	Accept   bool   `json:"accept"`
+	Degree   int    `json:"degree"`
+	Remark   string `json:"remark"`
+	Score    int    `json:"score"`
+	Feedback string `json:"feedback"`
+}
+
+// PutByPlayerBy 修改任务参与者状态
+func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	var userID primitive.ObjectID
+	userID, err = primitive.ObjectIDFromHex(userIDString)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	postUserID := c.checkLogin()
+
+	req := TaskStatusReq{}
+	err = c.Ctx.ReadJSON(&req)
+	libs.Assert(err == nil, "invalid_value", 400)
+
+	var status models.PlayerStatus
+	if req.Status != "" {
+		status = models.PlayerStatus(req.Status)
+		libs.Assert(status == models.PlayerWait || status == models.PlayerRefuse ||
+			status == models.PlayerClose || status == models.PlayerRunning ||
+			status == models.PlayerFinish || status == models.PlayerGiveUp ||
+			status == models.PlayerFailure, "invalid_status", 403)
+	}
+
+	taskStatusInfo := models.TaskStatusSchema{
+		Status:   status,
+		Note:     req.Note,
+		Degree:   req.Degree,
+		Remark:   req.Remark,
+		Score:    req.Score,
+		Feedback: req.Feedback,
+	}
+
+	c.Service.SetTaskStatusInfo(taskID, userID, postUserID, taskStatusInfo, req.Accept)
+	return iris.StatusOK
+}
+
+// PlayerListRes 任务参与用户数据
+type PlayerListRes struct {
+	Pagination PaginationRes
+	Data       []services.TaskStatus
+}
+
+func (c *TaskController) GetByPlayer(id string) int {
+	libs.Assert(id != "", "string")
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	page, size := c.getPaginationData()
+
+	status := c.Ctx.URLParamDefault("status", "all")
+	acceptStr := c.Ctx.URLParamDefault("accept", "all")
+
+	taskCount, taskStatusList := c.Service.GetTaskPlayer(taskID, status, acceptStr, page, size)
+	if taskStatusList == nil {
+		taskStatusList = []services.TaskStatus{}
+	}
+
+	res := PlayerListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: taskCount,
+		},
+		Data: taskStatusList,
+	}
+	c.JSON(res)
 	return iris.StatusOK
 }
