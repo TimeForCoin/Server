@@ -77,7 +77,7 @@ func (c *QuestionnaireController) GetByID(id string) int {
 
 // PatchBy 修改问卷信息
 func (c *QuestionnaireController) PutBy(id string) int {
-	// _ := c.checkLogin()
+	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 
@@ -92,7 +92,7 @@ func (c *QuestionnaireController) PutBy(id string) int {
 		Description: req.Description,
 		Anonymous:   req.Anonymous,
 	}
-	c.Server.SetQuestionnaireInfo(questionnaireInfo)
+	c.Server.SetQuestionnaireInfo(userID, questionnaireInfo)
 	return iris.StatusOK
 }
 
@@ -111,7 +111,8 @@ func (c *QuestionnaireController) GetQuestionsBy(id string) int {
 	return iris.StatusOK
 }
 
-func (c *QuestionnaireController) PostByQuestion(id string) int {
+// PostQuestionsBy 修改问卷问题
+func (c *QuestionnaireController) PostQuestionsBy(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -125,7 +126,8 @@ func (c *QuestionnaireController) PostByQuestion(id string) int {
 	return iris.StatusOK
 }
 
-func (c *QuestionnaireController) GetByAnswer(id string) int {
+// GetAnswersBy 获取问卷答案数据
+func (c *QuestionnaireController) GetAnswersBy(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -136,7 +138,8 @@ func (c *QuestionnaireController) GetByAnswer(id string) int {
 	return iris.StatusOK
 }
 
-func (c * QuestionnaireController) PostByAnswer(id string) int {
+// PostAnswerBy 添加新回答
+func (c * QuestionnaireController) PostAnswerBy(id string) int {
 	//_ := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)

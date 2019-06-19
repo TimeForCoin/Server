@@ -176,6 +176,7 @@ func (model *QuestionnaireModel) GetQuestionnaireQuestionsByID(id primitive.Obje
 	return
 }
 
+// SetQuestionnaireQuestionsByID 修改问卷问题
 func (model *QuestionnaireModel) SetQuestionnaireQuestionsByID(id primitive.ObjectID, questions []ProblemSchema) (err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -193,6 +194,7 @@ func (model *QuestionnaireModel) SetQuestionnaireQuestionsByID(id primitive.Obje
 	return nil
 }
 
+// GetQuestionnaireAnswersByID 获取问卷答案数据
 func (model *QuestionnaireModel) GetQuestionnaireAnswersByID(id primitive.ObjectID) (answers []StatisticsSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -205,6 +207,7 @@ func (model *QuestionnaireModel) GetQuestionnaireAnswersByID(id primitive.Object
 	return
 }
 
+// AddAnswer 添加新回答
 func (model *QuestionnaireModel) AddAnswer(id primitive.ObjectID, statistics StatisticsSchema) (err error){
 	ctx, over := GetCtx()
 	defer over()

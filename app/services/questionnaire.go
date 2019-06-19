@@ -10,7 +10,7 @@ import (
 // QuestionnaireService 问卷相关服务
 type QuestionnaireService interface {
 	AddQuestionnaire(info models.QuestionnaireSchema)
-	SetQuestionnaireInfo(info models.QuestionnaireSchema)
+	SetQuestionnaireInfo(userID primitive.ObjectID, info models.QuestionnaireSchema)
 	GetQuestionnaireInfoByID(id primitive.ObjectID) (detail QuestionnaireDetail)
 	GetQuestionnaireQuestionsByID(id primitive.ObjectID) (questions []models.ProblemSchema)
 	SetQuestionnaireQuestions(userID primitive.ObjectID, id primitive.ObjectID, questions []models.ProblemSchema)
@@ -52,15 +52,25 @@ type QuestionnaireStatisticsRes struct {
 
 // AddQuestionnaire 添加问卷
 func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema) {
-	_, err := s.model.AddQuestionnaire(info)
+	task, err := s.taskModel.GetTaskByID(info.TaskID)
+	libs.AssertErr(err, "faked_task", 400)
+	libs.Assert(task.Publisher.String() == info.Owner, "permission_deny", 403)
+
+	_, err = s.model.AddQuestionnaire(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
 	err = s.model.SetQuestionnaireInfoByID(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // SetQuestionnaireInfo 设置问卷信息
-func (s *questionnaireService) SetQuestionnaireInfo(info models.QuestionnaireSchema) {
-	err := s.model.SetQuestionnaireInfoByID(info)
+func (s *questionnaireService) SetQuestionnaireInfo(userID primitive.ObjectID, info models.QuestionnaireSchema) {
+	task, err := s.taskModel.GetTaskByID(info.TaskID)
+	libs.AssertErr(err, "faked_task", 400)
+	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
+
+	err = s.model.SetQuestionnaireInfoByID(info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
@@ -91,6 +101,7 @@ func (s *questionnaireService) GetQuestionnaireQuestionsByID(id primitive.Object
 	return
 }
 
+// SetQuestionnaireQuestions 修改问卷问题
 func (s *questionnaireService) SetQuestionnaireQuestions(userID primitive.ObjectID, id primitive.ObjectID, questions []models.ProblemSchema) {
 	task, err := s.taskModel.GetTaskByID(id)
 	libs.AssertErr(err, "faked_task", 400)
@@ -101,6 +112,7 @@ func (s *questionnaireService) SetQuestionnaireQuestions(userID primitive.Object
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
+// GetQuestionnaireAnswersByID 获取问卷答案数据
 func (s *questionnaireService) GetQuestionnaireAnswersByID(userID primitive.ObjectID, id primitive.ObjectID) (QuestionnaireStatisticsRes) {
 	task, err := s.taskModel.GetTaskByID(id)
 	libs.AssertErr(err, "faked_task", 400)
@@ -115,6 +127,7 @@ func (s *questionnaireService) GetQuestionnaireAnswersByID(userID primitive.Obje
 	}
 }
 
+// AddAnswer 添加新回答
 func (s *questionnaireService) AddAnswer(id primitive.ObjectID, statistics models.StatisticsSchema) {
 	task, err := s.taskModel.GetTaskByID(id)
 	libs.AssertErr(err, "faked_task", 400)
