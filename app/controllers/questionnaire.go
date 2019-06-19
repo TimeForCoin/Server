@@ -28,7 +28,7 @@ type AddQuestionnaireReq struct {
 	Anonymous	bool	`json:"anonymous"`
 }
 
-type QuestionsRes struct {
+type Questions struct {
 	Data	[]models.ProblemSchema	`json:"data"`
 }
 
@@ -39,8 +39,8 @@ func (c *QuestionnaireController) Post(id string) int {
 	libs.AssertErr(err, "invalid_value", 400)
 
 	libs.Assert(req.Title != "", "invalid_title", 400)
+
 	// TODO 未登录/登陆过期
-	// TODO 权限不足
 
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -52,14 +52,15 @@ func (c *QuestionnaireController) Post(id string) int {
 		Owner: userID.String(),
 		Anonymous: req.Anonymous,
 	}
-	c.Server.AddQuestionnaire(questionnaire)
+	c.Server.AddQuestionnaire(userID, questionnaire)
 	return iris.StatusOK
 }
 
-func (c *QuestionnaireController) GetByID(id string) int {
+func (c *QuestionnaireController) GetBy(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
+
 	// TODO 未登录/登陆过期
 
 	questionnaireInfo := c.Server.GetQuestionnaireInfoByID(_id)
@@ -67,12 +68,12 @@ func (c *QuestionnaireController) GetByID(id string) int {
 	return iris.StatusOK
 }
 
-func (c *QuestionnaireController) PatchBy(id string) int {
-	_ = c.checkLogin()
+func (c *QuestionnaireController) PutBy(id string) int {
+	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
+
 	// TODO 未登录/登陆过期
-	// TODO 权限不足
 
 	req := AddQuestionnaireReq{}
 	err = c.Ctx.ReadJSON(&req)
@@ -83,20 +84,60 @@ func (c *QuestionnaireController) PatchBy(id string) int {
 		Description:	req.Description,
 		Anonymous:		req.Anonymous,
 	}
-	c.Server.SetQuestionnaireInfo(questionnaireInfo)
+	c.Server.SetQuestionnaireInfo(userID, questionnaireInfo)
 	return iris.StatusOK
 }
 
-func (c *QuestionnaireController) GetQuestionsBy(id string) int {
+func (c *QuestionnaireController) GetByQuestion(id string) int {
 	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
+
 	// TODO 未登录/登陆过期
-	// TODO 权限不足
 
 	questions := c.Server.GetQuestionnaireQuestionsByID(_id)
-	c.JSON(QuestionsRes{
+	c.JSON(Questions{
 		Data:	questions,
 	})
+	return iris.StatusOK
+}
+
+func (c *QuestionnaireController) PostByQuestion(id string) int {
+	userID := c.checkLogin()
+	_id, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	req := Questions{}
+	err = c.Ctx.ReadJSON(&req)
+	libs.AssertErr(err, "invalid_value", 400)
+
+	// TODO 未登录/登陆过期
+
+	c.Server.SetQuestionnaireQuestions(userID, _id, req.Data)
+	return iris.StatusOK
+}
+
+func (c *QuestionnaireController) GetByAnswer(id string) int {
+	userID := c.checkLogin()
+	_id, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	// TODO 未登录/登陆过期
+
+	c.Server.GetQuestionnaireAnswersByID(userID, _id)
+	return iris.StatusOK
+}
+
+func (c * QuestionnaireController) PostByAnswer(id string) int {
+	_ := c.checkLogin()
+	_id, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	// TODO 未登录/权限过期
+
+	req := models.StatisticsSchema{}
+	err = c.Ctx.ReadJSON(&req)
+	libs.AssertErr(err, "invalid_value", 400)
+
+	c.Server.AddAnswer(_id, req)
 	return iris.StatusOK
 }

@@ -117,14 +117,14 @@ type QuestionnaireSchema struct {
 	Data        []StatisticsSchema // 问题统计数据
 }
 
-func (model *QuestionnaireModel) AddQuestionnaire(info QuestionnaireSchema) (primitive.ObjectID, error) {
+func (model *QuestionnaireModel) AddQuestionnaire(info QuestionnaireSchema) (error) {
 	ctx, over := GetCtx()
 	defer over()
-	res, err := model.Collection.InsertOne(ctx, &info)
+	_, err := model.Collection.InsertOne(ctx, &info)
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return err
 	}
-	return res.InsertedID.(primitive.ObjectID), nil
+	return nil
 }
 
 func (model *QuestionnaireModel) GetQuestionnaireInfoByID(id primitive.ObjectID) (questionnaire QuestionnaireSchema, err error) {
@@ -169,4 +169,55 @@ func (model *QuestionnaireModel) GetQuestionnaireQuestionsByID(id primitive.Obje
 	}
 	problems = questionnaire.Problems
 	return
+}
+
+func (model *QuestionnaireModel) SetQuestionnaireQuestionsByID(id primitive.ObjectID, questions []ProblemSchema) (err error) {
+	ctx, over := GetCtx()
+	defer over()
+	updateItem := bson.M{
+		"problems": questions,
+	}
+	res, err := model.Collection.UpdateOne(ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updateItem})
+	if err != nil {
+		return
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+func (model *QuestionnaireModel) GetQuestionnaireAnswersByID(id primitive.ObjectID) (answers []StatisticsSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	var questionnaire QuestionnaireSchema
+	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&questionnaire)
+	if err != nil {
+		return
+	}
+	answers = questionnaire.Data
+	return
+}
+
+func (model *QuestionnaireModel) AddAnswer(id primitive.ObjectID, statistics StatisticsSchema) (err error){
+	ctx, over := GetCtx()
+	defer over()
+	var questionnaire QuestionnaireSchema
+	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&questionnaire)
+	if err != nil {
+		return
+	}
+	updateItem := bson.M{
+		"data": append(questionnaire.Data, statistics),
+	}
+	res, err := model.Collection.UpdateOne(ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updateItem})
+	if err != nil {
+		return
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
 }
