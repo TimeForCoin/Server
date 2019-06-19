@@ -11,10 +11,10 @@ import (
 
 // 快速缓存
 
-// - 热门任务列表
-// - 任务浏览量(热度)
 // - 用户基本信息(头像、昵称)
-// - 点赞用户记录
+// - 用户点赞
+// - 用户收藏
+// - 用户关系
 
 // CacheModel 缓存数据库
 type CacheModel struct {
@@ -30,6 +30,8 @@ const (
 	KindOfLikeComment DataKind = "like-comment-"
 	KindOfCollectTask DataKind = "collect-task-"
 	KindOfBaseInfo    DataKind = "info-"
+	KindOfFollower    DataKind = "follower-"
+	KindOfFollowing   DataKind = "following-"
 )
 
 // WillUpdate 更新缓存数据
@@ -115,13 +117,65 @@ func (c *CacheModel) IsCollectTask(userID, taskID primitive.ObjectID) bool {
 	return val
 }
 
+// IsCollectTask 用户是否被某人关注
+func (c *CacheModel) IsFollowerUser(userID, otherID primitive.ObjectID) bool {
+	setName := string(KindOfFollower) + userID.Hex()
+	exist, err := c.Redis.Exists(setName).Result()
+	if err != nil {
+		return false
+	}
+	// 不存在记录
+	if exist == 0 {
+		// 从数据库读取
+		set := GetModel().Set.GetSets(userID, SetOfFollowerUser)
+		if len(set.FollowerUserID) > 0 {
+			var setID []string
+			for _, id := range set.FollowerUserID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
+		}
+	}
+	val, err := c.Redis.SIsMember(setName, otherID.Hex()).Result()
+	return val
+}
+
+// IsCollectTask 用户是否已关注某人
+func (c *CacheModel) IsFollowingUser(userID, otherID primitive.ObjectID) bool {
+	setName := string(KindOfFollowing) + userID.Hex()
+	exist, err := c.Redis.Exists(setName).Result()
+	if err != nil {
+		return false
+	}
+	// 不存在记录
+	if exist == 0 {
+		// 从数据库读取
+		set := GetModel().Set.GetSets(userID, SetOfFollowingUser)
+		if len(set.FollowingUserID) > 0 {
+			var setID []string
+			for _, id := range set.FollowingUserID {
+				setID = append(setID, id.Hex())
+			}
+			err = c.Redis.SAdd(setName, setID).Err()
+			if err != nil {
+				return false
+			}
+		}
+	}
+	val, err := c.Redis.SIsMember(setName, otherID.Hex()).Result()
+	return val
+}
+
 // UserBaseInfo 用户基本信息数据
 type UserBaseInfo struct {
-	ID       string `json:"id"`
-	Nickname string
-	Avatar   string
-	Gender   UserGender
-	Type     UserType
+	ID        string `json:"id"`
+	Nickname  string
+	Avatar    string
+	Gender    UserGender
+	Type      UserType
 }
 
 // GetUserBaseInfo 获取用户基本信息

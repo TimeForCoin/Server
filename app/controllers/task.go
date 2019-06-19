@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"strconv"
-
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
@@ -196,12 +194,7 @@ type TasksListRes struct {
 
 // Get 获取任务列表
 func (c *TaskController) Get() int {
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 
 	sort := c.Ctx.URLParamDefault("sort", "new")
 	taskType := c.Ctx.URLParamDefault("type", "all")
@@ -377,15 +370,11 @@ type PlayerListRes struct {
 }
 
 func (c *TaskController) GetByPlayer(id string) int {
+	libs.Assert(id != "", "string")
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 
-	pageStr := c.Ctx.URLParamDefault("page", "1")
-	page, err := strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	sizeStr := c.Ctx.URLParamDefault("size", "10")
-	size, err := strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
+	page, size := c.getPaginationData()
 
 	status := c.Ctx.URLParamDefault("status", "all")
 	acceptStr := c.Ctx.URLParamDefault("accept", "all")

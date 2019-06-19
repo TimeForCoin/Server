@@ -42,6 +42,4 @@ func (m *SystemModel) AddAutoEmail(email, data string) error {
 	return err
 }
 
-// 获取/设置 自动通过验证的邮箱后缀名
 
-// 获取/设置 平均用户信用水平

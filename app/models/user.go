@@ -91,7 +91,7 @@ type UserDataSchema struct {
 
 	AttendanceDate int64                `bson:"attendance_date"` // 签到时间戳
 	CollectTasks   []primitive.ObjectID `bson:"collect_tasks"`   // 收藏的任务
-	SearchHistory  []string             `bson:"searchHistory"`   // 搜索历史(仅保留最近的 20 条)
+	SearchHistory  []string             `bson:"search_history"`   // 搜索历史(仅保留最近的 20 条)
 	// 冗余数据
 	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
 	PublishRunCount int64 `bson:"publish_run_count"` // 发布并进行中任务数
@@ -126,16 +126,18 @@ type UserSchema struct {
 }
 
 // AddUserByViolet 通过 Violet 增加用户
-func (model *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
+func (m *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
 	userID := primitive.NewObjectID()
-	_, err := model.Collection.InsertOne(ctx, &UserSchema{
+	_, err := m.Collection.InsertOne(ctx, &UserSchema{
 		ID:           userID,
 		VioletID:     id,
 		RegisterTime: time.Now().Unix(),
 		Data: UserDataSchema{
 			Type: UserTypeNormal,
+			CollectTasks: []primitive.ObjectID{},
+			SearchHistory: []string{},
 		},
 		Certification: UserCertificationSchema{
 			Identity: IdentityNone,
@@ -147,11 +149,12 @@ func (model *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
 	return userID, nil
 }
 
-func (model *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, error) {
+// AddUserByWechat 通过微信添加用户
+func (m *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, error) {
 	ctx, finish := GetCtx()
 	defer finish()
 	userID := primitive.NewObjectID()
-	_, err := model.Collection.InsertOne(ctx, &UserSchema{
+	_, err := m.Collection.InsertOne(ctx, &UserSchema{
 		ID:           userID,
 		WechatID:     openid,
 		RegisterTime: time.Now().Unix(),
@@ -169,31 +172,31 @@ func (model *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, erro
 }
 
 // GetUserByID 通过 ID 查找用户
-func (model *UserModel) GetUserByID(id primitive.ObjectID) (user UserSchema, err error) {
+func (m *UserModel) GetUserByID(id primitive.ObjectID) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+	err = m.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	return
 }
 
 // GetUserByViolet 通过 VioletID 查找用户
-func (model *UserModel) GetUserByViolet(id string) (user UserSchema, err error) {
+func (m *UserModel) GetUserByViolet(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	err = model.Collection.FindOne(ctx, bson.M{"violet_id": id}).Decode(&user)
+	err = m.Collection.FindOne(ctx, bson.M{"violet_id": id}).Decode(&user)
 	return
 }
 
 // GetUserByWechat 通过 Wechat OpenID 查找用户
-func (model *UserModel) GetUserByWechat(id string) (user UserSchema, err error) {
+func (m *UserModel) GetUserByWechat(id string) (user UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	err = model.Collection.FindOne(ctx, bson.M{"wechat_id": id}).Decode(&user)
+	err = m.Collection.FindOne(ctx, bson.M{"wechat_id": id}).Decode(&user)
 	return
 }
 
 // SetUserInfoByID 更新用户个人信息
-func (model *UserModel) SetUserInfoByID(id primitive.ObjectID, info UserInfoSchema) error {
+func (m *UserModel) SetUserInfoByID(id primitive.ObjectID, info UserInfoSchema) error {
 	ctx, over := GetCtx()
 	defer over()
 	// 通过反射获取非空字段
@@ -212,7 +215,7 @@ func (model *UserModel) SetUserInfoByID(id primitive.ObjectID, info UserInfoSche
 			}
 		}
 	}
-	if res, err := model.Collection.UpdateOne(ctx,
+	if res, err := m.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
 		bson.M{"$set": updateItem}); err != nil {
 		return err
@@ -237,7 +240,7 @@ type UserDataCount struct {
 }
 
 // UpdateUserDataCount 更新用户数值数据（偏移值）
-func (model *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserDataCount) error {
+func (m *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserDataCount) error {
 	ctx, over := GetCtx()
 	defer over()
 	// 通过反射获取非零字段
@@ -249,7 +252,7 @@ func (model *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserData
 			updateItem["data."+names.Field(i).Tag.Get("bson")] = value
 		}
 	}
-	if res, err := model.Collection.UpdateOne(ctx,
+	if res, err := m.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
 		bson.M{"$inc": updateItem}); err != nil {
 		return err
@@ -260,10 +263,10 @@ func (model *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserData
 }
 
 // GetUsers 按关键字搜索用户
-func (model *UserModel) GetUsers(key string, page, size int64) (res []UserSchema) {
+func (m *UserModel) GetUsers(key string, page, size int64) (res []UserSchema) {
 	ctx, over := GetCtx()
 	defer over()
-	cursor, err := model.Collection.Find(ctx, bson.M{"info.nickname": bson.M{"$regex": key, "$options": "$i" }},
+	cursor, err := m.Collection.Find(ctx, bson.M{"info.nickname": bson.M{"$regex": key, "$options": "$i" }},
 		options.Find().SetSkip((page-1)*size).SetLimit(size))
 	if err != nil {
 		return
@@ -281,10 +284,10 @@ func (model *UserModel) GetUsers(key string, page, size int64) (res []UserSchema
 }
 
 // SetUserType 设置用户类型
-func (model *UserModel) SetUserType(id primitive.ObjectID, userType UserType) error {
+func (m *UserModel) SetUserType(id primitive.ObjectID, userType UserType) error {
 	ctx, over := GetCtx()
 	defer over()
-	if res, err := model.Collection.UpdateMany(ctx,
+	if res, err := m.Collection.UpdateMany(ctx,
 		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"data.type": userType}}); err != nil {
 		return err
@@ -296,10 +299,10 @@ func (model *UserModel) SetUserType(id primitive.ObjectID, userType UserType) er
 }
 
 // SetUserAttend 用户签到
-func (model *UserModel) SetUserAttend(id primitive.ObjectID) error {
+func (m *UserModel) SetUserAttend(id primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
-	if res, err := model.Collection.UpdateOne(ctx,
+	if res, err := m.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"data.attendance_date": time.Now().Unix()}}); err != nil {
 		return err
@@ -310,10 +313,10 @@ func (model *UserModel) SetUserAttend(id primitive.ObjectID) error {
 }
 
 // SetUserCertification 设置用户认证信息
-func (model *UserModel) SetUserCertification(id primitive.ObjectID, data UserCertificationSchema) error {
+func (m *UserModel) SetUserCertification(id primitive.ObjectID, data UserCertificationSchema) error {
 	ctx, over := GetCtx()
 	defer over()
-	if res, err := model.Collection.UpdateOne(ctx,
+	if res, err := m.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"certification": data}}); err != nil {
 		return err
@@ -324,10 +327,10 @@ func (model *UserModel) SetUserCertification(id primitive.ObjectID, data UserCer
 }
 
 // CheckCertificationEmail 是否存在邮箱认证
-func (model *UserModel) CheckCertificationEmail(email string) bool {
+func (m *UserModel) CheckCertificationEmail(email string) bool {
 	ctx, over := GetCtx()
 	defer over()
-	if res, err := model.Collection.CountDocuments(ctx,
+	if res, err := m.Collection.CountDocuments(ctx,
 		bson.M{"certification.email": email, "certification.status": CertificationTrue}); err == nil && res == 0 {
 		return true
 	}
@@ -335,11 +338,11 @@ func (model *UserModel) CheckCertificationEmail(email string) bool {
 }
 
 // AddCollectTask 添加任务收藏
-func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
+func (m *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
-	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$addToSet": bson.M{"collect_tasks": taskID}})
+	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": id},
+		bson.M{"$addToSet": bson.M{"data.collect_tasks": taskID}})
 	if err != nil {
 		return err
 	} else if res.ModifiedCount == 0 {
@@ -349,11 +352,11 @@ func (model *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
 }
 
 // RemoveCollectTask 移除任务收藏
-func (model *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
+func (m *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()
-	res, err := model.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$pull": bson.M{"collect_tasks": taskID}})
+	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": id},
+		bson.M{"$pull": bson.M{"data.collect_tasks": taskID}})
 	if err != nil {
 		return err
 	} else if res.ModifiedCount == 0 {
@@ -362,4 +365,59 @@ func (model *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
 	return nil
 }
 
-// TODO 添加关注
+// AddSearchHistory 添加搜索历史
+func (m *UserModel) AddSearchHistory(id primitive.ObjectID, key string) error {
+	ctx, over := GetCtx()
+	defer over()
+	res, _ := m.Collection.UpdateOne(ctx, bson.M{"_id": id},
+		bson.M{"$addToSet": bson.M{"data.search_history": key}})
+	if res.MatchedCount == 0 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+// ClearSearchHistory 清空搜索历史
+func (m *UserModel) ClearSearchHistory(id primitive.ObjectID) error {
+	ctx, over := GetCtx()
+	defer over()
+	res, _ := m.Collection.UpdateOne(ctx, bson.M{"_id": id},
+		bson.M{"$set": bson.M{"data.search_history": []string{}}})
+	if res.MatchedCount == 0 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+// GetSearchHistory 获取用户搜索历史
+func (m *UserModel) GetSearchHistory(id primitive.ObjectID) ([]string, error) {
+	var user UserSchema
+	ctx, over := GetCtx()
+	defer over()
+	err := m.Collection.FindOne(ctx, bson.M{"_id": id},
+		options.FindOne().SetProjection(bson.M{"data.search_history": 1})).Decode(&user)
+	if err != nil {
+		return []string{}, ErrNotExist
+	}
+	return user.Data.SearchHistory, nil
+}
+
+// GetAllUser 获取所有用户ID
+func (m *UserModel) GetAllUser() (res []primitive.ObjectID) {
+	ctx, over := GetCtx()
+	defer over()
+	cur, err := m.Collection.Find(ctx, bson.M{}, options.Find().SetProjection(bson.M{"_id": 1}))
+	if err != nil {
+		return nil
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		user := UserSchema{}
+		err = cur.Decode(&user)
+		if err != nil {
+			return
+		}
+		res = append(res, user.ID)
+	}
+	return res
+}

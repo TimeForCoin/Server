@@ -9,6 +9,7 @@ type ServiceManger struct {
 	File          FileService
 	Questionnaire QuestionnaireService
 	Comment       CommentService
+	Message       MessageService
 }
 
 // GetServiceManger 获取服务管理器
@@ -20,6 +21,7 @@ func GetServiceManger() *ServiceManger {
 			File:          newFileService(),
 			Questionnaire: newQuestionnaireService(),
 			Comment:       newCommentService(),
+			Message:       newMessageService(),
 		}
 	}
 	return service

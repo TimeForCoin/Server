@@ -14,10 +14,12 @@ type SetModel struct {
 
 // SetSchemas 集合数据结构
 type SetSchemas struct {
-	UserID        primitive.ObjectID   `bson:"_id"`             // 用户ID
-	LikeTaskID    []primitive.ObjectID `bson:"like_task_id"`    // 点赞的任务ID
-	LikeCommentID []primitive.ObjectID `bson:"like_comment_id"` // 点赞的评论ID
-	CollectTaskID []primitive.ObjectID `bson:"collect_task_id"` // 收藏的任务ID
+	UserID          primitive.ObjectID   `bson:"_id"`               // 用户 ID
+	LikeTaskID      []primitive.ObjectID `bson:"like_task_id"`      // 点赞的任务 ID
+	LikeCommentID   []primitive.ObjectID `bson:"like_comment_id"`   // 点赞的评论 ID
+	CollectTaskID   []primitive.ObjectID `bson:"collect_task_id"`   // 收藏的任务 ID
+	FollowingUserID []primitive.ObjectID `bson:"following_user_id"` // 关注用户 ID
+	FollowerUserID  []primitive.ObjectID `bson:"follower_user_id"`  // 粉丝用户 ID
 }
 
 // SetKind 集合类型
@@ -25,9 +27,11 @@ type SetKind string
 
 // SetKind 集合类型
 const (
-	SetOfLikeTask    SetKind = "like_task_id"
-	SetOfLikeComment SetKind = "like_comment_id"
-	SetOfCollectTask SetKind = "collect_task_id"
+	SetOfLikeTask      SetKind = "like_task_id"
+	SetOfLikeComment   SetKind = "like_comment_id"
+	SetOfCollectTask   SetKind = "collect_task_id"
+	SetOfFollowingUser SetKind = "following_user_id"
+	SetOfFollowerUser  SetKind = "follower_user_id"
 )
 
 // GetSets 获取集合

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/kataras/iris/sessions/sessiondb/redis"
@@ -33,6 +34,7 @@ func NewApp() *iris.Application {
 	BindFileController(app)
 	BindQuestionnaireController(app)
 	BindCommentController(app)
+	BindMessageController(app)
 
 	return app
 }
@@ -60,6 +62,19 @@ func (b *BaseController) checkLogin() primitive.ObjectID {
 	login := b.Session.GetString("login")
 	libs.Assert(login != "wechat_new", "invalid_session", 401)
 	return _id
+}
+
+func (b *BaseController) getPaginationData() (page, size int64) {
+	var err error
+	pageStr := b.Ctx.URLParamDefault("page", "1")
+	page, err = strconv.ParseInt(pageStr, 10, 64)
+	libs.AssertErr(err, "invalid_page", 400)
+	libs.Assert(page > 0, "invalid_page", 400)
+	sizeStr := b.Ctx.URLParamDefault("size", "10")
+	size, err = strconv.ParseInt(sizeStr, 10, 64)
+	libs.AssertErr(err, "invalid_size", 400)
+	libs.Assert(size > 0, "invalid_size", 400)
+	return
 }
 
 // JSON 使用 JSON 返回数据
