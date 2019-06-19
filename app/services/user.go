@@ -32,29 +32,47 @@ type UserService interface {
 	AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string)
 	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
 		status string, reward string) (taskCount int64, taskCards []TaskDetail)
+	GetUserParticipate(id primitive.ObjectID, page, size int64, status string) (taskStatusCount int64, taskStatusDetailList []TaskStatusDetail)
 }
 
 // NewUserService 初始化
 func newUserService() UserService {
 	return &userService{
-		cache:     models.GetRedis().Cache,
-		model:     models.GetModel().User,
-		system:    models.GetModel().System,
-		oAuth:     libs.GetOAuth(),
-		taskModel: models.GetModel().Task,
-		setModel:  models.GetModel().Set,
-		fileModel: models.GetModel().File,
+		cache:           models.GetRedis().Cache,
+		model:           models.GetModel().User,
+		system:          models.GetModel().System,
+		oAuth:           libs.GetOAuth(),
+		taskModel:       models.GetModel().Task,
+		setModel:        models.GetModel().Set,
+		fileModel:       models.GetModel().File,
+		taskStatusModel: models.GetModel().TaskStatus,
 	}
 }
 
 type userService struct {
-	cache     *models.CacheModel
-	system    *models.SystemModel
-	model     *models.UserModel
-	oAuth     *libs.OAuthService
-	taskModel *models.TaskModel
-	setModel  *models.SetModel
-	fileModel *models.FileModel
+	cache           *models.CacheModel
+	system          *models.SystemModel
+	model           *models.UserModel
+	oAuth           *libs.OAuthService
+	taskModel       *models.TaskModel
+	setModel        *models.SetModel
+	fileModel       *models.FileModel
+	taskStatusModel *models.TaskStatusModel
+}
+
+// TaskStatus 任务参与情况
+type TaskStatus struct {
+	*models.TaskStatusSchema
+	// 额外项
+	Player models.UserBaseInfo
+	//排除项
+	ID omit `json:"i_d,omitempty"` // 点赞用户ID
+}
+
+// TaskStatusDetail 任务参与详情
+type TaskStatusDetail struct {
+	Status TaskStatus
+	Task   TaskDetail
 }
 
 func (s *userService) GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo {
@@ -320,7 +338,8 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 		sortRule = "publish_date"
 	}
 	collectionTasks := s.setModel.GetSets(id, "collect_task_id")
-	tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
+
+	tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size, 0)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	for i, t := range tasks {
 		var task TaskDetail
@@ -346,5 +365,62 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 		taskCards = append(taskCards, task)
 	}
 
+	return
+}
+
+func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64, status string) (taskStatusCount int64, taskStatusDetailList []TaskStatusDetail) {
+	var statuses []models.PlayerStatus
+	split := strings.Split(status, ",")
+	for _, str := range split {
+		if str == "all" {
+			statuses = []models.PlayerStatus{models.PlayerWait, models.PlayerRefuse, models.PlayerClose, models.PlayerRunning, models.PlayerFinish, models.PlayerGiveUp, models.PlayerFailure}
+			break
+		}
+		statuses = append(statuses, models.PlayerStatus(str))
+	}
+	taskStatusList, taskStatusCount, err := s.taskStatusModel.GetTaskStatusListByUserID(id, statuses, (page-1)*size, size)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	var taskIDs []primitive.ObjectID
+
+	for _, t := range taskStatusList {
+		taskIDs = append(taskIDs, t.Task)
+	}
+
+	tasks, err := s.taskModel.GetTasksByIDs(taskIDs)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	for i, t := range taskStatusList {
+		var taskStatusDetail TaskStatusDetail
+		var taskStatus TaskStatus
+		taskStatus.TaskStatusSchema = &taskStatusList[i]
+
+		var task TaskDetail
+		task.TaskSchema = &tasks[i]
+
+		userPlayer, err := s.cache.GetUserBaseInfo(t.Player)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		taskStatus.Player = userPlayer
+
+		userPublisher, err := s.cache.GetUserBaseInfo(tasks[i].Publisher)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Publisher = userPublisher
+
+		images, err := s.fileModel.GetFileByContent(t.Task, models.FileImage)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		task.Images = []ImagesData{}
+		task.Attachment = []models.FileSchema{}
+		for _, i := range images {
+			task.Images = append(task.Images, ImagesData{
+				ID:  i.ID.Hex(),
+				URL: i.URL,
+			})
+		}
+		task.Liked = s.cache.IsLikeTask(id, t.ID)
+		task.Collected = s.cache.IsCollectTask(id, t.ID)
+
+		taskStatusDetail.Status = taskStatus
+		taskStatusDetail.Task = task
+		taskStatusDetailList = append(taskStatusDetailList, taskStatusDetail)
+	}
 	return
 }

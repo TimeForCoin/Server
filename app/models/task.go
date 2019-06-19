@@ -150,7 +150,7 @@ func (m *TaskModel) GetTaskByID(id primitive.ObjectID) (task TaskSchema, err err
 
 // GetTasks 获取任务列表，需要按类型/状态/酬劳类型筛选，按关键词搜索，按不同规则排序
 func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskTypes []TaskType,
-	statuses []TaskStatus, rewards []RewardType, keywords []string, user string, skip, limit int64) (tasks []TaskSchema, count int64, err error) {
+	statuses []TaskStatus, rewards []RewardType, keywords []string, user string, skip, limit int64, typeNum int) (tasks []TaskSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
 
@@ -162,6 +162,10 @@ func (m *TaskModel) GetTasks(sort string, taskIDs []primitive.ObjectID, taskType
 		}
 	}
 
+	if typeNum == 0 && len(taskIDs) == 0 {
+		count = 0
+		return
+	}
 	// TODO 关键词筛选
 	// 按类型、状态、酬劳类型、关键词筛选
 	filter := bson.M{}
@@ -254,4 +258,32 @@ func (m *TaskModel) InsertCount(taskID primitive.ObjectID, name ContentCountType
 	}
 
 	return nil
+}
+
+// GetTasksByIDs 根据多个ID获取任务列表
+func (m *TaskModel) GetTasksByIDs(taskIDs []primitive.ObjectID) (tasks []TaskSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+
+	filter := bson.M{}
+	filter = bson.M{
+		"_id": bson.M{"$in": taskIDs},
+	}
+
+	cursor, err := m.Collection.Find(ctx, filter, options.Find())
+	if err != nil {
+		return
+	}
+
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		task := TaskSchema{}
+		err = cursor.Decode(&task)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	return
 }

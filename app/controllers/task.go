@@ -297,3 +297,112 @@ func (c *TaskController) DeleteByCollect(id string) int {
 	c.Service.ChangeCollection(taskID, userID, false)
 	return iris.StatusOK
 }
+
+// PostByPlayer 增加任务参与人员
+func (c *TaskController) PostByPlayer(id string) int {
+	userID := c.checkLogin()
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	c.Service.ChangePlayer(taskID, userID, userID, true)
+	return iris.StatusOK
+}
+
+// DeleteByPlayer 删除任务参与人员
+func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	postUserID := c.checkLogin()
+	var userID primitive.ObjectID
+	if userIDString == "me" {
+		userID = c.checkLogin()
+	} else {
+		userID, err = primitive.ObjectIDFromHex(userIDString)
+		libs.AssertErr(err, "invalid_id", 400)
+	}
+
+	c.Service.ChangePlayer(taskID, userID, postUserID, false)
+	return iris.StatusOK
+}
+
+type TaskStatusReq struct {
+	Status   string `json:"status"`
+	Note     string `json:"note"`
+	Accept   bool   `json:"accept"`
+	Degree   int    `json:"degree"`
+	Remark   string `json:"remark"`
+	Score    int    `json:"score"`
+	Feedback string `json:"feedback"`
+}
+
+// PutByPlayerBy 修改任务参与者状态
+func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	var userID primitive.ObjectID
+	userID, err = primitive.ObjectIDFromHex(userIDString)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	postUserID := c.checkLogin()
+
+	req := TaskStatusReq{}
+	err = c.Ctx.ReadJSON(&req)
+	libs.Assert(err == nil, "invalid_value", 400)
+
+	var status models.PlayerStatus
+	if req.Status != "" {
+		status = models.PlayerStatus(req.Status)
+		libs.Assert(status == models.PlayerWait || status == models.PlayerRefuse ||
+			status == models.PlayerClose || status == models.PlayerRunning ||
+			status == models.PlayerFinish || status == models.PlayerGiveUp ||
+			status == models.PlayerFailure, "invalid_status", 403)
+	}
+
+	taskStatusInfo := models.TaskStatusSchema{
+		Status:   status,
+		Note:     req.Note,
+		Degree:   req.Degree,
+		Remark:   req.Remark,
+		Score:    req.Score,
+		Feedback: req.Feedback,
+	}
+
+	c.Service.SetTaskStatusInfo(taskID, userID, postUserID, taskStatusInfo, req.Accept)
+	return iris.StatusOK
+}
+
+// PlayerListRes 任务参与用户数据
+type PlayerListRes struct {
+	Pagination PaginationRes
+	Data       []services.TaskStatus
+}
+
+func (c *TaskController) GetByPlayer(id string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	pageStr := c.Ctx.URLParamDefault("page", "1")
+	page, err := strconv.ParseInt(pageStr, 10, 64)
+	libs.AssertErr(err, "invalid_page", 400)
+	sizeStr := c.Ctx.URLParamDefault("size", "10")
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
+	libs.AssertErr(err, "invalid_size", 400)
+
+	status := c.Ctx.URLParamDefault("status", "all")
+	acceptStr := c.Ctx.URLParamDefault("accept", "all")
+
+	taskCount, taskStatusList := c.Service.GetTaskPlayer(taskID, status, acceptStr, page, size)
+	if taskStatusList == nil {
+		taskStatusList = []services.TaskStatus{}
+	}
+
+	res := PlayerListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: taskCount,
+		},
+		Data: taskStatusList,
+	}
+	c.JSON(res)
+	return iris.StatusOK
+}

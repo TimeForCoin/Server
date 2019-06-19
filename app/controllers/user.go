@@ -73,7 +73,7 @@ type UserCertification struct {
 // UserListRes 用户数据
 type UserListRes struct {
 	Pagination PaginationRes
-	Data      []GetInfoByIDRes
+	Data       []GetInfoByIDRes
 }
 
 func (c *UserController) Get() int {
@@ -242,16 +242,14 @@ func (c *UserController) PutTypeByID(userID string) int {
 	return iris.StatusOK
 }
 
-// GetCollect 获取用户收藏
-func (c *UserController) GetCollect() int {
+// GetCollectBy 获取用户收藏
+func (c *UserController) GetCollectBy(userIDString string) int {
 	pageStr := c.Ctx.URLParamDefault("page", "1")
 	page, err := strconv.ParseInt(pageStr, 10, 64)
 	libs.AssertErr(err, "invalid_page", 400)
 	sizeStr := c.Ctx.URLParamDefault("size", "10")
 	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	libs.AssertErr(err, "invalid_size", 400)
-	userIDString := c.Ctx.URLParamDefault("user_id", "")
-	libs.Assert(userIDString != "", "string")
 	var userID primitive.ObjectID
 	if userIDString == "me" {
 		userID = c.checkLogin()
@@ -278,6 +276,47 @@ func (c *UserController) GetCollect() int {
 			Total: taskCount,
 		},
 		Tasks: tasksData,
+	}
+	c.JSON(res)
+	return iris.StatusOK
+}
+
+// TasksStatusListRes 用户参与任务数据
+type TasksStatusListRes struct {
+	Pagination PaginationRes
+	Data       []services.TaskStatusDetail
+}
+
+// GetTaskBy 获取用户参与的任务列表
+func (c *UserController) GetTaskBy(userIDString string) int {
+	pageStr := c.Ctx.URLParamDefault("page", "1")
+	page, err := strconv.ParseInt(pageStr, 10, 64)
+	libs.AssertErr(err, "invalid_page", 400)
+	sizeStr := c.Ctx.URLParamDefault("size", "10")
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
+	libs.AssertErr(err, "invalid_size", 400)
+	var userID primitive.ObjectID
+	if userIDString == "me" {
+		userID = c.checkLogin()
+	} else {
+		userID, err = primitive.ObjectIDFromHex(userIDString)
+		libs.AssertErr(err, "invalid_user", 403)
+	}
+
+	status := c.Ctx.URLParamDefault("status", "wait")
+
+	taskCount, taskStatusesData := c.Service.GetUserParticipate(userID, page, size, status)
+	if taskStatusesData == nil {
+		taskStatusesData = []services.TaskStatusDetail{}
+	}
+
+	res := TasksStatusListRes{
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: taskCount,
+		},
+		Data: taskStatusesData,
 	}
 	c.JSON(res)
 	return iris.StatusOK

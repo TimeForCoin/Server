@@ -22,24 +22,29 @@ type TaskService interface {
 	AddView(taskID primitive.ObjectID)
 	ChangeLike(taskID, userID primitive.ObjectID, like bool)
 	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
+	ChangePlayer(taskID, userID, postUserID primitive.ObjectID, player bool)
+	SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema, accept bool)
+	GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr string, page, size int64) (taskCount int64, taskStatusList []TaskStatus)
 }
 
 func newTaskService() TaskService {
 	return &taskService{
-		model:     models.GetModel().Task,
-		userModel: models.GetModel().User,
-		fileModel: models.GetModel().File,
-		cache:     models.GetRedis().Cache,
-		set:       models.GetModel().Set,
+		model:           models.GetModel().Task,
+		userModel:       models.GetModel().User,
+		fileModel:       models.GetModel().File,
+		cache:           models.GetRedis().Cache,
+		set:             models.GetModel().Set,
+		taskStatusModel: models.GetModel().TaskStatus,
 	}
 }
 
 type taskService struct {
-	model     *models.TaskModel
-	userModel *models.UserModel
-	fileModel *models.FileModel
-	cache     *models.CacheModel
-	set       *models.SetModel
+	model           *models.TaskModel
+	userModel       *models.UserModel
+	fileModel       *models.FileModel
+	cache           *models.CacheModel
+	set             *models.SetModel
+	taskStatusModel *models.TaskStatusModel
 }
 
 // ImagesData 图片数据
@@ -289,7 +294,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 		sortRule = "publish_date"
 	}
 
-	tasks, taskCount, err := s.model.GetTasks(sortRule, taskIDs, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
+	tasks, taskCount, err := s.model.GetTasks(sortRule, taskIDs, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size, 1)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
 	for i, t := range tasks {
@@ -378,4 +383,94 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 	libs.AssertErr(err, "", 500)
 	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
 	libs.AssertErr(err, "", 500)
+}
+
+func (s *taskService) ChangePlayer(taskID, userID, postUserID primitive.ObjectID, player bool) {
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	taskStatus, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
+	if player {
+		libs.Assert(err != nil, "exist_player", 403)
+		taskStatusID := primitive.NewObjectID()
+		taskStatusID, err = s.taskStatusModel.AddTaskStatus(taskStatusID, taskID, userID)
+		libs.AssertErr(err, "", 500)
+	} else {
+		libs.Assert(err == nil, "faked_player", 403)
+		libs.Assert(task.Publisher == postUserID || postUserID == userID, "permission_deny", 403)
+		libs.Assert(task.Status != models.TaskStatusWait, "permission_deny", 403)
+		err = s.taskStatusModel.DeleteTaskStatus(taskStatus.ID)
+		libs.AssertErr(err, "", 500)
+	}
+}
+
+func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema, accept bool) {
+	taskStatusGet, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
+	libs.AssertErr(err, "faked_status", 403)
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	isPublisher := task.Publisher == postUserID
+	libs.Assert(isPublisher || userID == postUserID, "permission_deny", 403)
+	status := taskStatus.Status
+	degree := taskStatus.Degree
+	remark := taskStatus.Remark
+	score := taskStatus.Score
+	feedback := taskStatus.Feedback
+	if accept {
+		if taskStatusGet.Status == models.PlayerWait && status == "" {
+			taskStatus.Status = models.PlayerRunning
+		}
+	}
+
+	if isPublisher {
+		libs.Assert(score == 0 && feedback == "" && status != models.PlayerWait && status != models.PlayerGiveUp, "permission_deny", 403)
+	} else {
+		libs.Assert(degree == 0 && remark == "" && (status == "" || status == models.PlayerWait || status == models.PlayerGiveUp), "permission_deny", 403)
+	}
+	err = s.taskStatusModel.SetTaskStatus(taskStatus.ID, taskStatus)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+}
+
+func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr string, page, size int64) (taskCount int64, taskStatusList []TaskStatus) {
+	_, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	var statuses []models.PlayerStatus
+	split := strings.Split(status, ",")
+	for _, str := range split {
+		if str == "all" {
+			statuses = []models.PlayerStatus{models.PlayerWait, models.PlayerRefuse, models.PlayerClose, models.PlayerRunning, models.PlayerFinish, models.PlayerGiveUp, models.PlayerFailure}
+			break
+		}
+		statuses = append(statuses, models.PlayerStatus(str))
+	}
+	if acceptStr == "true" {
+		for i := 0; i < len(statuses); {
+			if statuses[i] == models.PlayerWait || statuses[i] == models.PlayerRefuse {
+				statuses = append(statuses[:i], statuses[i+1:]...)
+			} else {
+				i++
+			}
+		}
+	} else if acceptStr == "false" {
+		for i := 0; i < len(statuses); {
+			if statuses[i] != models.PlayerWait && statuses[i] != models.PlayerRefuse {
+				statuses = append(statuses[:i], statuses[i+1:]...)
+			} else {
+				i++
+			}
+		}
+	}
+
+	taskStatuses, taskCount, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, statuses, (page-1)*size, size)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	for i, t := range taskStatuses {
+		var taskStatus TaskStatus
+		taskStatus.TaskStatusSchema = &taskStatuses[i]
+
+		userPlayer, err := s.cache.GetUserBaseInfo(t.Player)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		taskStatus.Player = userPlayer
+
+		taskStatusList = append(taskStatusList, taskStatus)
+	}
+	return
 }
