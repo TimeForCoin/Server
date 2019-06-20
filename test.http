@@ -41,7 +41,7 @@ POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "033YEYKz0YRttd1WjMIz0Qn3Lz0YEYKh"
+  "code": "023Q2cr60odYCC1njrp60ZeXq60Q2cr1"
 }
 
 ### 微信二维码
@@ -66,9 +66,9 @@ POST http://127.0.0.1:30233/tasks
 Content-Type: application/json
 
 {
-  "title": "睡觉",
+  "title": "问卷2",
   "content": "到底什么时候睡觉啊",
-  "type": "run",
+  "type": "questionnaire",
   "reward": "object",
   "reward_object": "觉",
   "location": [
@@ -79,7 +79,7 @@ Content-Type: application/json
   ],
   "start_date": 1579797713,
   "end_date": 1579797724,
-  "max_player": 2,
+  "max_player": 100,
   "auto_accept": true,
   "publish": false
 }
@@ -89,15 +89,15 @@ GET http://127.0.0.1:30233/tasks?page=1&size=5
 // Get https://coin.zhenly.cn/api/tasks?page=1&size=10
 
 ### 获取单个任务详情
-GET http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
+GET http://127.0.0.1:30233/tasks/5d0b6d6277b84a717c9f3854
 
 ### 修改任务信息
 
-PUT http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e
+PUT http://127.0.0.1:30233/tasks/5d0b6d6277b84a717c9f3854
 Content-Type: application/json
 
 {
-  "tags": ["起床", "睡觉"]
+  "status": "wait"
 }
 
 ### 删除任务
@@ -196,4 +196,94 @@ Content-Type: application/json
 
 {
   "content": "你真的好蔡啊"
+}
+
+### 获取用户参与人员列表
+GET http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/player
+
+### 领取任务
+POST http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/player
+
+### 改变任务状态
+PUT http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/player/5d00d8d583977849d662489c
+Content-Type: application/json
+
+{
+  "note": "我要加入啊",
+  "score": 102
+}
+
+### 退出任务
+DELETE  http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/player/5d00d8d583977849d662489c
+
+
+### 新建问卷
+POST http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854
+Content-Type: application/json
+
+{
+  "title": "问卷标题",
+  "description": "问卷描述",
+  "anonymous": false
+}
+
+### 获取问卷信息
+GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854
+
+### 修改问卷信息
+PUT http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854
+Content-Type: application/json
+
+{
+  "title": "不是问卷标题",
+  "description": "不是问卷描述"
+}
+
+### 获取问卷问题
+GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/questions
+
+### 修改问卷问题
+POST http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/questions
+Content-Type: application/json
+
+{
+  "problems": [
+    {
+      "index": 1,
+      "content": "你是猪吗？",
+      "note": "请如实回答",
+      "type": "choose",
+      "choose_problem": {
+        "options": [
+          {
+            "index": 1,
+            "content": "是"
+          }, {
+            "index": 2,
+            "content": "真的是"
+          }
+        ],
+        "max_choose": 1
+      }
+    }
+  ]
+}
+
+### 获取问卷回答数据
+GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/answers
+
+### 添加问卷回答
+
+POST http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/answers
+Content-Type: application/json
+
+{
+  "data": [
+    {
+      "problem_index": 1,
+      "choose_value": [
+        3
+      ]
+    }
+  ]
 }

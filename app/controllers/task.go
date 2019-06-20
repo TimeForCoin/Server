@@ -31,6 +31,7 @@ type AddTaskReq struct {
 	Images       []string `json:"images"`
 	Attachment   []string `json:"attachment"`
 	Type         string   `json:"type"`
+	Status       string   `json:"status"`
 	Reward       string   `json:"reward"`
 	RewardValue  float32  `json:"reward_value"`
 	RewardObject string   `json:"reward_object"`
@@ -133,7 +134,7 @@ func (c *TaskController) PutBy(id string) int {
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
 
-	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
 	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
 	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
 
@@ -142,7 +143,7 @@ func (c *TaskController) PutBy(id string) int {
 	}
 
 	for _, t := range req.Tags {
-		libs.Assert(len(t) < 16, "tag_too_long", 403)
+		libs.Assert(len(t) < 32, "tag_too_long", 403)
 	}
 
 	var images []primitive.ObjectID
@@ -158,11 +159,14 @@ func (c *TaskController) PutBy(id string) int {
 		attachments = append(attachments, fileID)
 	}
 
+	libs.Assert(req.Status == "" || libs.IsTaskStatus(req.Status), "invalid_status", 400)
+
 	taskInfo := models.TaskSchema{
 		Title:        req.Title,
 		Content:      req.Content,
 		Location:     req.Location,
 		Tags:         req.Tags,
+		Status:       models.TaskStatus(req.Status),
 		RewardValue:  req.RewardValue,
 		RewardObject: req.RewardObject,
 		StartDate:    req.StartDate,
@@ -300,7 +304,7 @@ func (c *TaskController) PostByPlayer(id string) int {
 	return iris.StatusOK
 }
 
-// DeleteByPlayer 删除任务参与人员
+// DeleteByPlayerBy 删除任务参与人员
 func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -317,6 +321,7 @@ func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
 	return iris.StatusOK
 }
 
+// TaskStatusReq 任务参与状态请求
 type TaskStatusReq struct {
 	Status   string `json:"status"`
 	Note     string `json:"note"`
@@ -339,7 +344,7 @@ func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
 
 	req := TaskStatusReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil, "invalid_value", 400)
+	libs.AssertErr(err, "invalid_value", 400)
 
 	var status models.PlayerStatus
 	if req.Status != "" {
@@ -369,6 +374,7 @@ type PlayerListRes struct {
 	Data       []services.TaskStatus
 }
 
+// GetByPlayer 获取任务参与者
 func (c *TaskController) GetByPlayer(id string) int {
 	libs.Assert(id != "", "string")
 	taskID, err := primitive.ObjectIDFromHex(id)

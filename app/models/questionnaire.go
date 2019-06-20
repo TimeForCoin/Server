@@ -1,8 +1,6 @@
 package models
 
 import (
-	"reflect"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -55,73 +53,75 @@ type ProblemSchema struct {
 			Index   int64              // 选项序号
 			Content string             // 选项内容
 			Image   primitive.ObjectID `bson:"image,omitempty"` // 图片附件ID
-		} `bson:"options"` // 问题选项
-		MaxChoose int64 `bson:"max_choose"` // 最大可选项
-	} `bson:"choose_problem,omitempty"`
+		} // 问题选项
+		MaxChoose int64 `bson:"max_choose" json:"max_choose"` // 最大可选项
+	} `bson:"choose_problem,omitempty" json:"choose_problem,omitempty"`
 
 	// 填空题数据
 	FillProblem struct {
 		Type      FillType `bson:"type"`                  // 填空类型
 		MultiLine bool     `bson:"multi_line, omitempty"` // 是否多行
 		MaxWord   int64    `bson:"max_word, omitempty"`   // 最大字数
-	} `bson:"fill_problem, omitempty"`
+	} `bson:"fill_problem, omitempty" json:"fill_problem,omitempty"`
 
 	// 评分题
 	ScoreProblem struct {
 		MinText string `bson:"min_text"` // 低分描述（如：不满意，不重要，不愿意)
 		MaxText string `bson:"max_text"` // 高分描述
 		Score   int64  `bson:"score"`    // 评分级别 1-x (最高为10)
-	} `bson:"score_problem, omitempty"`
+	} `bson:"score_problem, omitempty" json:"score_problem,omitempty"`
 
 	// 矩阵题
 	MatrixProblem struct {
 		Content []string // 题目
 		Options []string // 选项
-	} `bson:"matrix_problem, omitempty"`
+	} `bson:"matrix_problem, omitempty" json:"matrix_problem,omitempty"`
 
 	// 排序题
 	SortProblem struct {
 		SortItem []struct {
 			Index   int64  // 选项序号
 			Content string // 选项内容
-		} `bson:"sort_item"`
-	} `bson:"sort_problem, omitempty"`
+		} `bson:"sort_item" json:"sort_item"`
+	} `bson:"sort_problem, omitempty" json:"sort_problem,omitempty"`
 }
 
 // StatisticsSchema 用户填写数据
 type StatisticsSchema struct {
-	UserID   primitive.ObjectID  `bson:"user_id"` // 填写用户ID
+	UserID   primitive.ObjectID  `bson:"user_id" json:"user_id"` // 填写用户ID
 	Data     []ProblemDataSchema // 问题答案
 	Time     int64               // 提交时间
 	Duration int64               // 花费时间(秒)
-	IP       string              // 提交 IP 地址
+	IP       string         `bson:"ip" json:"ip"`     // 提交 IP 地址
 }
 
 // ProblemDataSchema 问题数据
 type ProblemDataSchema struct {
-	ProblemIndex int                `bson:"problem_index"`           // 题目序号
-	StringValue  string             `bson:"string_value, omitempty"` // 填空题
-	ChooseValue  []int              `bson:"choose_value, omitempty"` // 选择题、矩阵题、排序题数据
-	ScoreValue   int                `bson:"score_value, omitempty"`  // 评分题数据
-	FileValue    primitive.ObjectID `bson:"file_value, omitempty"`   // 文件题数据
+	ProblemIndex int                `bson:"problem_index" json:"problem_index"`           // 题目序号
+	StringValue  string             `bson:"string_value,omitempty" json:"string_value,omitempty"` // 填空题
+	ChooseValue  []int              `bson:"choose_value,omitempty" json:"choose_value,omitempty"` // 选择题、矩阵题、排序题数据
+	ScoreValue   int                `bson:"score_value,omitempty" json:"score_value,omitempty"`  // 评分题数据
+	FileValue    primitive.ObjectID `bson:"file_value,omitempty" json:"file_value,omitempty"`   // 文件题数据
 }
 
 // QuestionnaireSchema 问卷数据结构
 type QuestionnaireSchema struct {
 	TaskID primitive.ObjectID `bson:"_id"` // 问卷所属任务ID [索引]
 
-	Title       string             // 问卷标题
-	Description string             // 问卷描述
-	Owner       string             // 问卷创建者(冗余)
-	Anonymous   bool               // 匿名收集
-	Problems    []ProblemSchema    // 问卷问题
-	Data        []StatisticsSchema // 问题统计数据
+	Title       string             `bson:"title"`       // 问卷标题
+	Description string             `bson:"description"` // 问卷描述
+	Owner       primitive.ObjectID `bson:"owner"`       // 问卷创建者(冗余)
+	Anonymous   bool               `bson:"anonymous"`   // 匿名收集
+	Problems    []ProblemSchema    `bson:"problems"`    // 问卷问题
+	Data        []StatisticsSchema `bson:"data"`        // 问题统计数据
 }
 
 // AddQuestionnaire 添加问卷
 func (model *QuestionnaireModel) AddQuestionnaire(info QuestionnaireSchema) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
+	info.Problems = []ProblemSchema{}
+	info.Data = []StatisticsSchema{}
 	res, err := model.Collection.InsertOne(ctx, &info)
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -138,22 +138,15 @@ func (model *QuestionnaireModel) GetQuestionnaireInfoByID(id primitive.ObjectID)
 }
 
 // SetQuestionnaireInfoByID 设置问卷信息
-func (model *QuestionnaireModel) SetQuestionnaireInfoByID(info QuestionnaireSchema) (err error) {
+func (model *QuestionnaireModel) SetQuestionnaireInfoByID(id primitive.ObjectID, info QuestionnaireSchema) (err error) {
 	ctx, over := GetCtx()
 	defer over()
 	updateItem := bson.M{}
-	names := reflect.TypeOf(info)
-	values := reflect.ValueOf(info)
-	for i := 0; i < names.NumField(); i++ {
-		name := names.Field(i).Tag.Get("bson")
-		if name == "title" || name == "description" {
-			updateItem[name] = values.Field(i).String()
-		} else if name == "anonymous" {
-			updateItem[name] = values.Field(i).Bool()
-		}
-	}
+	updateItem["title"] = info.Title
+	updateItem["description"] = info.Description
+	updateItem["anonymous"] = info.Anonymous
 	res, err := model.Collection.UpdateOne(ctx,
-		bson.M{"_id": info.TaskID},
+		bson.M{"_id": id},
 		bson.M{"$set": updateItem})
 	if err != nil {
 		return
@@ -208,20 +201,12 @@ func (model *QuestionnaireModel) GetQuestionnaireAnswersByID(id primitive.Object
 }
 
 // AddAnswer 添加新回答
-func (model *QuestionnaireModel) AddAnswer(id primitive.ObjectID, statistics StatisticsSchema) (err error){
+func (model *QuestionnaireModel) AddAnswer(id primitive.ObjectID, statistics StatisticsSchema) (err error) {
 	ctx, over := GetCtx()
 	defer over()
-	var questionnaire QuestionnaireSchema
-	err = model.Collection.FindOne(ctx, bson.M{"_id": id}).Decode(&questionnaire)
-	if err != nil {
-		return
-	}
-	updateItem := bson.M{
-		"data": append(questionnaire.Data, statistics),
-	}
 	res, err := model.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
-		bson.M{"$set": updateItem})
+		bson.M{"$push": bson.M{"data": statistics} })
 	if err != nil {
 		return
 	} else if res.MatchedCount < 1 {

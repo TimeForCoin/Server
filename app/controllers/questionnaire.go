@@ -31,12 +31,13 @@ type AddQuestionnaireReq struct {
 	Anonymous   bool   `json:"anonymous"`
 }
 
+// QuestionsRes 问题请求
 type QuestionsRes struct {
-	Data []models.ProblemSchema `json:"data"`
+	Data []models.ProblemSchema `json:"problems"`
 }
 
-// Post 新建问卷
-func (c *QuestionnaireController) Post(id string) int {
+// PostBy 新建问卷
+func (c *QuestionnaireController) PostBy(id string) int {
 	userID := c.checkLogin()
 	req := AddQuestionnaireReq{}
 	err := c.Ctx.ReadJSON(&req)
@@ -53,39 +54,34 @@ func (c *QuestionnaireController) Post(id string) int {
 		TaskID:      taskID,
 		Title:       req.Title,
 		Description: req.Description,
-		Owner:       userID.String(),
+		Owner:       userID,
 		Anonymous:   req.Anonymous,
 	}
 	c.Server.AddQuestionnaire(questionnaire)
 	return iris.StatusOK
 }
 
-
-// GetByID 获取问卷信息
-func (c *QuestionnaireController) GetByID(id string) int {
-	// _ :=  c.checkLogin()
+// GetBy 获取问卷信息
+func (c *QuestionnaireController) GetBy(id string) int {
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
-
-	// TODO 未登录/登陆过期
 
 	questionnaireInfo := c.Server.GetQuestionnaireInfoByID(_id)
 	c.JSON(questionnaireInfo)
 	return iris.StatusOK
 }
 
-
-// PatchBy 修改问卷信息
+// PutBy 修改问卷信息
 func (c *QuestionnaireController) PutBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 
-	// TODO 未登录/登陆过期
-
 	req := AddQuestionnaireReq{}
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
+	libs.Assert(req.Title != "", "invalid_title", 400)
+	libs.Assert(req.Description != "", "invalid_description", 400)
 	questionnaireInfo := models.QuestionnaireSchema{
 		TaskID:      taskID,
 		Title:       req.Title,
@@ -96,23 +92,22 @@ func (c *QuestionnaireController) PutBy(id string) int {
 	return iris.StatusOK
 }
 
-// GetQuestionsBy 获取问卷问题
-func (c *QuestionnaireController) GetQuestionsBy(id string) int {
-	// _ :=  c.checkLogin()
+// GetByQuestions 获取问卷问题
+func (c *QuestionnaireController) GetByQuestions(id string) int {
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
-
-	// TODO 未登录/登陆过期
-
 	questions := c.Server.GetQuestionnaireQuestionsByID(_id)
+	if questions == nil {
+		questions = []models.ProblemSchema{}
+	}
 	c.JSON(QuestionsRes{
-		Data:	questions,
+		Data: questions,
 	})
 	return iris.StatusOK
 }
 
-// PostQuestionsBy 修改问卷问题
-func (c *QuestionnaireController) PostQuestionsBy(id string) int {
+// PostByQuestions 修改问卷问题
+func (c *QuestionnaireController) PostByQuestions(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
@@ -120,36 +115,36 @@ func (c *QuestionnaireController) PostQuestionsBy(id string) int {
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
 
-	// TODO 未登录/登陆过期
-
 	c.Server.SetQuestionnaireQuestions(userID, _id, req.Data)
 	return iris.StatusOK
 }
 
-// GetAnswersBy 获取问卷答案数据
-func (c *QuestionnaireController) GetAnswersBy(id string) int {
+// GetByAnswers 获取问卷答案数据
+func (c *QuestionnaireController) GetByAnswers(id string) int {
+	userID := c.checkLogin()
+	_id, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	res := c.Server.GetQuestionnaireAnswersByID(userID, _id)
+	c.JSON(res)
+
+	return iris.StatusOK
+}
+
+// PostAnswersReq 添加回答请求
+type PostAnswersReq struct {
+	Data []models.ProblemDataSchema `json:"data"`
+}
+
+// PostByAnswers 添加新回答
+func (c *QuestionnaireController) PostByAnswers(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 
-	// TODO 未登录/登陆过期
-
-	c.Server.GetQuestionnaireAnswersByID(userID, _id)
-	return iris.StatusOK
-}
-
-// PostAnswerBy 添加新回答
-func (c * QuestionnaireController) PostAnswerBy(id string) int {
-	//_ := c.checkLogin()
-	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
-
-	// TODO 未登录/权限过期
-
-	req := models.StatisticsSchema{}
+	req := PostAnswersReq{}
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
 
-	c.Server.AddAnswer(_id, req)
+	c.Server.AddAnswer(_id, userID, req.Data)
 	return iris.StatusOK
 }

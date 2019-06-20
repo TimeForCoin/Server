@@ -401,6 +401,7 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 	libs.AssertErr(err, "", 500)
 }
 
+// ChangePlayer 改变参与人员状态
 func (s *taskService) ChangePlayer(taskID, userID, postUserID primitive.ObjectID, player bool) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
@@ -413,7 +414,7 @@ func (s *taskService) ChangePlayer(taskID, userID, postUserID primitive.ObjectID
 	} else {
 		libs.Assert(err == nil, "faked_player", 403)
 		libs.Assert(task.Publisher == postUserID || postUserID == userID, "permission_deny", 403)
-		libs.Assert(task.Status != models.TaskStatusWait, "permission_deny", 403)
+		libs.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
 		err = s.taskStatusModel.DeleteTaskStatus(taskStatus.ID)
 		libs.AssertErr(err, "", 500)
 	}
@@ -439,10 +440,16 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 
 	if isPublisher {
 		libs.Assert(score == 0 && feedback == "" && status != models.PlayerWait && status != models.PlayerGiveUp, "permission_deny", 403)
+		if taskStatus.Status != models.PlayerFinish && taskStatus.Status != models.PlayerClose && taskStatus.Status != models.PlayerFailure {
+			libs.Assert(degree == 0 && remark == "", "not_allow_status", 403)
+		}
 	} else {
 		libs.Assert(degree == 0 && remark == "" && (status == "" || status == models.PlayerWait || status == models.PlayerGiveUp), "permission_deny", 403)
+		if taskStatus.Status != models.PlayerFinish && taskStatus.Status != models.PlayerClose && taskStatus.Status != models.PlayerFailure {
+			libs.Assert(score == 0 && feedback == "", "not_allow_status", 403)
+		}
 	}
-	err = s.taskStatusModel.SetTaskStatus(taskStatus.ID, taskStatus)
+	err = s.taskStatusModel.SetTaskStatus(taskStatusGet.ID, taskStatus)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
