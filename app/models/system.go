@@ -20,6 +20,26 @@ type SystemSchemas struct {
 	Value string             // 信息内容
 }
 
+// GetAutoEmail 获取自动认证后缀
+func (m *SystemModel) GetAutoEmail(page, size int64) (res []SystemSchemas, err error) {
+	ctx, finish := GetCtx()
+	defer finish()
+	cur, err := m.Collection.Find(ctx, bson.M{"key": bson.M{"$regex": "^email-"}}, options.Find().SetSkip((page-1) *size).SetLimit(size))
+	if err != nil {
+		return
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		item := SystemSchemas{}
+		err = cur.Decode(&item)
+		if err != nil {
+			return
+		}
+		res = append(res, item)
+	}
+	return
+}
+
 // ExistAutoEmail 是否存在自动认证
 func (m *SystemModel) ExistAutoEmail(email string) string {
 	ctx, finish := GetCtx()
@@ -42,4 +62,15 @@ func (m *SystemModel) AddAutoEmail(email, data string) error {
 	return err
 }
 
-
+// RemoveAutoEmail 移除自动认证
+func (m *SystemModel) RemoveAutoEmail(email string) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	res, err := m.Collection.DeleteOne(ctx, bson.M{"key": "email-" + email})
+	if err != nil {
+		return err
+	} else if res.DeletedCount == 0 {
+		return ErrNotExist
+	}
+	return nil
+}

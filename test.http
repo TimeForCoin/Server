@@ -13,7 +13,7 @@ GET http://127.0.0.1:30233/users/info/me
 //GET https://coin.zhenly.cn/api/users/info/me
 
 ### 获取用户信息
-GET http://127.0.0.1:30233/users/info/5cf6588cf629d9be71a64875
+GET http://127.0.0.1:30233/users/info/5d00d8d583977849d662489c
 
 ### 签到
 POST http://127.0.0.1:30233/users/attend

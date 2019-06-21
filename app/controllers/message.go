@@ -56,7 +56,7 @@ type PostMessageReq struct {
 	About   string
 }
 
-// Post 发送系统消息
+// PostSystem 发送系统消息
 func (c *MessageController) PostSystem() int {
 	userID := c.checkLogin()
 	req := PostMessageReq{}

@@ -32,10 +32,22 @@ func (c *CertificationController) Post() int {
 	// 目前只支持学生认证
 	libs.Assert(req.Identity == models.IdentityStudent, "invalid_identity", 400)
 	// 目前只支持邮箱认证
-	libs.Assert(req.Type == "email", "invalid_type", 400)
-	libs.Assert(libs.IsEmail(req.Email), "invalid_email", 400)
-	// TODO 材料认证
-	c.Service.AddEmailCertification(req.Identity, id, req.Data, req.Email)
+	switch req.Type {
+	case "email":
+		libs.Assert(libs.IsEmail(req.Email), "invalid_email", 400)
+		c.Service.AddEmailCertification(req.Identity, id, req.Data, req.Email)
+	case "material":
+		var material []primitive.ObjectID
+		for _, attachment := range req.Attachment {
+			fileID, err := primitive.ObjectIDFromHex(attachment)
+			libs.AssertErr(err, "invalid_attachment", 400)
+			material = append(material, fileID)
+		}
+		libs.Assert(len(material) > 0, "invalid_attachment", 400)
+		c.Service.AddMaterialCertification(req.Identity, id, req.Data, material)
+	default:
+		libs.Assert(false, "invalid_type", 400)
+	}
 	return iris.StatusOK
 }
 
@@ -43,6 +55,80 @@ func (c *CertificationController) Post() int {
 func (c *CertificationController) PostEmail() int {
 	id := c.checkLogin()
 	c.Service.SendCertificationEmail(id, "")
+	return iris.StatusOK
+}
+
+// GetCertification 获取待审核认证列表
+func (c *CertificationController) GetCertification() int {
+	userID := c.checkLogin()
+	page, size := c.getPaginationData()
+	types := c.Ctx.URLParamDefault("type", "email")
+	var status []models.CertificationStatus
+	switch types {
+	case "email":
+		status = append(status, models.CertificationWaitEmail)
+	case "material":
+		status = append(status, models.CertificationWait)
+	case "all":
+		status = append(status, models.CertificationWaitEmail)
+		status = append(status, models.CertificationWait)
+	default:
+		libs.Assert(false, "invalid_type", 400)
+	}
+	users := c.Service.GetCertificationList(userID, status, page, size)
+
+
+	c.JSON(struct {
+		Pagination PaginationRes
+		Data []services.UserDetail
+	}{
+		Pagination: PaginationRes{
+			Page: page,
+			Size: size,
+		},
+		Data: users,
+	})
+
+	return iris.StatusOK
+}
+
+// GetAuto 获取自动认证前缀
+func (c *CertificationController) GetAuto() int {
+	userID := c.checkLogin()
+	page, size := c.getPaginationData()
+	data := c.Service.GetAutoCertification(userID, page, size)
+	c.JSON(struct {
+		Pagination PaginationRes
+		Data []models.SystemSchemas
+	}{
+		Pagination: PaginationRes{
+			Page: page,
+			Size: size,
+		},
+		Data: data,
+	})
+	return iris.StatusOK
+}
+
+// PostAuto 添加自动认证前缀
+func (c *CertificationController) PostAuto() int {
+	userID := c.checkLogin()
+	req := struct {
+		Key string
+		Value string
+	}{}
+	err := c.Ctx.ReadJSON(&req)
+	libs.AssertErr(err, "invalid_value", 400)
+	libs.Assert(req.Key != "" && req.Value != "","invalid_value", 400)
+	c.Service.AddAutoCertification(userID, req.Key, req.Value)
+	return iris.StatusOK
+}
+
+// DeleteAuto 删除自动认证前缀
+func (c *CertificationController) DeleteAutoBy(key string) int {
+	userID := c.checkLogin()
+	libs.Assert(key != "","invalid_key", 400)
+	c.Service.RemoveAutoCertification(userID, key)
 	return iris.StatusOK
 }
 

@@ -9,14 +9,14 @@ var oauth *OAuthService
 
 // OAuthService Violet 授权服务
 type OAuthService struct {
-	Api      *violet.Violet
+	API      *violet.Violet
 	Callback string
 }
 
 // InitViolet 初始化授权服务
 func InitViolet(c VioletConfig) *OAuthService {
 	oauth = &OAuthService{
-		Api: violet.NewViolet(violet.Config{
+		API: violet.NewViolet(violet.Config{
 			ClientID:   c.ClientID,
 			ClientKey:  c.ClientKey,
 			ServerHost: c.ServerHost,

@@ -13,6 +13,7 @@ type FileService interface {
 	AddFile(file multipart.File, head multipart.FileHeader, fileType models.FileType,
 		ownID primitive.ObjectID, name, description string, public bool) primitive.ObjectID
 	BindFilesToTask(userID, taskID primitive.ObjectID, files []FileBaseInfo)
+	BindFilesToUser(userID primitive.ObjectID, files []primitive.ObjectID)
 	RemoveFile(fileID primitive.ObjectID)
 	UpdateFileInfo(fileID, userID primitive.ObjectID, name, description string, public bool)
 	RemoveUserFile(userID, fileID primitive.ObjectID)
@@ -101,6 +102,21 @@ func (s *fileService) BindFilesToTask(userID, taskID primitive.ObjectID, files [
 	}
 	for _, file := range files {
 		err := s.model.BindTask(file.ID, taskID)
+		libs.AssertErr(err, "", 500)
+	}
+}
+
+// BindFilesToUser 绑定文件到用户上
+func (s *fileService) BindFilesToUser(userID primitive.ObjectID, files []primitive.ObjectID) {
+	// 验证权限
+	for _, file := range files {
+		f, err := s.model.GetFile(file)
+		libs.AssertErr(err, "faked_file", 403)
+		libs.Assert(f.OwnerID == userID, "permission_deny", 403)
+		libs.Assert(f.Owner == models.FileForUser, "permission_deny", 403)
+	}
+	for _, file := range files {
+		err := s.model.BindUser(file)
 		libs.AssertErr(err, "", 500)
 	}
 }

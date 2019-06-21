@@ -109,6 +109,21 @@ func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	return nil
 }
 
+// BindTask 将文件绑定到任务中
+func (m *FileModel) BindUser(fileID primitive.ObjectID) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	if res, err := m.Collection.UpdateOne(ctx,
+		bson.M{"_id": fileID},
+		bson.M{"$inc": bson.M{"used": 1}}); err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
+
 // RemoveFile 删除文件
 func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
@@ -123,10 +138,10 @@ func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 }
 
 // GetUselessFile 获取无用文件
-func (m *FileModel) GetUselessFile(userID... primitive.ObjectID) (files []FileSchema) {
+func (m *FileModel) GetUselessFile(userID ...primitive.ObjectID) (files []FileSchema) {
 	ctx, finish := GetCtx()
 	defer finish()
-	filter :=  bson.M{"used": 0}
+	filter := bson.M{"used": 0}
 	if len(userID) > 0 {
 		filter["own_id"] = userID[0]
 		filter["owner"] = "user"
@@ -150,10 +165,10 @@ func (m *FileModel) GetUselessFile(userID... primitive.ObjectID) (files []FileSc
 }
 
 // RemoveUselessFile 删除无用文件
-func (m *FileModel) RemoveUselessFile(userID... primitive.ObjectID) int64 {
+func (m *FileModel) RemoveUselessFile(userID ...primitive.ObjectID) int64 {
 	ctx, finish := GetCtx()
 	defer finish()
-	filter :=  bson.M{"used": 0}
+	filter := bson.M{"used": 0}
 	if len(userID) > 0 {
 		filter["own_id"] = userID[0]
 		filter["owner"] = "user"
@@ -179,6 +194,7 @@ func (m *FileModel) SetFileInfo(fileID primitive.ObjectID, name, description str
 	return nil
 }
 
+// GetFileByHash 根据文件 Hash 值查找
 func (m *FileModel) GetFileByHash(hash string) (file FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()

@@ -31,11 +31,11 @@ const (
 // TaskStatusSchema 接受的任务状态 基本数据结构
 // bson 默认为名字小写
 type TaskStatusSchema struct {
-	ID     primitive.ObjectID `bson:"_id,omitempty"` // 任务状态ID
-	Task   primitive.ObjectID `bson:"task"`          // 任务 ID [索引]
-	Player primitive.ObjectID `bson:"player"`        // 用户 ID [索引]
-	Status PlayerStatus       `bson:"status"`        // 状态
-	Note   string             `bson:"note"`          // 申请备注
+	ID     primitive.ObjectID `bson:"_id,omitempty" json:"id"` // 任务状态ID
+	Task   primitive.ObjectID `bson:"task"`                    // 任务 ID [索引]
+	Player primitive.ObjectID `bson:"player"`                  // 用户 ID [索引]
+	Status PlayerStatus       `bson:"status"`                  // 状态
+	Note   string             `bson:"note"`                    // 申请备注
 	// 完成后的评价
 	Degree int    `bson:"degree"` // 完成度
 	Remark string `bson:"remark"` // 评语
@@ -44,6 +44,7 @@ type TaskStatusSchema struct {
 	Feedback string `bson:"feedback"` // 反馈
 }
 
+// AddTaskStatus 添加任务状态
 func (m *TaskStatusModel) AddTaskStatus(taskStatusID, taskID, userID primitive.ObjectID) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -59,6 +60,7 @@ func (m *TaskStatusModel) AddTaskStatus(taskStatusID, taskID, userID primitive.O
 	return res.InsertedID.(primitive.ObjectID), nil
 }
 
+// SetTaskStatus 设置任务状态
 func (m *TaskStatusModel) SetTaskStatus(id primitive.ObjectID, info TaskStatusSchema) error {
 	ctx, over := GetCtx()
 	defer over()
@@ -66,7 +68,6 @@ func (m *TaskStatusModel) SetTaskStatus(id primitive.ObjectID, info TaskStatusSc
 	updateItem := bson.M{}
 	names := reflect.TypeOf(info)
 	values := reflect.ValueOf(info)
-
 	for i := 0; i < names.NumField(); i++ {
 		name := names.Field(i).Tag.Get("bson")
 		if name == "degree" || name == "score" {
@@ -91,6 +92,7 @@ func (m *TaskStatusModel) SetTaskStatus(id primitive.ObjectID, info TaskStatusSc
 	return nil
 }
 
+// GetTaskStatusListByTaskID 获取任务状态列表
 func (m *TaskStatusModel) GetTaskStatusListByTaskID(taskID primitive.ObjectID, status []PlayerStatus, skip, limit int64) (taskStatusList []TaskStatusSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -123,6 +125,7 @@ func (m *TaskStatusModel) GetTaskStatusListByTaskID(taskID primitive.ObjectID, s
 	return
 }
 
+// GetTaskStatusListByUserID 获取用户任务状态列表
 func (m *TaskStatusModel) GetTaskStatusListByUserID(userID primitive.ObjectID, status []PlayerStatus, skip, limit int64) (taskStatusList []TaskStatusSchema, count int64, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -155,6 +158,7 @@ func (m *TaskStatusModel) GetTaskStatusListByUserID(userID primitive.ObjectID, s
 	return
 }
 
+// GetTaskStatus 获取任务状态
 func (m *TaskStatusModel) GetTaskStatus(userID, taskID primitive.ObjectID) (taskStatus TaskStatusSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
@@ -168,6 +172,7 @@ func (m *TaskStatusModel) GetTaskStatus(userID, taskID primitive.ObjectID) (task
 	return
 }
 
+// DeleteTaskStatus 删除任务状态
 func (m *TaskStatusModel) DeleteTaskStatus(id primitive.ObjectID) error {
 	ctx, over := GetCtx()
 	defer over()

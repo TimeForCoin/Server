@@ -87,6 +87,7 @@ func (s *WeChatService) MakeImage(data string) (string, error) {
 	return "data:image/jpg;base64," + encodeString, nil
 }
 
+// WeChatSessionRes 微信登陆数据
 type WeChatSessionRes struct {
 	WeChatError
 	OpenID     string `json:"openid"`
