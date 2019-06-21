@@ -42,10 +42,7 @@ func (c *QuestionnaireController) PostBy(id string) int {
 	req := AddQuestionnaireReq{}
 	err := c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
-
 	libs.Assert(req.Title != "", "invalid_title", 400)
-
-	// TODO 未登录/登陆过期
 
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)

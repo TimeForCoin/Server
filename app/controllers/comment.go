@@ -31,7 +31,16 @@ func (c *CommentController) GetBy(id string) int {
 	libs.AssertErr(err, "invalid_id", 400)
 
 	res := c.Service.GetComments(contentID, c.Session.GetString("id"), page, size, sort)
-	c.JSON(res)
+	c.JSON(struct {
+		Pagination PaginationRes
+		Data []services.CommentData
+	}{
+		Pagination: PaginationRes{
+			Page: page,
+			Size: size,
+		},
+		Data: res,
+	})
 	return iris.StatusOK
 }
 

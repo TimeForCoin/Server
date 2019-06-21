@@ -401,3 +401,9 @@ func (c *TaskController) GetByPlayer(id string) int {
 	c.JSON(res)
 	return iris.StatusOK
 }
+
+// GetByWechat 生成活动微信小程序码
+func (c *TaskController) GetByWechat(id string) int {
+	// TODO
+	return iris.StatusOK
+}

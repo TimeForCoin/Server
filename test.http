@@ -113,10 +113,10 @@ POST http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
 DELETE http://127.0.0.1:30233/tasks/5cfba56596a3b91b06b6dc3e/like
 
 ### 获取评论列表
-GET http://127.0.0.1:30233/comments/5cfba56596a3b91b06b6dc3e
+GET http://127.0.0.1:30233/comments/5d01295ccf5a6a31b607f88c
 
 ### 添加评论
-POST http://127.0.0.1:30233/comments/5cfba56596a3b91b06b6dc3e
+POST http://127.0.0.1:30233/comments/5d01295ccf5a6a31b607f88c
 Content-Type: application/json
 
 {
