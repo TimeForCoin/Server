@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -134,6 +135,7 @@ func (m *TaskStatusModel) GetTaskStatusListByUserID(userID primitive.ObjectID, s
 		"player": userID,
 		"status": bson.M{"$in": status},
 	}
+	fmt.Println(filter)
 
 	count, err = m.Collection.CountDocuments(ctx, filter)
 	if err != nil {

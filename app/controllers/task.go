@@ -120,6 +120,7 @@ func (c *TaskController) GetBy(id string) int {
 	_id, err := primitive.ObjectIDFromHex(id)
 	libs.Assert(err == nil, "string")
 	task := c.Service.GetTaskByID(_id, c.Session.GetString("id"))
+	c.Service.AddView(_id)
 	c.JSON(task)
 	return iris.StatusOK
 }

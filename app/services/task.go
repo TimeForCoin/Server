@@ -363,8 +363,9 @@ func (s *taskService) AddView(taskID primitive.ObjectID) {
 
 // ChangeLike 改变任务点赞状态
 func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
-	_, err := s.model.GetTaskByID(taskID)
+	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	if like {
 		err = s.set.AddToSet(userID, taskID, models.SetOfLikeTask)
 		libs.AssertErr(err, "exist_like", 403)
@@ -381,8 +382,9 @@ func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 
 // ChangeCollection 改变收藏状态
 func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collect bool) {
-	_, err := s.model.GetTaskByID(taskID)
+	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	if collect {
 		err = s.set.AddToSet(userID, taskID, models.SetOfCollectTask)
 		libs.AssertErr(err, "exist_collect", 403)
@@ -405,6 +407,7 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 func (s *taskService) ChangePlayer(taskID, userID, postUserID primitive.ObjectID, player bool) {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	taskStatus, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
 	if player {
 		libs.Assert(err != nil, "exist_player", 403)

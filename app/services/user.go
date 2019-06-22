@@ -567,46 +567,19 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 	}
 	taskStatusList, taskStatusCount, err := s.taskStatusModel.GetTaskStatusListByUserID(id, statuses, (page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
-	var taskIDs []primitive.ObjectID
 
-	for _, t := range taskStatusList {
-		taskIDs = append(taskIDs, t.Task)
-	}
-
-	tasks, err := s.taskModel.GetTasksByIDs(taskIDs)
+	userPlayer := s.GetUserBaseInfo(id)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
-	for i, t := range taskStatusList {
+	for i := range taskStatusList {
 		var taskStatusDetail TaskStatusDetail
-		var taskStatus TaskStatus
-		taskStatus.TaskStatusSchema = &taskStatusList[i]
-
-		var task TaskDetail
-		task.TaskSchema = &tasks[i]
-
-		userPlayer, err := s.cache.GetUserBaseInfo(t.Player)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		taskStatus.Player = userPlayer
-
-		userPublisher, err := s.cache.GetUserBaseInfo(tasks[i].Publisher)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Publisher = userPublisher
-
-		images, err := s.fileModel.GetFileByContent(t.Task, models.FileImage)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Images = []ImagesData{}
-		task.Attachment = []models.FileSchema{}
-		for _, i := range images {
-			task.Images = append(task.Images, ImagesData{
-				ID:  i.ID.Hex(),
-				URL: i.URL,
-			})
+		taskStatusDetail.Status = TaskStatus{
+			TaskStatusSchema: &taskStatusList[i],
+			Player: userPlayer,
 		}
-		task.Liked = s.cache.IsLikeTask(id, t.ID)
-		task.Collected = s.cache.IsCollectTask(id, t.ID)
-
-		taskStatusDetail.Status = taskStatus
-		taskStatusDetail.Task = task
+		task, err := s.taskModel.GetTaskByID(taskStatusList[i].ID)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		taskStatusDetail.Task = GetServiceManger().Task.makeTaskDetail(task, id.Hex())
 		taskStatusDetailList = append(taskStatusDetailList, taskStatusDetail)
 	}
 	return

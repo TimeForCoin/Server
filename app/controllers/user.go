@@ -236,7 +236,7 @@ func (c *UserController) GetTaskBy(userIDString string) int {
 		libs.AssertErr(err, "invalid_user", 403)
 	}
 
-	status := c.Ctx.URLParamDefault("status", "wait")
+	status := c.Ctx.URLParamDefault("status", "all")
 
 	taskCount, taskStatusesData := c.Service.GetUserParticipate(userID, page, size, status)
 	if taskStatusesData == nil {
