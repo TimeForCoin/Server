@@ -577,7 +577,7 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 			TaskStatusSchema: &taskStatusList[i],
 			Player: userPlayer,
 		}
-		task, err := s.taskModel.GetTaskByID(taskStatusList[i].ID)
+		task, err := s.taskModel.GetTaskByID(taskStatusList[i].Task)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
 		taskStatusDetail.Task = GetServiceManger().Task.makeTaskDetail(task, id.Hex())
 		taskStatusDetailList = append(taskStatusDetailList, taskStatusDetail)

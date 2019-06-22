@@ -301,7 +301,16 @@ func (c *TaskController) PostByPlayer(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
-	c.Service.ChangePlayer(taskID, userID, userID, true)
+	accept := c.Service.ChangePlayer(taskID, userID, userID, true)
+	res := "wait"
+	if accept {
+		res = "accept"
+	}
+	c.JSON(struct {
+		Result string
+	}{
+		Result: res,
+	})
 	return iris.StatusOK
 }
 
@@ -326,7 +335,6 @@ func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
 type TaskStatusReq struct {
 	Status   string `json:"status"`
 	Note     string `json:"note"`
-	Accept   bool   `json:"accept"`
 	Degree   int    `json:"degree"`
 	Remark   string `json:"remark"`
 	Score    int    `json:"score"`
@@ -365,7 +373,7 @@ func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
 		Feedback: req.Feedback,
 	}
 
-	c.Service.SetTaskStatusInfo(taskID, userID, postUserID, taskStatusInfo, req.Accept)
+	c.Service.SetTaskStatusInfo(taskID, userID, postUserID, taskStatusInfo)
 	return iris.StatusOK
 }
 

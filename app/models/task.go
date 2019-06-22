@@ -67,12 +67,12 @@ type TaskSchema struct {
 	StartDate   int64 `bson:"start_date"`   // 任务开始时间
 	EndDate     int64 `bson:"end_date"`     // 任务结束时间
 
-	PlayerCount int64 `bson:"player_count"` // 参与的用户
+	PlayerCount int64 `bson:"player_count"` // 参与的用户(冗余)
 	MaxPlayer   int64 `bson:"max_player"`   // 参与用户上限, -1为无限制
 	AutoAccept  bool  `bson:"auto_accept"`  // 自动同意领取任务
 
 	ViewCount    int64 `bson:"view_count"`    // 任务浏览数
-	CollectCount int64 `bson:"collect_count"` // 收藏数
+	CollectCount int64 `bson:"collect_count"` // 收藏数(冗余)
 	CommentCount int64 `bson:"comment_count"` // 评论数(冗余)
 	LikeCount    int64 `bson:"like_count"`    // 点赞数(冗余)
 
@@ -235,6 +235,7 @@ type ContentCountType string
 
 // ContentCountType 计数内容类型
 const (
+	PlayerCount    ContentCountType = "player_count"    // 参与人数
 	ViewCount    ContentCountType = "view_count"    // 任务浏览数
 	CollectCount ContentCountType = "collect_count" // 收藏数
 	CommentCount ContentCountType = "comment_count" // 评论数(冗余)

@@ -46,14 +46,14 @@ type TaskStatusSchema struct {
 }
 
 // AddTaskStatus 添加任务状态
-func (m *TaskStatusModel) AddTaskStatus(taskStatusID, taskID, userID primitive.ObjectID) (primitive.ObjectID, error) {
+func (m *TaskStatusModel) AddTaskStatus(taskStatusID, taskID, userID primitive.ObjectID, status PlayerStatus) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()
 	defer over()
 	res, err := m.Collection.InsertOne(ctx, &TaskStatusSchema{
 		ID:     taskStatusID,
 		Task:   taskID,
 		Player: userID,
-		Status: PlayerWait,
+		Status: status,
 	})
 	if err != nil {
 		return primitive.ObjectID{}, err
