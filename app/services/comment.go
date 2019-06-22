@@ -83,7 +83,7 @@ func (s *commentService) ChangeLike(userID, commentID primitive.ObjectID, like b
 		err = s.model.InsertCount(commentID, models.LikeCount, -1)
 		libs.AssertErr(err, "", 500)
 	}
-	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
+	err = s.cache.WillUpdate(userID, models.KindOfLikeComment)
 	libs.AssertErr(err, "", 500)
 }
 
