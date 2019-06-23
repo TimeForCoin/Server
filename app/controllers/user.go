@@ -123,8 +123,12 @@ func (c *UserController) PutInfo() int {
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	} else if req.Avatar != "" {
-		libs.Assert(strings.HasPrefix(req.Avatar, "data:image/png;base64,"), "invalid_avatar", 400)
-		url, err := libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
+		var url string
+		if strings.HasPrefix(req.Avatar, "data:image/png;base64,") {
+			url, err = libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
+		} else if strings.HasPrefix(req.Avatar, "data:image/jpeg;base64,") {
+			url, err = libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".jpg", req.Avatar[len("data:image/jpeg;base64,"):])
+		}
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
