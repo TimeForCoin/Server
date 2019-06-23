@@ -33,7 +33,7 @@ func (c *CommentController) GetBy(id string) int {
 	res := c.Service.GetComments(contentID, c.Session.GetString("id"), page, size, sort)
 	c.JSON(struct {
 		Pagination PaginationRes
-		Data []services.CommentData
+		Data       []services.CommentData
 	}{
 		Pagination: PaginationRes{
 			Page: page,

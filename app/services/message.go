@@ -18,16 +18,16 @@ type MessageService interface {
 // newMessageService 初始化
 func newMessageService() MessageService {
 	return &messageService{
-		model: models.GetModel().Message,
+		model:     models.GetModel().Message,
 		userModel: models.GetModel().User,
-		cache: models.GetRedis().Cache,
+		cache:     models.GetRedis().Cache,
 	}
 }
 
 type messageService struct {
-	model *models.MessageModel
+	model     *models.MessageModel
 	userModel *models.UserModel
-	cache *models.CacheModel
+	cache     *models.CacheModel
 }
 
 // SessionListDetail 会话列表信息
@@ -37,12 +37,12 @@ type SessionListDetail struct {
 	Messages omit `json:"messages,omitempty"`
 }
 
-// SessionListDetail 会话详细
+// SessionDetail 会话详细
 type SessionDetail struct {
 	*models.SessionSchema
 	// 额外项
-	Target models.UserBaseInfo `json:"target_user"`
-	UnreadCount int64 `json:"unread_count"`
+	Target      models.UserBaseInfo `json:"target_user"`
+	UnreadCount int64               `json:"unread_count"`
 	// 排除项
 	User1   omit `json:"user_1,omitempty"`
 	User2   omit `json:"user_2,omitempty"`
@@ -79,7 +79,7 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 }
 
 // GetSessions 获取用户会话列表
-func (s *messageService) GetSessions(userID primitive.ObjectID, page, size int64) (res []SessionListDetail)  {
+func (s *messageService) GetSessions(userID primitive.ObjectID, page, size int64) (res []SessionListDetail) {
 	sessions := s.model.GetSessionsByUser(userID, page, size)
 	for _, session := range sessions {
 		SessionDetail := s.makeSession(userID, session)
@@ -94,7 +94,7 @@ func (s *messageService) GetSessions(userID primitive.ObjectID, page, size int64
 func (s *messageService) GetSession(userID, sessionID primitive.ObjectID, page, size int64) SessionDetail {
 	session, err := s.model.GetSessionWithMsgByID(sessionID, page, size)
 	libs.AssertErr(err, "faked_message", 403)
-	libs.Assert(session.User1== userID || session.User2 == userID, "permission_deny", 403)
+	libs.Assert(session.User1 == userID || session.User2 == userID, "permission_deny", 403)
 	return s.makeSession(userID, session)
 }
 
@@ -121,9 +121,9 @@ func (s *messageService) SendSystemMessage(userID, aboutID primitive.ObjectID, t
 	users := s.userModel.GetAllUser()
 	for _, userID := range users {
 		_, err := s.model.AddMessage(userID, models.MessageTypeSystem, models.MessageSchema{
-			Title: title,
+			Title:   title,
 			Content: content,
-			About: aboutID,
+			About:   aboutID,
 		})
 		libs.AssertErr(err, "", 500)
 	}
@@ -135,10 +135,9 @@ func (s *messageService) SendChatMessage(userID, targetID primitive.ObjectID, ms
 	_, err := s.cache.GetUserBaseInfo(targetID)
 	libs.AssertErr(err, "faked_user", 403)
 	sessionID, err := s.model.AddMessage(targetID, models.MessageTypeChat, models.MessageSchema{
-		UserID: userID,
+		UserID:  userID,
 		Content: msg,
 	})
 	libs.AssertErr(err, "", 500)
 	return sessionID
 }
-

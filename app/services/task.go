@@ -23,7 +23,7 @@ type TaskService interface {
 	ChangeLike(taskID, userID primitive.ObjectID, like bool)
 	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
 	AddPlayer(taskID, userID primitive.ObjectID, note string) bool
-	GetTaskStatus(taskID, userID,postUserID primitive.ObjectID) (taskStatusList TaskStatus)
+	GetTaskStatus(taskID, userID, postUserID primitive.ObjectID) (taskStatusList TaskStatus)
 	SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema)
 	GetTaskPlayer(taskID primitive.ObjectID, status string, page, size int64) (taskCount int64, taskStatusList []TaskStatus)
 	GetQRCode(taskID primitive.ObjectID) string
@@ -120,14 +120,14 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		// 关闭任务
 		libs.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
 		page := 1
-		taskStatus, _ ,err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, int64(page), 10)
+		taskStatus, _, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, int64(page), 10)
 		libs.AssertErr(err, "", 500)
 		// 发送通知消息
 		for len(taskStatus) != 0 {
 			for _, status := range taskStatus {
 				_, err = s.messageModel.AddMessage(status.Player, models.MessageTypeTask, models.MessageSchema{
 					UserID: taskID,
-					Title: "任务已关闭",
+					Title:  "任务已关闭",
 				})
 				libs.AssertErr(err, "", 500)
 				err = s.taskStatusModel.SetTaskStatus(status.ID, models.TaskStatusSchema{
@@ -136,7 +136,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 				libs.AssertErr(err, "", 500)
 			}
 			page++
-			taskStatus, _ ,err = s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, int64(page), 10)
+			taskStatus, _, err = s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, int64(page), 10)
 			libs.AssertErr(err, "", 500)
 		}
 
@@ -422,7 +422,9 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
+	libs.Assert(task.PlayerCount < task.MaxPlayer, "max_player", 403)
 	taskStatus, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
+
 	status := models.PlayerWait
 	if task.AutoAccept {
 		status = models.PlayerRunning
@@ -435,7 +437,7 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 		libs.Assert(taskStatus.Status == models.PlayerGiveUp, "not_allow_status", 403)
 		err = s.taskStatusModel.SetTaskStatus(taskStatus.ID, models.TaskStatusSchema{
 			Status: status,
-			Note: note,
+			Note:   note,
 		})
 	}
 	libs.AssertErr(err, "", 500)
@@ -443,7 +445,6 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 	libs.AssertErr(err, "", 500)
 	return status == models.PlayerRunning
 }
-
 
 // SetTaskStatusInfo 设置参与任务信息
 func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema) {
@@ -524,14 +525,13 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			UserID:  taskID,
 			Title:   "用户放弃任务",
 			Content: taskStatus.Note,
-			About: userID,
+			About:   userID,
 		})
 		libs.AssertErr(err, "", 500)
 		err = s.model.InsertCount(taskID, models.PlayerCount, -1)
 		libs.AssertErr(err, "", 500)
 	}
 }
-
 
 // SetTaskStatus
 func (s *taskService) GetTaskStatus(taskID, userID, postUserID primitive.ObjectID) (taskStatus TaskStatus) {

@@ -1,14 +1,15 @@
 package controllers
 
 import (
+	"reflect"
+	"strings"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"reflect"
-	"strings"
 )
 
 // UserController 用户控制
@@ -68,7 +69,6 @@ func (c *UserController) Get() int {
 	})
 	return iris.StatusOK
 }
-
 
 // GetInfoBy 获取用户信息
 func (c *UserController) GetInfoBy(userID string) int {

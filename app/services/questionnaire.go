@@ -1,11 +1,12 @@
 package services
 
 import (
+	"time"
+
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
 )
 
 // QuestionnaireService 问卷相关服务
@@ -21,18 +22,18 @@ type QuestionnaireService interface {
 
 func newQuestionnaireService() QuestionnaireService {
 	return &questionnaireService{
-		model:		models.GetModel().Questionnaire,
-		userModel:	models.GetModel().User,
+		model:      models.GetModel().Questionnaire,
+		userModel:  models.GetModel().User,
 		cacheModel: models.GetRedis().Cache,
-		taskModel:	models.GetModel().Task,
+		taskModel:  models.GetModel().Task,
 	}
 }
 
 type questionnaireService struct {
-	model      	*models.QuestionnaireModel
-	userModel  	*models.UserModel
-	cacheModel 	*models.CacheModel
-	taskModel	*models.TaskModel
+	model      *models.QuestionnaireModel
+	userModel  *models.UserModel
+	cacheModel *models.CacheModel
+	taskModel  *models.TaskModel
 }
 
 // QuestionnaireDetail 问卷详情信息
@@ -46,9 +47,10 @@ type QuestionnaireDetail struct {
 	Answer        int                 `json:"answer"`
 }
 
+// QuestionnaireStatisticsRes 问卷信息数据
 type QuestionnaireStatisticsRes struct {
-	Count	int							`json:"count"`
-	Data	[]models.StatisticsSchema	`json:"data"`
+	Count int                       `json:"count"`
+	Data  []models.StatisticsSchema `json:"data"`
 }
 
 // AddQuestionnaire 添加问卷
@@ -70,7 +72,7 @@ func (s *questionnaireService) SetQuestionnaireInfo(userID primitive.ObjectID, i
 	task, err := s.taskModel.GetTaskByID(info.TaskID)
 	libs.AssertErr(err, "faked_task", 400)
 	libs.Assert(task.Publisher == userID, "permission_deny", 403)
-	libs.Assert(task.Status == models.TaskStatusDraft|| task.Status == models.TaskStatusWait, "not_allow", 403)
+	libs.Assert(task.Status == models.TaskStatusDraft || task.Status == models.TaskStatusWait, "not_allow", 403)
 
 	err = s.model.SetQuestionnaireInfoByID(task.ID, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
@@ -113,7 +115,7 @@ func (s *questionnaireService) SetQuestionnaireQuestions(userID primitive.Object
 }
 
 // GetQuestionnaireAnswersByID 获取问卷答案数据
-func (s *questionnaireService) GetQuestionnaireAnswersByID(userID primitive.ObjectID, id primitive.ObjectID) (QuestionnaireStatisticsRes) {
+func (s *questionnaireService) GetQuestionnaireAnswersByID(userID primitive.ObjectID, id primitive.ObjectID) QuestionnaireStatisticsRes {
 	task, err := s.taskModel.GetTaskByID(id)
 	libs.AssertErr(err, "faked_task", 400)
 	libs.Assert(task.Publisher == userID, "permission_deny", 403)
@@ -138,8 +140,8 @@ func (s *questionnaireService) AddAnswer(id, userID primitive.ObjectID, data []m
 
 	err = s.model.AddAnswer(id, models.StatisticsSchema{
 		UserID: userID,
-		Data: data,
-		Time: time.Now().Unix(),
+		Data:   data,
+		Time:   time.Now().Unix(),
 	})
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }

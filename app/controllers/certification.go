@@ -77,10 +77,9 @@ func (c *CertificationController) GetCertification() int {
 	}
 	users := c.Service.GetCertificationList(userID, status, page, size)
 
-
 	c.JSON(struct {
 		Pagination PaginationRes
-		Data []services.UserDetail
+		Data       []services.UserDetail
 	}{
 		Pagination: PaginationRes{
 			Page: page,
@@ -99,7 +98,7 @@ func (c *CertificationController) GetAuto() int {
 	data := c.Service.GetAutoCertification(userID, page, size)
 	c.JSON(struct {
 		Pagination PaginationRes
-		Data []models.SystemSchemas
+		Data       []models.SystemSchemas
 	}{
 		Pagination: PaginationRes{
 			Page: page,
@@ -114,20 +113,20 @@ func (c *CertificationController) GetAuto() int {
 func (c *CertificationController) PostAuto() int {
 	userID := c.checkLogin()
 	req := struct {
-		Key string
+		Key   string
 		Value string
 	}{}
 	err := c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
-	libs.Assert(req.Key != "" && req.Value != "","invalid_value", 400)
+	libs.Assert(req.Key != "" && req.Value != "", "invalid_value", 400)
 	c.Service.AddAutoCertification(userID, req.Key, req.Value)
 	return iris.StatusOK
 }
 
-// DeleteAuto 删除自动认证前缀
+// DeleteAutoBy 删除自动认证前缀
 func (c *CertificationController) DeleteAutoBy(key string) int {
 	userID := c.checkLogin()
-	libs.Assert(key != "","invalid_key", 400)
+	libs.Assert(key != "", "invalid_key", 400)
 	c.Service.RemoveAutoCertification(userID, key)
 	return iris.StatusOK
 }

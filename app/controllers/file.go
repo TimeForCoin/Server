@@ -62,6 +62,7 @@ func (c *FileController) DeleteBy(id string) int {
 	c.Service.RemoveUserFile(userID, fileID)
 	return iris.StatusOK
 }
+
 // DeleteUselessReq 移除无用文件请求
 type DeleteUselessReq struct {
 	RemoveCount int64

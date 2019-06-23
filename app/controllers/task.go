@@ -125,7 +125,6 @@ func (c *TaskController) GetBy(id string) int {
 		biref = true
 	}
 
-
 	task := c.Service.GetTaskByID(_id, c.Session.GetString("id"), biref)
 	c.Service.AddView(_id)
 	c.JSON(task)
@@ -300,6 +299,7 @@ func (c *TaskController) DeleteByCollect(id string) int {
 	return iris.StatusOK
 }
 
+// PostPlayerReq 增加人员请求
 type PostPlayerReq struct {
 	Note string
 }
@@ -336,7 +336,7 @@ type TaskStatusReq struct {
 	Feedback string `json:"feedback"`
 }
 
-// PutByPlayerBy 获取用户任务状态
+// GetByPlayerBy 获取用户任务状态
 func (c *TaskController) GetByPlayerBy(id, userIDString string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
