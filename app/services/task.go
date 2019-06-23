@@ -22,9 +22,10 @@ type TaskService interface {
 	AddView(taskID primitive.ObjectID)
 	ChangeLike(taskID, userID primitive.ObjectID, like bool)
 	ChangeCollection(taskID, userID primitive.ObjectID, collect bool)
-	AddPlayer(taskID, userID primitive.ObjectID) bool
+	AddPlayer(taskID, userID primitive.ObjectID, note string) bool
+	GetTaskStatus(taskID, userID,postUserID primitive.ObjectID) (taskStatusList TaskStatus)
 	SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema)
-	GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr string, page, size int64) (taskCount int64, taskStatusList []TaskStatus)
+	GetTaskPlayer(taskID primitive.ObjectID, status string, page, size int64) (taskCount int64, taskStatusList []TaskStatus)
 	GetQRCode(taskID primitive.ObjectID) string
 	// 内部服务
 	makeTaskDetail(task models.TaskSchema, userID string, biref bool) (res TaskDetail)
@@ -417,7 +418,7 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 }
 
 // AddPlayer 增加参与人员
-func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID) bool {
+func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) bool {
 	task, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
@@ -428,12 +429,13 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID) bool {
 	}
 	if err != nil {
 		// 不存在记录
-		err = s.taskStatusModel.AddTaskStatus(taskID, userID, status)
+		err = s.taskStatusModel.AddTaskStatus(taskID, userID, status, note)
 	} else {
 		// 存在记录
 		libs.Assert(taskStatus.Status == models.PlayerGiveUp, "not_allow_status", 403)
 		err = s.taskStatusModel.SetTaskStatus(taskStatus.ID, models.TaskStatusSchema{
 			Status: status,
+			Note: note,
 		})
 	}
 	libs.AssertErr(err, "", 500)
@@ -441,6 +443,7 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID) bool {
 	libs.AssertErr(err, "", 500)
 	return status == models.PlayerRunning
 }
+
 
 // SetTaskStatusInfo 设置参与任务信息
 func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema) {
@@ -529,7 +532,22 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 	}
 }
 
-func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr string, page, size int64) (taskCount int64, taskStatusList []TaskStatus) {
+
+// SetTaskStatus
+func (s *taskService) GetTaskStatus(taskID, userID, postUserID primitive.ObjectID) (taskStatus TaskStatus) {
+	taskStatusGet, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
+	libs.AssertErr(err, "faked_status", 403)
+	task, err := s.model.GetTaskByID(taskID)
+	libs.AssertErr(err, "faked_task", 403)
+	libs.Assert(task.Publisher == postUserID || userID == postUserID, "permission_deny", 403)
+	taskStatus.TaskStatusSchema = &taskStatusGet
+	userPlayer, err := s.cache.GetUserBaseInfo(taskStatusGet.Player)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	taskStatus.Player = userPlayer
+	return
+}
+
+func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status string, page, size int64) (taskCount int64, taskStatusList []TaskStatus) {
 	_, err := s.model.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_task", 403)
 	var statuses []models.PlayerStatus
@@ -540,23 +558,6 @@ func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status, acceptStr
 			break
 		}
 		statuses = append(statuses, models.PlayerStatus(str))
-	}
-	if acceptStr == "true" {
-		for i := 0; i < len(statuses); {
-			if statuses[i] == models.PlayerWait || statuses[i] == models.PlayerRefuse {
-				statuses = append(statuses[:i], statuses[i+1:]...)
-			} else {
-				i++
-			}
-		}
-	} else if acceptStr == "false" {
-		for i := 0; i < len(statuses); {
-			if statuses[i] != models.PlayerWait && statuses[i] != models.PlayerRefuse {
-				statuses = append(statuses[:i], statuses[i+1:]...)
-			} else {
-				i++
-			}
-		}
 	}
 
 	taskStatuses, taskCount, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, statuses, (page-1)*size, size)

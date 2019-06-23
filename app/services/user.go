@@ -117,7 +117,7 @@ type TaskStatus struct {
 	// 额外项
 	Player models.UserBaseInfo
 	//排除项
-	ID omit `json:"id,omitempty"` // 点赞用户ID
+	ID omit `json:"id,omitempty"` // 状态ID
 }
 
 // TaskStatusDetail 任务参与详情
