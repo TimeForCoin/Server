@@ -84,7 +84,7 @@ func (s *WeChatService) MakeImage(data string) (string, error) {
 		Scene: data,
 	}).Post("https://api.weixin.qq.com/wxa/getwxacodeunlimit")
 	encodeString := base64.StdEncoding.EncodeToString(resp.Body())
-	return "data:image/jpg;base64," + encodeString, nil
+	return encodeString, nil
 }
 
 // WeChatSessionRes 微信登陆数据

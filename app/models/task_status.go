@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -46,19 +45,18 @@ type TaskStatusSchema struct {
 }
 
 // AddTaskStatus 添加任务状态
-func (m *TaskStatusModel) AddTaskStatus(taskStatusID, taskID, userID primitive.ObjectID, status PlayerStatus) (primitive.ObjectID, error) {
+func (m *TaskStatusModel) AddTaskStatus(taskID, userID primitive.ObjectID, status PlayerStatus) (error) {
 	ctx, over := GetCtx()
 	defer over()
-	res, err := m.Collection.InsertOne(ctx, &TaskStatusSchema{
-		ID:     taskStatusID,
+	_, err := m.Collection.InsertOne(ctx, &TaskStatusSchema{
 		Task:   taskID,
 		Player: userID,
 		Status: status,
 	})
 	if err != nil {
-		return primitive.ObjectID{}, err
+		return err
 	}
-	return res.InsertedID.(primitive.ObjectID), nil
+	return nil
 }
 
 // SetTaskStatus 设置任务状态
@@ -100,7 +98,10 @@ func (m *TaskStatusModel) GetTaskStatusListByTaskID(taskID primitive.ObjectID, s
 
 	filter := bson.M{
 		"task":   taskID,
-		"status": bson.M{"$in": status},
+	}
+
+	if len(status) != 0 {
+		filter["status"] = bson.M{"$in": status}
 	}
 
 	count, err = m.Collection.CountDocuments(ctx, filter)
@@ -135,7 +136,6 @@ func (m *TaskStatusModel) GetTaskStatusListByUserID(userID primitive.ObjectID, s
 		"player": userID,
 		"status": bson.M{"$in": status},
 	}
-	fmt.Println(filter)
 
 	count, err = m.Collection.CountDocuments(ctx, filter)
 	if err != nil {

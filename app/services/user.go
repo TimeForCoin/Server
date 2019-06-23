@@ -462,7 +462,7 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 		tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
 		for _, t := range tasks {
-			taskCards = append(taskCards, GetServiceManger().Task.makeTaskDetail(t, id.Hex()))
+			taskCards = append(taskCards, GetServiceManger().Task.makeTaskDetail(t, id.Hex(), true))
 		}
 		return taskCount, taskCards
 	}
@@ -555,6 +555,7 @@ func (s *userService) FollowUser(userID, followID primitive.ObjectID) {
 	libs.AssertErr(err, "", 500)
 }
 
+// GetUserParticipate 获取用户参与的用户
 func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64, status string) (taskStatusCount int64, taskStatusDetailList []TaskStatusDetail) {
 	var statuses []models.PlayerStatus
 	split := strings.Split(status, ",")
@@ -579,7 +580,7 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 		}
 		task, err := s.taskModel.GetTaskByID(taskStatusList[i].Task)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		taskStatusDetail.Task = GetServiceManger().Task.makeTaskDetail(task, id.Hex())
+		taskStatusDetail.Task = GetServiceManger().Task.makeTaskDetail(task, id.Hex(), true)
 		taskStatusDetailList = append(taskStatusDetailList, taskStatusDetail)
 	}
 	return

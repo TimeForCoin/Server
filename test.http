@@ -287,3 +287,6 @@ Content-Type: application/json
     }
   ]
 }
+
+### 获取活动二维码
+GET http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/wechat
