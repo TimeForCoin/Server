@@ -58,14 +58,14 @@ type ProblemSchema struct {
 	// 填空题数据
 	FillProblem struct {
 		Type      FillType `bson:"type"`                  // 填空类型
-		MultiLine bool     `bson:"multi_line, omitempty"` // 是否多行
-		MaxWord   int64    `bson:"max_word, omitempty"`   // 最大字数
+		MultiLine bool     `bson:"multi_line, omitempty" json:"multi_line"` // 是否多行
+		MaxWord   int64    `bson:"max_word, omitempty" json:"max_word"`   // 最大字数
 	} `bson:"fill_problem, omitempty" json:"fill_problem,omitempty"`
 
 	// 评分题
 	ScoreProblem struct {
-		MinText string `bson:"min_text"` // 低分描述（如：不满意，不重要，不愿意)
-		MaxText string `bson:"max_text"` // 高分描述
+		MinText string `bson:"min_text" json:"min_text"` // 低分描述（如：不满意，不重要，不愿意)
+		MaxText string `bson:"max_text" json:"max_text"` // 高分描述
 		Score   int64  `bson:"score"`    // 评分级别 1-x (最高为10)
 	} `bson:"score_problem, omitempty" json:"score_problem,omitempty"`
 
