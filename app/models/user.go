@@ -26,9 +26,6 @@ type UserType string
 // UserIdentity 用户认证身份
 type UserIdentity string
 
-// UserLoginType 用户登陆类型
-type UserLoginType string
-
 // CertificationStatus 用户认证状态
 type CertificationStatus string
 
@@ -53,14 +50,9 @@ const (
 	IdentityStudent UserIdentity = "student" // 目前仅支持学生认证
 )
 
-// UserLoginType 用户登陆类型
-const (
-	LoginByWeb    UserLoginType = "web"    // 网页登陆
-	LoginByWeChat UserLoginType = "wechat" // 微信登陆
-)
-
 // CertificationStatus 用户认证状态
 const (
+	CertificationNone       CertificationStatus = "none"        // 未认证
 	CertificationTrue       CertificationStatus = "true"        // 认证通过
 	CertificationFalse      CertificationStatus = "false"       // 认证失败
 	CertificationWait       CertificationStatus = "wait"        // 认证材料已提交，待审核
@@ -91,7 +83,7 @@ type UserDataSchema struct {
 
 	AttendanceDate int64                `bson:"attendance_date"` // 签到时间戳
 	CollectTasks   []primitive.ObjectID `bson:"collect_tasks"`   // 收藏的任务
-	SearchHistory  []string             `bson:"search_history"`   // 搜索历史(仅保留最近的 20 条)
+	SearchHistory  []string             `bson:"search_history"`  // 搜索历史(仅保留最近的 20 条)
 	// 冗余数据
 	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
 	PublishRunCount int64 `bson:"publish_run_count"` // 发布并进行中任务数
@@ -135,8 +127,8 @@ func (m *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
 		VioletID:     id,
 		RegisterTime: time.Now().Unix(),
 		Data: UserDataSchema{
-			Type: UserTypeNormal,
-			CollectTasks: []primitive.ObjectID{},
+			Type:          UserTypeNormal,
+			CollectTasks:  []primitive.ObjectID{},
 			SearchHistory: []string{},
 		},
 		Certification: UserCertificationSchema{
@@ -163,6 +155,7 @@ func (m *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, error) {
 		},
 		Certification: UserCertificationSchema{
 			Identity: IdentityNone,
+			Status: CertificationNone,
 		},
 	})
 	if err != nil {
@@ -266,7 +259,7 @@ func (m *UserModel) UpdateUserDataCount(id primitive.ObjectID, data UserDataCoun
 func (m *UserModel) GetUsers(key string, page, size int64) (res []UserSchema) {
 	ctx, over := GetCtx()
 	defer over()
-	cursor, err := m.Collection.Find(ctx, bson.M{"info.nickname": bson.M{"$regex": key, "$options": "$i" }},
+	cursor, err := m.Collection.Find(ctx, bson.M{"info.nickname": bson.M{"$regex": key, "$options": "$i"}},
 		options.Find().SetSkip((page-1)*size).SetLimit(size))
 	if err != nil {
 		return
@@ -326,7 +319,27 @@ func (m *UserModel) SetUserCertification(id primitive.ObjectID, data UserCertifi
 	return nil
 }
 
-// CheckCertificationEmail 是否存在邮箱认证
+// GetCertification 获取认证
+func (m *UserModel) GetCertification(status []CertificationStatus, page, size int64) (res []UserSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	cur, err := m.Collection.Find(ctx, bson.M{"certification.status": bson.M{"$in": status}}, options.Find().SetSkip((page - 1) * size).SetLimit(size))
+	if err != nil {
+		return
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		user := UserSchema{}
+		err = cur.Decode(&user)
+		if err != nil {
+			return
+		}
+		res = append(res, user)
+	}
+	return
+}
+
+// CheckCertificationEmail 该邮箱是否存在认证
 func (m *UserModel) CheckCertificationEmail(email string) bool {
 	ctx, over := GetCtx()
 	defer over()

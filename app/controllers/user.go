@@ -3,7 +3,6 @@ package controllers
 import (
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
@@ -36,44 +35,10 @@ func BindUserController(app *iris.Application) {
 	certificationRoute.Handle(new(CertificationController))
 }
 
-// GetInfoByIDRes 获取用户信息返回值
-type GetInfoByIDRes struct {
-	ID            string `json:"id"`
-	VioletName    string `json:"violet_name,omitempty"`
-	WechatName    string `json:"wechat_name,omitempty"`
-	RegisterTime  int64
-	Info          models.UserInfoSchema
-	Data          *UserDataRes
-	Certification *UserCertification
-}
-
-// UserDataRes 用户数据返回值
-type UserDataRes struct {
-	*models.UserDataSchema
-	// 额外项
-	Attendance   bool  // 是否签到
-	CollectCount int64 // 收藏任务数
-	Follower     bool  // 是否为自己的粉丝
-	Following    bool  // 是否已关注
-	// 排除项
-	AttendanceDate omit `json:"attendance_date,omitempty"`
-	CollectTasks   omit `json:"collect_tasks,omitempty"`
-	SearchHistory  omit `json:"search_history,omitempty"`
-}
-
-// UserCertification 用户认证信息
-type UserCertification struct {
-	Type   models.UserIdentity
-	Status models.CertificationStatus
-	Email  string
-	Data   string
-	Date   int64
-}
-
 // UserListRes 用户数据
 type UserListRes struct {
 	Pagination PaginationRes
-	Data       []GetInfoByIDRes
+	Data       []services.UserDetail
 }
 
 // Get 搜索用户
@@ -82,20 +47,17 @@ func (c *UserController) Get() int {
 	key := c.Ctx.URLParamDefault("key", "")
 	libs.Assert(key != "", "invalid_key", 400)
 
-	users := c.Service.SearchUser(key, page, size)
+	res := c.Service.SearchUser(key, page, size)
 
 	// noinspection GoPreferNilSlice
-	res := []GetInfoByIDRes{}
-	for i := range users {
-		user := c.makeUserRes(users[i], false)
+	for i := range res {
 		sessionUserID := c.Session.GetString("id")
 		if sessionUserID != "" {
 			sessionUser, err := primitive.ObjectIDFromHex(sessionUserID)
 			libs.AssertErr(err, "", 500)
-			user.Data.Follower = c.Service.IsFollower(sessionUser, users[i].ID)
-			user.Data.Following = c.Service.IsFollowing(sessionUser, users[i].ID)
+			res[i].Data.Follower = c.Service.IsFollower(sessionUser, res[i].UserID)
+			res[i].Data.Following = c.Service.IsFollowing(sessionUser, res[i].UserID)
 		}
-		res = append(res, user)
 	}
 
 	c.JSON(UserListRes{
@@ -108,39 +70,6 @@ func (c *UserController) Get() int {
 	return iris.StatusOK
 }
 
-func (c *UserController) makeUserRes(user models.UserSchema, isMe bool) GetInfoByIDRes {
-	res := GetInfoByIDRes{
-		ID:           user.ID.Hex(),
-		VioletName:   user.VioletName,
-		WechatName:   user.WechatName,
-		RegisterTime: user.RegisterTime,
-		Info:         user.Info,
-		Data: &UserDataRes{
-			UserDataSchema: &user.Data,
-			CollectCount:   int64(len(user.Data.CollectTasks)),
-		},
-		Certification: &UserCertification{
-			Type:   user.Certification.Identity,
-			Status: user.Certification.Status,
-			Email:  user.Certification.Email,
-			Data:   user.Certification.Data,
-			Date:   user.Certification.Date,
-		},
-	}
-	nowTime := time.Now()
-	attendanceTime := time.Unix(user.Data.AttendanceDate, 0)
-	res.Data.Attendance = attendanceTime.Year() == nowTime.Year() && attendanceTime.YearDay() == nowTime.YearDay()
-	if !isMe {
-		res.Certification.Email = ""
-		if res.Certification.Status != models.CertificationTrue {
-			res.Certification = &UserCertification{
-				Type: models.IdentityNone,
-			}
-		}
-	}
-	return res
-}
-
 // GetInfoBy 获取用户信息
 func (c *UserController) GetInfoBy(userID string) int {
 	var id primitive.ObjectID
@@ -151,14 +80,13 @@ func (c *UserController) GetInfoBy(userID string) int {
 		id, err = primitive.ObjectIDFromHex(userID)
 		libs.AssertErr(err, "invalid_session", 401)
 	}
-	user := c.Service.GetUser(id)
-	res := c.makeUserRes(user, userID == "me")
+	res := c.Service.GetUser(id, userID == "me")
 	sessionUserID := c.Session.GetString("id")
 	if userID != "me" && sessionUserID != "" {
 		sessionUser, err := primitive.ObjectIDFromHex(sessionUserID)
 		libs.AssertErr(err, "", 500)
-		res.Data.Follower = c.Service.IsFollower(sessionUser, user.ID)
-		res.Data.Following = c.Service.IsFollowing(sessionUser, user.ID)
+		res.Data.Follower = c.Service.IsFollower(sessionUser, res.UserID)
+		res.Data.Following = c.Service.IsFollowing(sessionUser, res.UserID)
 	}
 
 	c.JSON(res)
@@ -195,8 +123,12 @@ func (c *UserController) PutInfo() int {
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	} else if req.Avatar != "" {
-		libs.Assert(strings.HasPrefix(req.Avatar, "data:image/png;base64,"), "invalid_avatar", 400)
-		url, err := libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
+		var url string
+		if strings.HasPrefix(req.Avatar, "data:image/png;base64,") {
+			url, err = libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".png", req.Avatar[len("data:image/png;base64,"):])
+		} else if strings.HasPrefix(req.Avatar, "data:image/jpeg;base64,") {
+			url, err = libs.GetCOS().SaveBase64File("avatar-"+id.Hex()+".jpg", req.Avatar[len("data:image/jpeg;base64,"):])
+		}
 		libs.AssertErr(err, "", 400)
 		req.Avatar = url
 	}
@@ -308,7 +240,7 @@ func (c *UserController) GetTaskBy(userIDString string) int {
 		libs.AssertErr(err, "invalid_user", 403)
 	}
 
-	status := c.Ctx.URLParamDefault("status", "wait")
+	status := c.Ctx.URLParamDefault("status", "all")
 
 	taskCount, taskStatusesData := c.Service.GetUserParticipate(userID, page, size, status)
 	if taskStatusesData == nil {
@@ -352,6 +284,7 @@ func (c *UserController) DeleteHistory() int {
 	return iris.StatusOK
 }
 
+// FollowListRes 关注/粉丝列表数据
 type FollowListRes struct {
 	Pagination PaginationRes
 	Data       []models.UserBaseInfo

@@ -117,7 +117,7 @@ func (c *CacheModel) IsCollectTask(userID, taskID primitive.ObjectID) bool {
 	return val
 }
 
-// IsCollectTask 用户是否被某人关注
+// IsFollowerUser 用户是否被某人关注
 func (c *CacheModel) IsFollowerUser(userID, otherID primitive.ObjectID) bool {
 	setName := string(KindOfFollower) + userID.Hex()
 	exist, err := c.Redis.Exists(setName).Result()
@@ -143,7 +143,7 @@ func (c *CacheModel) IsFollowerUser(userID, otherID primitive.ObjectID) bool {
 	return val
 }
 
-// IsCollectTask 用户是否已关注某人
+// IsFollowingUser 用户是否已关注某人
 func (c *CacheModel) IsFollowingUser(userID, otherID primitive.ObjectID) bool {
 	setName := string(KindOfFollowing) + userID.Hex()
 	exist, err := c.Redis.Exists(setName).Result()
@@ -171,11 +171,11 @@ func (c *CacheModel) IsFollowingUser(userID, otherID primitive.ObjectID) bool {
 
 // UserBaseInfo 用户基本信息数据
 type UserBaseInfo struct {
-	ID        string `json:"id"`
-	Nickname  string
-	Avatar    string
-	Gender    UserGender
-	Type      UserType
+	ID       string `json:"id"`
+	Nickname string
+	Avatar   string
+	Gender   UserGender
+	Type     UserType
 }
 
 // GetUserBaseInfo 获取用户基本信息

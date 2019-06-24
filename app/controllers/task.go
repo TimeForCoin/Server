@@ -31,6 +31,7 @@ type AddTaskReq struct {
 	Images       []string `json:"images"`
 	Attachment   []string `json:"attachment"`
 	Type         string   `json:"type"`
+	Status       string   `json:"status"`
 	Reward       string   `json:"reward"`
 	RewardValue  float32  `json:"reward_value"`
 	RewardObject string   `json:"reward_object"`
@@ -115,10 +116,17 @@ func (c *TaskController) Post() int {
 
 // GetBy 获取指定任务详情
 func (c *TaskController) GetBy(id string) int {
-	// _ :=  c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.Assert(err == nil, "string")
-	task := c.Service.GetTaskByID(_id, c.Session.GetString("id"))
+	libs.AssertErr(err, "invalid_id", 400)
+
+	briefParam := c.Ctx.URLParamDefault("brief", "false")
+	biref := false
+	if briefParam == "true" {
+		biref = true
+	}
+
+	task := c.Service.GetTaskByID(_id, c.Session.GetString("id"), biref)
+	c.Service.AddView(_id)
 	c.JSON(task)
 	return iris.StatusOK
 }
@@ -133,7 +141,7 @@ func (c *TaskController) PutBy(id string) int {
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
 
-	libs.Assert(len(req.Title) < 32, "title_too_long", 403)
+	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
 	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
 	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
 
@@ -142,7 +150,7 @@ func (c *TaskController) PutBy(id string) int {
 	}
 
 	for _, t := range req.Tags {
-		libs.Assert(len(t) < 16, "tag_too_long", 403)
+		libs.Assert(len(t) < 32, "tag_too_long", 403)
 	}
 
 	var images []primitive.ObjectID
@@ -158,11 +166,14 @@ func (c *TaskController) PutBy(id string) int {
 		attachments = append(attachments, fileID)
 	}
 
+	libs.Assert(req.Status == "" || libs.IsTaskStatus(req.Status), "invalid_status", 400)
+
 	taskInfo := models.TaskSchema{
 		Title:        req.Title,
 		Content:      req.Content,
 		Location:     req.Location,
 		Tags:         req.Tags,
+		Status:       models.TaskStatus(req.Status),
 		RewardValue:  req.RewardValue,
 		RewardObject: req.RewardObject,
 		StartDate:    req.StartDate,
@@ -202,6 +213,11 @@ func (c *TaskController) Get() int {
 	reward := c.Ctx.URLParamDefault("reward", "all")
 	keyword := c.Ctx.URLParamDefault("keyword", "")
 	user := c.Ctx.URLParamDefault("user", "")
+	birefParam := c.Ctx.URLParamDefault("biref", "false")
+	biref := false
+	if birefParam == "true" {
+		biref = true
+	}
 
 	if status == string(models.TaskStatusDraft) {
 		libs.Assert(user == "me" || user == "", "not_allow_other_draft", 403)
@@ -220,7 +236,7 @@ func (c *TaskController) Get() int {
 	}
 
 	taskCount, tasksData := c.Service.GetTasks(page, size, sort,
-		taskType, status, reward, keyword, user, c.Session.GetString("id"))
+		taskType, status, reward, keyword, user, c.Session.GetString("id"), biref)
 
 	if tasksData == nil {
 		tasksData = []services.TaskDetail{}
@@ -244,14 +260,6 @@ func (c *TaskController) DeleteBy(id string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 	c.Service.RemoveTask(userID, taskID)
-	return iris.StatusOK
-}
-
-// PostByView 添加任务阅读量
-func (c *TaskController) PostByView(id string) int {
-	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
-	c.Service.AddView(taskID)
 	return iris.StatusOK
 }
 
@@ -291,20 +299,47 @@ func (c *TaskController) DeleteByCollect(id string) int {
 	return iris.StatusOK
 }
 
+// PostPlayerReq 增加人员请求
+type PostPlayerReq struct {
+	Note string
+}
+
 // PostByPlayer 增加任务参与人员
 func (c *TaskController) PostByPlayer(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
-	c.Service.ChangePlayer(taskID, userID, userID, true)
+	req := PostPlayerReq{}
+	err = c.Ctx.ReadJSON(&req)
+	libs.AssertErr(err, "invalid_value", 400)
+
+	accept := c.Service.AddPlayer(taskID, userID, req.Note)
+	res := "wait"
+	if accept {
+		res = "accept"
+	}
+	c.JSON(struct {
+		Result string
+	}{
+		Result: res,
+	})
 	return iris.StatusOK
 }
 
-// DeleteByPlayer 删除任务参与人员
-func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
+// TaskStatusReq 任务参与状态请求
+type TaskStatusReq struct {
+	Status   string `json:"status"`
+	Note     string `json:"note"`
+	Degree   int    `json:"degree"`
+	Remark   string `json:"remark"`
+	Score    int    `json:"score"`
+	Feedback string `json:"feedback"`
+}
+
+// GetByPlayerBy 获取用户任务状态
+func (c *TaskController) GetByPlayerBy(id, userIDString string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
-	postUserID := c.checkLogin()
 	var userID primitive.ObjectID
 	if userIDString == "me" {
 		userID = c.checkLogin()
@@ -313,18 +348,15 @@ func (c *TaskController) DeleteByPlayerBy(id, userIDString string) int {
 		libs.AssertErr(err, "invalid_id", 400)
 	}
 
-	c.Service.ChangePlayer(taskID, userID, postUserID, false)
-	return iris.StatusOK
-}
+	status := c.Service.GetTaskStatus(taskID, userID, c.checkLogin())
 
-type TaskStatusReq struct {
-	Status   string `json:"status"`
-	Note     string `json:"note"`
-	Accept   bool   `json:"accept"`
-	Degree   int    `json:"degree"`
-	Remark   string `json:"remark"`
-	Score    int    `json:"score"`
-	Feedback string `json:"feedback"`
+	c.JSON(struct {
+		Data services.TaskStatus
+	}{
+		Data: status,
+	})
+
+	return iris.StatusOK
 }
 
 // PutByPlayerBy 修改任务参与者状态
@@ -332,14 +364,18 @@ func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	libs.AssertErr(err, "invalid_id", 400)
 	var userID primitive.ObjectID
-	userID, err = primitive.ObjectIDFromHex(userIDString)
-	libs.AssertErr(err, "invalid_id", 400)
+	if userIDString == "me" {
+		userID = c.checkLogin()
+	} else {
+		userID, err = primitive.ObjectIDFromHex(userIDString)
+		libs.AssertErr(err, "invalid_id", 400)
+	}
 
 	postUserID := c.checkLogin()
 
 	req := TaskStatusReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil, "invalid_value", 400)
+	libs.AssertErr(err, "invalid_value", 400)
 
 	var status models.PlayerStatus
 	if req.Status != "" {
@@ -359,7 +395,7 @@ func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
 		Feedback: req.Feedback,
 	}
 
-	c.Service.SetTaskStatusInfo(taskID, userID, postUserID, taskStatusInfo, req.Accept)
+	c.Service.SetTaskStatusInfo(taskID, userID, postUserID, taskStatusInfo)
 	return iris.StatusOK
 }
 
@@ -369,6 +405,7 @@ type PlayerListRes struct {
 	Data       []services.TaskStatus
 }
 
+// GetByPlayer 获取任务参与者
 func (c *TaskController) GetByPlayer(id string) int {
 	libs.Assert(id != "", "string")
 	taskID, err := primitive.ObjectIDFromHex(id)
@@ -377,9 +414,8 @@ func (c *TaskController) GetByPlayer(id string) int {
 	page, size := c.getPaginationData()
 
 	status := c.Ctx.URLParamDefault("status", "all")
-	acceptStr := c.Ctx.URLParamDefault("accept", "all")
 
-	taskCount, taskStatusList := c.Service.GetTaskPlayer(taskID, status, acceptStr, page, size)
+	taskCount, taskStatusList := c.Service.GetTaskPlayer(taskID, status, page, size)
 	if taskStatusList == nil {
 		taskStatusList = []services.TaskStatus{}
 	}
@@ -393,5 +429,18 @@ func (c *TaskController) GetByPlayer(id string) int {
 		Data: taskStatusList,
 	}
 	c.JSON(res)
+	return iris.StatusOK
+}
+
+// GetByWechat 生成活动微信小程序码
+func (c *TaskController) GetByWechat(id string) int {
+	taskID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+	url := c.Service.GetQRCode(taskID)
+	c.JSON(struct {
+		URL string `json:"url"`
+	}{
+		URL: url,
+	})
 	return iris.StatusOK
 }

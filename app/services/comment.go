@@ -37,6 +37,7 @@ type commentService struct {
 func (s *commentService) AddCommentForTask(userID, taskID primitive.ObjectID, content string) {
 	task, err := s.taskModel.GetTaskByID(taskID)
 	libs.AssertErr(err, "faked_content", 403)
+	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	err = s.model.AddComment(taskID, task.Publisher, userID, content, false)
 	libs.AssertErr(err, "", 500)
 	err = s.taskModel.InsertCount(taskID, models.CommentCount, 1)
@@ -83,7 +84,7 @@ func (s *commentService) ChangeLike(userID, commentID primitive.ObjectID, like b
 		err = s.model.InsertCount(commentID, models.LikeCount, -1)
 		libs.AssertErr(err, "", 500)
 	}
-	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
+	err = s.cache.WillUpdate(userID, models.KindOfLikeComment)
 	libs.AssertErr(err, "", 500)
 }
 
@@ -110,7 +111,7 @@ type CommentData struct {
 func (s *commentService) GetComments(contentID primitive.ObjectID, userID string, page, size int64, sort string) []CommentData {
 	sortRule := bson.M{}
 	if sort == "new" {
-		sortRule["time"] = 1
+		sortRule["time"] = -1
 	} else {
 		sortRule["like_count"] = -1
 	}

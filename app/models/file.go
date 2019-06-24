@@ -21,8 +21,9 @@ type OwnerType string
 
 // FileType 文件类型
 const (
-	FileImage FileType = "image" // 图片
-	FileFile  FileType = "file"  // 文件
+	FileImage  FileType = "image" // 图片
+	FileFile   FileType = "file"  // 文件
+	FileQRCode FileType = "code"  // 二维码
 )
 
 // OwnerType 文件归属类型
@@ -33,19 +34,19 @@ const (
 
 // FileSchema 文件数据结构
 type FileSchema struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"` // 文件ID[索引]
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"` // 文件ID[索引]
 	Time        int64              // 创建时间
-	Used        int                // 引用数
-	OwnerID     primitive.ObjectID `bson:"owner_id"` // 拥有者ID[索引]
-	Owner       OwnerType          // 文件归属类型
-	Type        FileType           // 文件类型
+	Used        int                `json:"-"`                 // 引用数
+	OwnerID     primitive.ObjectID `bson:"owner_id" json:"-"` // 拥有者ID[索引]
+	Owner       OwnerType          `json:"-"`                 // 文件归属类型
+	Type        FileType           `json:"-"`                 // 文件类型
 	Name        string             // 文件名
 	Description string             // 文件描述
 	Size        int64              // 文件大小
-	Public      bool               // 公开，非公开文件需要验证权限
+	Public      bool               `json:"-"` // 公开，非公开文件需要验证权限
 	URL         string             // 下载链接
-	COSName     string             // 对象存储名字
-	Hash        string             // 文件哈希值
+	COSName     string             `json:"-"` // 对象存储名字
+	Hash        string             `json:"-"` // 文件哈希值
 }
 
 // AddFile 添加文件
@@ -109,6 +110,20 @@ func (m *FileModel) BindTask(fileID, taskID primitive.ObjectID) error {
 	return nil
 }
 
+// BindUser 将文件标记为用户使用
+func (m *FileModel) BindUser(fileID primitive.ObjectID) error {
+	ctx, finish := GetCtx()
+	defer finish()
+	if res, err := m.Collection.UpdateOne(ctx,
+		bson.M{"_id": fileID},
+		bson.M{"$inc": bson.M{"used": 1}}); err != nil {
+		return err
+	} else if res.MatchedCount < 1 {
+		return ErrNotExist
+	}
+	return nil
+}
+
 // RemoveFile 删除文件
 func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 	ctx, finish := GetCtx()
@@ -123,10 +138,10 @@ func (m *FileModel) RemoveFile(fileID primitive.ObjectID) error {
 }
 
 // GetUselessFile 获取无用文件
-func (m *FileModel) GetUselessFile(userID... primitive.ObjectID) (files []FileSchema) {
+func (m *FileModel) GetUselessFile(userID ...primitive.ObjectID) (files []FileSchema) {
 	ctx, finish := GetCtx()
 	defer finish()
-	filter :=  bson.M{"used": 0}
+	filter := bson.M{"used": 0}
 	if len(userID) > 0 {
 		filter["own_id"] = userID[0]
 		filter["owner"] = "user"
@@ -150,10 +165,10 @@ func (m *FileModel) GetUselessFile(userID... primitive.ObjectID) (files []FileSc
 }
 
 // RemoveUselessFile 删除无用文件
-func (m *FileModel) RemoveUselessFile(userID... primitive.ObjectID) int64 {
+func (m *FileModel) RemoveUselessFile(userID ...primitive.ObjectID) int64 {
 	ctx, finish := GetCtx()
 	defer finish()
-	filter :=  bson.M{"used": 0}
+	filter := bson.M{"used": 0}
 	if len(userID) > 0 {
 		filter["own_id"] = userID[0]
 		filter["owner"] = "user"
@@ -179,6 +194,7 @@ func (m *FileModel) SetFileInfo(fileID primitive.ObjectID, name, description str
 	return nil
 }
 
+// GetFileByHash 根据文件 Hash 值查找
 func (m *FileModel) GetFileByHash(hash string) (file FileSchema, err error) {
 	ctx, finish := GetCtx()
 	defer finish()

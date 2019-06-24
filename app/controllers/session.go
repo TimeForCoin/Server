@@ -49,7 +49,7 @@ func (c *SessionController) GetViolet() int {
 
 	c.Session.Set("id", id)
 	c.Session.Set("login", "violet")
-	return iris.StatusCreated
+	return iris.StatusOK
 }
 
 // PostWechatRes 微信登陆数据
@@ -78,7 +78,7 @@ func (c *SessionController) PostWechat() int {
 	} else {
 		c.Session.Set("login", "wechat")
 	}
-	return iris.StatusCreated
+	return iris.StatusOK
 }
 
 // GetSessionStatusRes 获取登陆状态返回值

@@ -16,14 +16,17 @@ import (
 // UserService 用户逻辑
 type UserService interface {
 	GetLoginURL() (url, state string)
-	GetUser(id primitive.ObjectID) models.UserSchema
+	GetUser(id primitive.ObjectID, isMe bool) UserDetail
 	GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo
 	UserAttend(id primitive.ObjectID)
 	SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema)
 	LoginByViolet(code string) (id string, new bool)
 	LoginByWechat(code string) (id string, new bool)
 	SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType)
-	SearchUser(key string, page, size int64) []models.UserSchema
+	SearchUser(key string, page, size int64) []UserDetail
+	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
+		status string, reward string) (taskCount int64, taskCards []TaskDetail)
+	GetUserParticipate(id primitive.ObjectID, page, size int64, status string) (taskStatusCount int64, taskStatusDetailList []TaskStatusDetail)
 	// 搜索相关
 	GetSearchHistory(id primitive.ObjectID) []string
 	ClearSearchHistory(id primitive.ObjectID)
@@ -33,9 +36,11 @@ type UserService interface {
 	CheckCertification(id primitive.ObjectID, code string) string
 	SendCertificationEmail(id primitive.ObjectID, email string)
 	AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string)
-	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
-		status string, reward string) (taskCount int64, taskCards []TaskDetail)
-	GetUserParticipate(id primitive.ObjectID, page, size int64, status string) (taskStatusCount int64, taskStatusDetailList []TaskStatusDetail)
+	AddMaterialCertification(identity models.UserIdentity, id primitive.ObjectID, data string, attachment []primitive.ObjectID)
+	GetCertificationList(userID primitive.ObjectID, types []models.CertificationStatus, page, size int64) (users []UserDetail)
+	GetAutoCertification(userID primitive.ObjectID, page, size int64) (keys []models.SystemSchemas)
+	AddAutoCertification(userID primitive.ObjectID, key, data string)
+	RemoveAutoCertification(userID primitive.ObjectID, key string)
 	// 关注相关
 	GetFollowing(id primitive.ObjectID, page, size int64) ([]models.UserBaseInfo, int64)
 	GetFollower(id primitive.ObjectID, page, size int64) ([]models.UserBaseInfo, int64)
@@ -70,13 +75,49 @@ type userService struct {
 	taskStatusModel *models.TaskStatusModel
 }
 
+// UserDetail 用户详细信息
+type UserDetail struct {
+	UserID        primitive.ObjectID `json:"-"`
+	ID            string             `json:"id"`
+	VioletName    string             `json:"violet_name,omitempty"`
+	WechatName    string             `json:"wechat_name,omitempty"`
+	RegisterTime  int64
+	Info          models.UserInfoSchema
+	Data          *UserDataRes
+	Certification *UserCertification
+}
+
+// UserDataRes 用户数据返回值
+type UserDataRes struct {
+	*models.UserDataSchema
+	// 额外项
+	Attendance   bool  // 是否签到
+	CollectCount int64 // 收藏任务数
+	Follower     bool  // 是否为自己的粉丝
+	Following    bool  // 是否已关注
+	// 排除项
+	AttendanceDate omit `json:"attendance_date,omitempty"`
+	CollectTasks   omit `json:"collect_tasks,omitempty"`
+	SearchHistory  omit `json:"search_history,omitempty"`
+}
+
+// UserCertification 用户认证信息
+type UserCertification struct {
+	Type     models.UserIdentity
+	Status   models.CertificationStatus
+	Email    string
+	Data     string
+	Date     int64
+	Material []models.FileSchema `json:"material,omitempty"`
+}
+
 // TaskStatus 任务参与情况
 type TaskStatus struct {
 	*models.TaskStatusSchema
 	// 额外项
 	Player models.UserBaseInfo
 	//排除项
-	ID omit `json:"i_d,omitempty"` // 点赞用户ID
+	ID omit `json:"id,omitempty"` // 状态ID
 }
 
 // TaskStatusDetail 任务参与详情
@@ -85,6 +126,7 @@ type TaskStatusDetail struct {
 	Task   TaskDetail
 }
 
+// GetUserBaseInfo 获取用户基本信息
 func (s *userService) GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo {
 	user, err := s.cache.GetUserBaseInfo(id)
 	if err != nil {
@@ -99,18 +141,20 @@ func (s *userService) GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo
 	return user
 }
 
+// GetLoginURL 获取登陆链接
 func (s *userService) GetLoginURL() (url, state string) {
 	options := violet.AuthOption{
 		Scopes:    violet.ScopeTypes{violet.ScopeInfo, violet.ScopeEmail},
 		QuickMode: true,
 	}
-	url, state, err := s.oAuth.Api.GetLoginURL(s.oAuth.Callback, options)
+	url, state, err := s.oAuth.API.GetLoginURL(s.oAuth.Callback, options)
 	libs.Assert(err == nil, "Internal Service Error", iris.StatusInternalServerError)
 	return url, state
 }
 
+// LoginByViolet 使用 Violet 授权登陆
 func (s *userService) LoginByViolet(code string) (id string, new bool) {
-	res, err := s.oAuth.Api.GetToken(code)
+	res, err := s.oAuth.API.GetToken(code)
 	// TODO 检测是否绑定微信
 	if err != nil {
 		return "", false
@@ -125,7 +169,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		return "", false
 	}
 	// 获取用户信息
-	info, err := s.oAuth.Api.GetUserInfo(res.Token)
+	info, err := s.oAuth.API.GetUserInfo(res.Token)
 	if err == nil {
 		var birthday int64
 		if t, err := time.Parse("2006-01-02T00:00:00.000Z", info.Birthday); err == nil {
@@ -154,6 +198,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 	return userID.Hex(), true
 }
 
+// LoginByWechat 使用微信登陆
 func (s *userService) LoginByWechat(code string) (id string, new bool) {
 	openID, err := libs.GetWeChat().GetOpenID(code)
 	libs.AssertErr(err, "", 403)
@@ -168,15 +213,19 @@ func (s *userService) LoginByWechat(code string) (id string, new bool) {
 }
 
 // GetUser 获取用户数据
-func (s *userService) GetUser(id primitive.ObjectID) models.UserSchema {
+func (s *userService) GetUser(id primitive.ObjectID, isMe bool) UserDetail {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "faked_users", 403)
-	return user
+	return s.makeUserRes(user, isMe)
 }
 
-func (s *userService) SearchUser(key string, page, size int64) []models.UserSchema {
+// SearchUser 搜索用户
+func (s *userService) SearchUser(key string, page, size int64) (res []UserDetail) {
 	users := s.model.GetUsers(key, page, size)
-	return users
+	for i := range users {
+		res = append(res, s.makeUserRes(users[i], false))
+	}
+	return res
 }
 
 // UserAttend 用户签到
@@ -196,13 +245,13 @@ func (s *userService) UserAttend(id primitive.ObjectID) {
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-// 设置用户信息
+// SetUserInfo 设置用户信息
 func (s *userService) SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema) {
 	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
 	libs.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
-// 设置用户类型
+// SetUserType 设置用户类型
 func (s *userService) SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType) {
 	adminInfo, err := models.GetRedis().Cache.GetUserBaseInfo(admin)
 	libs.AssertErr(err, "invalid_session", 401)
@@ -213,7 +262,7 @@ func (s *userService) SetUserType(admin primitive.ObjectID, id primitive.ObjectI
 	libs.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
-// 取消认证
+// CancelCertification 取消认证
 func (s *userService) CancelCertification(id primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "invalid_session", 401)
@@ -223,7 +272,7 @@ func (s *userService) CancelCertification(id primitive.ObjectID) {
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-// 更新认证[管理员]
+// UpdateCertification 更新认证[管理员]
 func (s *userService) UpdateCertification(id primitive.ObjectID, operate, data string) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "faked_user", 401)
@@ -244,7 +293,7 @@ func (s *userService) UpdateCertification(id primitive.ObjectID, operate, data s
 	}
 }
 
-// AddCertification 添加认证
+// AddEmailCertification 添加认证
 func (s *userService) AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string) {
 	user, err := s.model.GetUserByID(id)
 	libs.AssertErr(err, "invalid_session", 401)
@@ -260,6 +309,23 @@ func (s *userService) AddEmailCertification(identity models.UserIdentity, id pri
 	})
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	s.SendCertificationEmail(id, email)
+}
+
+// AddMaterialCertification 添加材料认证
+func (s *userService) AddMaterialCertification(identity models.UserIdentity, id primitive.ObjectID, data string, attachment []primitive.ObjectID) {
+	user, err := s.model.GetUserByID(id)
+	libs.AssertErr(err, "invalid_session", 401)
+	libs.Assert(user.Certification.Identity == models.IdentityNone ||
+		user.Certification.Status == models.CertificationCancel, "exist_certification", 403)
+	GetServiceManger().File.BindFilesToUser(id, attachment)
+	err = s.model.SetUserCertification(id, models.UserCertificationSchema{
+		Identity: identity,
+		Data:     data,
+		Status:   models.CertificationWait,
+		Date:     time.Now().Unix(),
+		Material: attachment,
+	})
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // SendCertificationEmail 发送认证邮件
@@ -314,6 +380,47 @@ func (s *userService) CheckCertification(id primitive.ObjectID, code string) str
 	return "认证已通过"
 }
 
+// GetCertificationList 获取待审核认证列表
+func (s *userService) GetCertificationList(userID primitive.ObjectID, types []models.CertificationStatus, page, size int64) (users []UserDetail) {
+	admin := s.GetUserBaseInfo(userID)
+	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+
+	usersData, err := s.model.GetCertification(types, page, size)
+	libs.AssertErr(err, "", 500)
+	for i := range usersData {
+		users = append(users, s.makeUserRes(usersData[i], true))
+	}
+	return users
+}
+
+// GetAutoCertification 获取自动认证后缀
+func (s *userService) GetAutoCertification(userID primitive.ObjectID, page, size int64) (keys []models.SystemSchemas) {
+	admin := s.GetUserBaseInfo(userID)
+	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	keys, err := s.system.GetAutoEmail(page, size)
+	libs.AssertErr(err, "", 500)
+	for i := range keys {
+		keys[i].Key = strings.Replace(keys[i].Key, "email-", "", 1)
+	}
+	return keys
+}
+
+// AddAutoCertification 添加自动认证后缀
+func (s *userService) AddAutoCertification(userID primitive.ObjectID, key, data string) {
+	admin := s.GetUserBaseInfo(userID)
+	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	err := s.system.AddAutoEmail(key, data)
+	libs.AssertErr(err, "", 500)
+}
+
+// RemoveAutoCertification 移除自动认证后缀
+func (s *userService) RemoveAutoCertification(userID primitive.ObjectID, key string) {
+	admin := s.GetUserBaseInfo(userID)
+	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	err := s.system.RemoveAutoEmail(key)
+	libs.AssertErr(err, "faked_email", 403)
+}
+
 // GetUserCollections 获取用户收藏
 func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
 	status string, reward string) (taskCount int64, taskCards []TaskDetail) {
@@ -355,7 +462,7 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 		tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
 		for _, t := range tasks {
-			taskCards = append(taskCards, GetServiceManger().Task.makeTaskDetail(t, id.Hex()))
+			taskCards = append(taskCards, GetServiceManger().Task.makeTaskDetail(t, id.Hex(), true))
 		}
 		return taskCount, taskCards
 	}
@@ -448,6 +555,7 @@ func (s *userService) FollowUser(userID, followID primitive.ObjectID) {
 	libs.AssertErr(err, "", 500)
 }
 
+// GetUserParticipate 获取用户参与的用户
 func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64, status string) (taskStatusCount int64, taskStatusDetailList []TaskStatusDetail) {
 	var statuses []models.PlayerStatus
 	split := strings.Split(status, ",")
@@ -460,46 +568,19 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 	}
 	taskStatusList, taskStatusCount, err := s.taskStatusModel.GetTaskStatusListByUserID(id, statuses, (page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
-	var taskIDs []primitive.ObjectID
 
-	for _, t := range taskStatusList {
-		taskIDs = append(taskIDs, t.Task)
-	}
-
-	tasks, err := s.taskModel.GetTasksByIDs(taskIDs)
+	userPlayer := s.GetUserBaseInfo(id)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
-	for i, t := range taskStatusList {
+	for i := range taskStatusList {
 		var taskStatusDetail TaskStatusDetail
-		var taskStatus TaskStatus
-		taskStatus.TaskStatusSchema = &taskStatusList[i]
-
-		var task TaskDetail
-		task.TaskSchema = &tasks[i]
-
-		userPlayer, err := s.cache.GetUserBaseInfo(t.Player)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		taskStatus.Player = userPlayer
-
-		userPublisher, err := s.cache.GetUserBaseInfo(tasks[i].Publisher)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Publisher = userPublisher
-
-		images, err := s.fileModel.GetFileByContent(t.Task, models.FileImage)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
-		task.Images = []ImagesData{}
-		task.Attachment = []models.FileSchema{}
-		for _, i := range images {
-			task.Images = append(task.Images, ImagesData{
-				ID:  i.ID.Hex(),
-				URL: i.URL,
-			})
+		taskStatusDetail.Status = TaskStatus{
+			TaskStatusSchema: &taskStatusList[i],
+			Player: userPlayer,
 		}
-		task.Liked = s.cache.IsLikeTask(id, t.ID)
-		task.Collected = s.cache.IsCollectTask(id, t.ID)
-
-		taskStatusDetail.Status = taskStatus
-		taskStatusDetail.Task = task
+		task, err := s.taskModel.GetTaskByID(taskStatusList[i].Task)
+		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		taskStatusDetail.Task = GetServiceManger().Task.makeTaskDetail(task, id.Hex(), true)
 		taskStatusDetailList = append(taskStatusDetailList, taskStatusDetail)
 	}
 	return
@@ -529,11 +610,54 @@ func (s *userService) UnFollowUser(userID, followID primitive.ObjectID) {
 	libs.AssertErr(err, "", 500)
 }
 
+// IsFollower 是否是粉丝
 func (s *userService) IsFollower(userID, followID primitive.ObjectID) bool {
 	return s.cache.IsFollowerUser(userID, followID)
 }
 
+// IsFollowing 是否已关注
 func (s *userService) IsFollowing(userID, followID primitive.ObjectID) bool {
 	return s.cache.IsFollowingUser(userID, followID)
+}
 
+// makeUserRes 整合用户数据
+func (s *userService) makeUserRes(user models.UserSchema, all bool) UserDetail {
+	res := UserDetail{
+		UserID:       user.ID,
+		ID:           user.ID.Hex(),
+		VioletName:   user.VioletName,
+		WechatName:   user.WechatName,
+		RegisterTime: user.RegisterTime,
+		Info:         user.Info,
+		Data: &UserDataRes{
+			UserDataSchema: &user.Data,
+			CollectCount:   int64(len(user.Data.CollectTasks)),
+		},
+		Certification: &UserCertification{
+			Type:   user.Certification.Identity,
+			Status: user.Certification.Status,
+			Email:  user.Certification.Email,
+			Data:   user.Certification.Data,
+			Date:   user.Certification.Date,
+		},
+	}
+	nowTime := time.Now()
+	attendanceTime := time.Unix(user.Data.AttendanceDate, 0)
+	res.Data.Attendance = attendanceTime.Year() == nowTime.Year() && attendanceTime.YearDay() == nowTime.YearDay()
+	if !all {
+		res.Certification.Email = ""
+		if res.Certification.Status != models.CertificationTrue {
+			res.Certification = &UserCertification{
+				Type: models.IdentityNone,
+			}
+		}
+	} else {
+		res.Certification.Material = []models.FileSchema{}
+		for _, id := range user.Certification.Material {
+			file, err := s.fileModel.GetFile(id)
+			libs.AssertErr(err, "", 500)
+			res.Certification.Material = append(res.Certification.Material, file)
+		}
+	}
+	return res
 }

@@ -25,7 +25,7 @@ const (
 	MessageTypeComment MessageType = "comment" // 评论通知
 )
 
-// 消息数据结构
+// MessageSchema 消息数据结构
 type MessageSchema struct {
 	UserID  primitive.ObjectID `bson:"user" json:"user_id"`            // 消息发言人ID
 	Time    int64              `bson:"time"`            // 发送时间
@@ -34,7 +34,7 @@ type MessageSchema struct {
 	About   primitive.ObjectID `bson:"about,omitempty"` // 相关ID (被评论的任务)
 }
 
-// MessageSchema Message 数据结构
+// SessionSchema Session 数据结构
 // bson 默认为名字小写
 type SessionSchema struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`  // 消息会话ID
@@ -79,6 +79,7 @@ func (m *MessageModel) GetSessionByID(id primitive.ObjectID) (res SessionSchema,
 	return
 }
 
+// GetSessionWithMsgByID 获取会话详情(附带信息)
 func (m *MessageModel) GetSessionWithMsgByID(id primitive.ObjectID, page, size int64) (res SessionSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()

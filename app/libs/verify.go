@@ -34,6 +34,17 @@ func IsUserType(userType string) bool {
 	return false
 }
 
+// IsTaskStatus 判断是否为合法任务状态
+func IsTaskStatus (status string) bool {
+	TaskStatus := []string{"draft", "wait", "close", "finish"}
+	for _, t := range TaskStatus {
+		if status == t {
+			return true
+		}
+	}
+	return false
+}
+
 // CheckReward 判断是否为合法酬劳
 func CheckReward(reward, rewardObject string, rewardValue float32) {
 	if reward == "money" || reward == "rmb" {
