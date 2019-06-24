@@ -116,12 +116,3 @@ func (c *MessageController) PostBy(id string) int {
 
 	return iris.StatusOK
 }
-
-// PutBy 标记会话为已读
-func (c *MessageController) PutBy(id string) int {
-	userID := c.checkLogin()
-	sessionID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
-	c.Service.TagRead(userID, sessionID)
-	return iris.StatusOK
-}

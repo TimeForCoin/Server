@@ -445,6 +445,24 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 	libs.AssertErr(err, "", 500)
 	err = s.model.InsertCount(taskID, models.PlayerCount, 1)
 	libs.AssertErr(err, "", 500)
+
+	userInfo := GetServiceManger().User.GetUserBaseInfo(userID)
+	msg := userInfo.Nickname
+	if status == models.PlayerRunning {
+		msg += "申请加入任务"
+	} else {
+		msg += "加入任务"
+	}
+
+	_, err = s.messageModel.AddMessage(task.Publisher, models.MessageTypeTask, models.MessageSchema{
+		UserID:  taskID,
+		Title:   msg,
+		Content: taskStatus.Note,
+		About: userID,
+	})
+	libs.AssertErr(err, "", 500)
+
+
 	return status == models.PlayerRunning
 }
 

@@ -12,7 +12,6 @@ type MessageService interface {
 	GetSession(userID, sessionID primitive.ObjectID, page, size int64) SessionDetail
 	SendSystemMessage(userID, aboutID primitive.ObjectID, title, content string) (total int64)
 	SendChatMessage(userID, targetID primitive.ObjectID, msg string) primitive.ObjectID
-	TagRead(userID, sessionID primitive.ObjectID)
 }
 
 // newMessageService 初始化
@@ -112,14 +111,6 @@ func (s *messageService) GetSessions(userID primitive.ObjectID, page, size int64
 func (s *messageService) GetSession(userID, sessionID primitive.ObjectID, page, size int64) SessionDetail {
 	session, err := s.model.GetSessionWithMsgByID(sessionID, page, size)
 	libs.AssertErr(err, "faked_message", 403)
-	libs.Assert(session.User1 == userID || session.User2 == userID, "permission_deny", 403)
-	return s.makeSession(userID, session)
-}
-
-// TagRead 标记已读
-func (s *messageService) TagRead(userID, sessionID primitive.ObjectID) {
-	session, err := s.model.GetSessionByID(sessionID)
-	libs.AssertErr(err, "faked_message", 403)
 	if session.User1 == userID {
 		err = s.model.ReadMessage(sessionID, true)
 	} else if session.User2 == userID {
@@ -128,6 +119,7 @@ func (s *messageService) TagRead(userID, sessionID primitive.ObjectID) {
 		libs.Assert(false, "permission_deny", 403)
 	}
 	libs.AssertErr(err, "", 500)
+	return s.makeSession(userID, session)
 }
 
 // SendSystemMessage 发送系统消息
