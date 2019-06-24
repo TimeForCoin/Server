@@ -30,6 +30,7 @@ func NewApp() *iris.Application {
 	app.Use(libs.NewErrorHandler())
 
 	BindUserController(app)
+	BindArticleController(app)
 	BindTaskController(app)
 	BindFileController(app)
 	BindQuestionnaireController(app)
