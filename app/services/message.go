@@ -112,13 +112,16 @@ func (s *messageService) GetSession(userID, sessionID primitive.ObjectID, page, 
 	session, err := s.model.GetSessionWithMsgByID(sessionID, page, size)
 	libs.AssertErr(err, "faked_message", 403)
 	if session.User1 == userID {
-		err = s.model.ReadMessage(sessionID, true)
+		if session.Unread1 != 0 {
+			libs.AssertErr(s.model.ReadMessage(sessionID, true), "", 500)
+		}
 	} else if session.User2 == userID {
-		err = s.model.ReadMessage(sessionID, false)
+		if session.Unread2 != 0 {
+			libs.AssertErr(s.model.ReadMessage(sessionID, false), "", 500)
+		}
 	} else {
 		libs.Assert(false, "permission_deny", 403)
 	}
-	libs.AssertErr(err, "", 500)
 	return s.makeSession(userID, session)
 }
 
