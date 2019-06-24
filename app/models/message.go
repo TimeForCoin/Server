@@ -97,7 +97,7 @@ func (m *MessageModel) GetSessionWithMsgByUserID(user1, user2 primitive.ObjectID
 		user1, user2 = user2, user1
 	}
 	err = m.Collection.FindOne(ctx, bson.M{"user_1": user1, "user_2": user2}, options.FindOne().SetProjection(bson.M{
-		"messages": bson.M{"$slice": []int64{(page - 1) * size, page * size}},
+		"messages": bson.M{"$slice": []int64{(page - 1) * size, size}},
 	})).Decode(&res)
 	return
 }
