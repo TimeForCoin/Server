@@ -162,7 +162,13 @@ func (s *fileService) RemoveUselessFile(userID primitive.ObjectID, all bool) (re
 func (s *fileService) RemoveUserFile(userID, fileID primitive.ObjectID) {
 	f, err := s.model.GetFile(fileID)
 	libs.AssertErr(err, "faked_file", 403)
-	libs.Assert(f.Owner == models.FileForUser, "permission_deny", 403)
+	if f.Owner == models.FileForUser {
+		libs.Assert(f.OwnerID == userID, "permission_deny", 403)
+	} else if f.Owner == models.FileForTask {
+		task, err := s.taskModel.GetTaskByID(f.OwnerID)
+		libs.AssertErr(err, "", 500)
+		libs.Assert(task.Publisher == userID, "permission_deny", 403)
+	}
 	err = s.model.RemoveFile(fileID)
 	libs.AssertErr(err, "", 500)
 	_, err = s.model.GetFileByHash(f.Hash)

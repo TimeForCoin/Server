@@ -44,20 +44,12 @@ type AddTaskReq struct {
 	Publish      bool     `json:"publish"`
 }
 
-// Post 添加任务
-func (c *TaskController) Post() int {
-	id := c.checkLogin()
-	req := AddTaskReq{}
-	err := c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil, "invalid_value", 400)
-
-	taskType := models.TaskType(req.Type)
-	libs.Assert(taskType == models.TaskTypeInfo ||
-		taskType == models.TaskTypeQuestionnaire ||
-		taskType == models.TaskTypeRunning, "invalid_type", 400)
+func validTask(req AddTaskReq) {
+	libs.Assert(models.TaskType(req.Type) == models.TaskTypeInfo ||
+		models.TaskType(req.Type) == models.TaskTypeQuestionnaire ||
+		models.TaskType(req.Type) == models.TaskTypeRunning, "invalid_type", 400)
 
 	libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
-	taskReward := models.RewardType(req.Reward)
 
 	libs.Assert(req.Title != "", "invalid_title", 400)
 	libs.Assert(req.Content != "", "invalid_content", 400)
@@ -78,16 +70,36 @@ func (c *TaskController) Post() int {
 		libs.Assert(len(t) < 16, "tag_too_long", 403)
 	}
 
+	for _, file := range req.Images {
+		_, err := primitive.ObjectIDFromHex(file)
+		libs.AssertErr(err, "invalid_file", 400)
+	}
+
+	for _, attachment := range req.Attachment {
+		_, err := primitive.ObjectIDFromHex(attachment)
+		libs.AssertErr(err, "invalid_file", 400)
+	}
+}
+
+// Post 添加任务
+func (c *TaskController) Post() int {
+	id := c.checkLogin()
+	req := AddTaskReq{}
+	err := c.Ctx.ReadJSON(&req)
+	libs.Assert(err == nil, "invalid_value", 400)
+	validTask(req)
+
+	taskType := models.TaskType(req.Type)
+	taskReward := models.RewardType(req.Reward)
+
 	var images []primitive.ObjectID
 	for _, file := range req.Images {
-		fileID, err := primitive.ObjectIDFromHex(file)
-		libs.AssertErr(err, "invalid_file", 400)
+		fileID, _ := primitive.ObjectIDFromHex(file)
 		images = append(images, fileID)
 	}
 	var attachments []primitive.ObjectID
 	for _, attachment := range req.Attachment {
-		fileID, err := primitive.ObjectIDFromHex(attachment)
-		libs.AssertErr(err, "invalid_file", 400)
+		fileID, _ := primitive.ObjectIDFromHex(attachment)
 		attachments = append(attachments, fileID)
 	}
 
@@ -140,29 +152,16 @@ func (c *TaskController) PutBy(id string) int {
 	req := AddTaskReq{}
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
-
-	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
-	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
-	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
-
-	for _, l := range req.Location {
-		libs.Assert(len(l) < 64, "location_too_long", 403)
-	}
-
-	for _, t := range req.Tags {
-		libs.Assert(len(t) < 32, "tag_too_long", 403)
-	}
+	validTask(req)
 
 	var images []primitive.ObjectID
 	for _, file := range req.Images {
-		fileID, err := primitive.ObjectIDFromHex(file)
-		libs.AssertErr(err, "invalid_file", 400)
+		fileID, _ := primitive.ObjectIDFromHex(file)
 		images = append(images, fileID)
 	}
 	var attachments []primitive.ObjectID
 	for _, attachment := range req.Attachment {
-		fileID, err := primitive.ObjectIDFromHex(attachment)
-		libs.AssertErr(err, "invalid_file", 400)
+		fileID, _ := primitive.ObjectIDFromHex(attachment)
 		attachments = append(attachments, fileID)
 	}
 

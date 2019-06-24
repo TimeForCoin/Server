@@ -188,8 +188,8 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		}
 		for _, image := range oldImages {
 			exist := false
-			for _, file := range imageFiles {
-				if file.ID == image.ID {
+			for _, file := range images {
+				if file == image.ID {
 					exist = true
 					break
 				}
@@ -222,8 +222,8 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		}
 		for _, attachment := range oldAttachment {
 			exist := false
-			for _, file := range attachmentFiles {
-				if file.ID == attachment.ID {
+			for _, file := range attachments {
+				if file == attachment.ID {
 					exist = true
 					break
 				}
@@ -468,16 +468,17 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 	} else if taskStatus.Status == models.PlayerGiveUp {
 		libs.Assert(!isPublisher, "permission_deny", 403)
 		libs.Assert(taskStatusGet.Status == models.PlayerRunning || taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
+	} else if string(taskStatus.Status) != "" {
+		libs.Assert(false, "not_allow_status", 403)
 	}
 
-	// 允许修改的状态
-	libs.Assert(taskStatus.Status == models.PlayerFinish ||
-		taskStatus.Status == models.PlayerGiveUp ||
-		taskStatus.Status == models.PlayerFailure, "not_allow_status", 403)
+	if taskStatus.Note != "" {
+		libs.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_edit", 403)
+	}
 
 	// 允许修改的信息
 	if isPublisher {
-		libs.Assert(taskStatus.Score == 0 && taskStatus.Feedback == "", "permission_deny", 403)
+		libs.Assert(taskStatus.Score == 0 && taskStatus.Feedback == "" && taskStatus.Note == "", "permission_deny", 403)
 	} else {
 		libs.Assert(taskStatus.Degree == 0 && taskStatus.Remark == "", "permission_deny", 403)
 	}
@@ -485,6 +486,7 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 	err = s.taskStatusModel.SetTaskStatus(taskStatusGet.ID, models.TaskStatusSchema{
 		Status:   taskStatus.Status,
 		Degree:   taskStatus.Degree,
+		Note:     taskStatus.Note,
 		Remark:   taskStatus.Remark,
 		Score:    taskStatus.Score,
 		Feedback: taskStatus.Feedback,
