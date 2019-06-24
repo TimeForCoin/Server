@@ -97,6 +97,25 @@ func (c *MessageController) GetBy(id string) int {
 	return iris.StatusOK
 }
 
+// GetUserBy 获取会话消息
+func (c *MessageController) GetUserBy(id string) int {
+	userID := c.checkLogin()
+	page, size := c.getPaginationData()
+	targetUserID, err := primitive.ObjectIDFromHex(id)
+	libs.AssertErr(err, "invalid_id", 400)
+
+	session := c.Service.GetSessionByUser(userID, targetUserID, page, size)
+
+	c.JSON(GetMessageRes{
+		Pagination: PaginationRes{
+			Page: page,
+			Size: size,
+		},
+		Data: session,
+	})
+	return iris.StatusOK
+}
+
 // PostBy 发送消息
 func (c *MessageController) PostBy(id string) int {
 	userID := c.checkLogin()

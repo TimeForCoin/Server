@@ -10,6 +10,7 @@ import (
 type MessageService interface {
 	GetSessions(userID primitive.ObjectID, page, size int64) (res []SessionListDetail)
 	GetSession(userID, sessionID primitive.ObjectID, page, size int64) SessionDetail
+	GetSessionByUser(userID, targetID primitive.ObjectID, page, size int64) SessionDetail
 	SendSystemMessage(userID, aboutID primitive.ObjectID, title, content string) (total int64)
 	SendChatMessage(userID, targetID primitive.ObjectID, msg string) primitive.ObjectID
 }
@@ -123,6 +124,20 @@ func (s *messageService) GetSession(userID, sessionID primitive.ObjectID, page, 
 		libs.Assert(false, "permission_deny", 403)
 	}
 	return s.makeSession(userID, session)
+}
+
+// GetSessionByUser 根据用户获取会话信息
+func (s *messageService) GetSessionByUser(userID, targetID primitive.ObjectID, page, size int64) SessionDetail {
+	session, err := s.model.GetSessionWithMsgByUserID(userID, targetID, page, size)
+	if err == nil {
+		return s.makeSession(userID, session)
+	}
+	return s.makeSession(userID, models.SessionSchema{
+		User1: userID,
+		User2: targetID,
+		Type: models.MessageTypeChat,
+		Messages: []models.MessageSchema{},
+	})
 }
 
 // SendSystemMessage 发送系统消息

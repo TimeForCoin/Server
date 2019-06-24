@@ -41,7 +41,7 @@ POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "033zz2CN0OkhHa2PTJCN0JZ6CN0zz2Cq"
+  "code": "043m27DN1NyVO91ASSCN1XbQCN1m27DP"
 }
 
 ### 微信二维码
@@ -143,7 +143,7 @@ POST http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
 DELETE http://127.0.0.1:30233/comments/5cfcab061a9341e1cb5e1ca7/like
 
 ### 搜索用户
-GET http://127.0.0.1:30233/users?key=fish
+GET http://127.0.0.1:30233/users?key=-.-
 
 ### 获取搜索记录
 GET  http://127.0.0.1:30233/users/history
@@ -187,16 +187,20 @@ Content-Type: application/json
 ### 获取会话信息
 GET http://127.0.0.1:30233/messages/5d07c34f9b0958884bdde14b
 
+### 获取会话信息
+GET http://127.0.0.1:30233/messages/user/5d0f0b718194ce8e8c8b180e
+
 ### 将会话标记为已读
 PUT http://127.0.0.1:30233/messages/5d07c2779b0958884bdde0a2
 
 ### 发送消息
-POST http://127.0.0.1:30233/messages/5cfe5275c938ced30d43615d
+POST http://127.0.0.1:30233/messages/5d0f0b718194ce8e8c8b180e
 Content-Type: application/json
 
 {
-  "content": "你真的好蔡啊"
+  "content": "仲吾快讲声多谢乌蝇哥？🍌"
 }
+
 
 ### 获取用户参与人员列表
 GET http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/player

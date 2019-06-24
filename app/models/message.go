@@ -89,6 +89,19 @@ func (m *MessageModel) GetSessionWithMsgByID(id primitive.ObjectID, page, size i
 	return
 }
 
+// GetSessionWithMsgByID 获取会话详情(附带信息)
+func (m *MessageModel) GetSessionWithMsgByUserID(user1, user2 primitive.ObjectID, page, size int64) (res SessionSchema, err error) {
+	ctx, over := GetCtx()
+	defer over()
+	if strings.Compare(user1.Hex(), user2.Hex()) < 0 {
+		user1, user2 = user2, user1
+	}
+	err = m.Collection.FindOne(ctx, bson.M{"user_1": user1, "user_2": user2}, options.FindOne().SetProjection(bson.M{
+		"messages": bson.M{"$slice": []int64{(page - 1) * size, page * size}},
+	})).Decode(&res)
+	return
+}
+
 // AddMessage 添加信息
 func (m *MessageModel) AddMessage(recUser primitive.ObjectID, messageType MessageType, data MessageSchema) (primitive.ObjectID, error) {
 	ctx, over := GetCtx()

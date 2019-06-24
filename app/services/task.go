@@ -537,9 +537,10 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 		})
 		libs.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerGiveUp {
+		user := GetServiceManger().User.GetUserBaseInfo(userID)
 		_, err = s.messageModel.AddMessage(task.Publisher, models.MessageTypeTask, models.MessageSchema{
 			UserID:  taskID,
-			Title:   "用户放弃任务",
+			Title:   user.Nickname + "放弃任务",
 			Content: taskStatus.Note,
 			About:   userID,
 		})
