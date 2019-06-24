@@ -188,7 +188,7 @@ Content-Type: application/json
 GET http://127.0.0.1:30233/messages/5d07c34f9b0958884bdde14b
 
 ### 获取会话信息
-GET http://127.0.0.1:30233/messages/user/5d0f0b718194ce8e8c8b180e
+GET http://127.0.0.1:30233/messages/user/5d0f0b718194ce8e8c8b180e?page=2&size=2
 
 ### 将会话标记为已读
 PUT http://127.0.0.1:30233/messages/5d07c2779b0958884bdde0a2
@@ -198,7 +198,7 @@ POST http://127.0.0.1:30233/messages/5d0f0b718194ce8e8c8b180e
 Content-Type: application/json
 
 {
-  "content": "仲吾快讲声多谢乌蝇哥？🍌"
+  "content": "你讲咩啊"
 }
 
 
