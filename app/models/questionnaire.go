@@ -45,14 +45,12 @@ type ProblemSchema struct {
 	Content string               // 问题本体
 	Note    string               // 问题备注
 	Type    ProblemType          // 问题类型
-	Images  []primitive.ObjectID // 图片附件ID
 
 	// 选择题数据
 	ChooseProblem struct {
 		Options []struct {
 			Index   int64              // 选项序号
 			Content string             // 选项内容
-			Image   primitive.ObjectID `bson:"image,omitempty"` // 图片附件ID
 		} // 问题选项
 		MaxChoose int64 `bson:"max_choose" json:"max_choose"` // 最大可选项
 	} `bson:"choose_problem,omitempty" json:"choose_problem,omitempty"`

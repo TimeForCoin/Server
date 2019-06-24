@@ -41,7 +41,7 @@ POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "023Q2cr60odYCC1njrp60ZeXq60Q2cr1"
+  "code": "033zz2CN0OkhHa2PTJCN0JZ6CN0zz2Cq"
 }
 
 ### 微信二维码
@@ -218,7 +218,7 @@ DELETE  http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/player/5d00d8d5839
 
 
 ### 新建问卷
-POST http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854
+POST http://127.0.0.1:30233/questionnaires/5d106ef618633d579fd2eb8c
 Content-Type: application/json
 
 {
@@ -228,7 +228,7 @@ Content-Type: application/json
 }
 
 ### 获取问卷信息
-GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854
+GET http://127.0.0.1:30233/questionnaires/5d106ef618633d579fd2eb8c
 
 ### 修改问卷信息
 PUT http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854
@@ -240,34 +240,51 @@ Content-Type: application/json
 }
 
 ### 获取问卷问题
-GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/questions
+GET http://127.0.0.1:30233/questionnaires/5d106ef618633d579fd2eb8c/questions
 
 ### 修改问卷问题
-POST http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/questions
+POST http://127.0.0.1:30233/questionnaires/5d106ef618633d579fd2eb8c/questions
 Content-Type: application/json
 
 {
-  "problems": [
-    {
-      "index": 1,
-      "content": "你是猪吗？",
-      "note": "请如实回答",
-      "type": "choose",
-      "choose_problem": {
-        "options": [
-          {
-            "index": 1,
-            "content": "是"
-          }, {
-            "index": 2,
-            "content": "真的是"
-          }
-        ],
-        "max_choose": 1
-      }
+  "problems":
+  [{
+    "index":1,
+    "content":"问题内容",
+    "note":"问题备注",
+    "type":"choose",
+    "choose_problem":{
+      "options":[
+        {"index":1,"content":"选项","image":""},
+        {"index":2,"content":"选项","image":""}],
+        "max_choose":1
     }
-  ]
+  },{
+    "index":3,
+    "content":"问题内容",
+    "note":"问题备注",
+    "type":"choose",
+    "choose_problem":{
+      "options":[
+        {"index":1,"content":"选项","image":""},
+        {"index":2,"content":"选项","image":""}],
+      "max_choose":1
+    }
+  },
+  {
+    "index":2,
+    "content":"问题内容",
+    "note":"问题备注",
+    "type":"choose",
+    "choose_problem":{
+      "options":[
+        {"index":1,"content":"选项","image":""},
+        {"index":2,"content":"选项","image":""}],
+      "max_choose":1
+    }
+  }]
 }
+
 
 ### 获取问卷回答数据
 GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/answers

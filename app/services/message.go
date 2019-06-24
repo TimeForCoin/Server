@@ -56,18 +56,18 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 		SessionSchema: &session,
 	}
 	if userID == session.User1 {
-		sessionItem.UnreadCount = session.Unread1
-	} else {
 		sessionItem.UnreadCount = session.Unread2
+	} else {
+		sessionItem.UnreadCount = session.Unread1
 	}
 	// 用户信息
 	if session.Type == models.MessageTypeChat {
 		if userID == session.User1 {
-			userInfo, err := s.cache.GetUserBaseInfo(session.User1)
+			userInfo, err := s.cache.GetUserBaseInfo(session.User2)
 			libs.AssertErr(err, "", 500)
 			sessionItem.Target = userInfo
 		} else {
-			userInfo, err := s.cache.GetUserBaseInfo(session.User2)
+			userInfo, err := s.cache.GetUserBaseInfo(session.User1)
 			libs.AssertErr(err, "", 500)
 			sessionItem.Target = userInfo
 		}
