@@ -19,6 +19,7 @@ type UserService interface {
 	GetUser(id primitive.ObjectID, isMe bool) UserDetail
 	GetUserBaseInfo(id primitive.ObjectID) models.UserBaseInfo
 	UserAttend(id primitive.ObjectID)
+	UserPay(id primitive.ObjectID)
 	SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema)
 	LoginByViolet(code string) (id string, new bool)
 	LoginByWechat(code string) (id string, new bool)
@@ -226,6 +227,13 @@ func (s *userService) SearchUser(key string, page, size int64) (res []UserDetail
 		res = append(res, s.makeUserRes(users[i], false))
 	}
 	return res
+}
+
+func (s *userService) UserPay(id primitive.ObjectID) {
+	err := s.model.UpdateUserDataCount(id, models.UserDataCount{
+		Money: rand.Int63n(20),
+	})
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // UserAttend 用户签到

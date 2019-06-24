@@ -79,8 +79,11 @@ type TaskDetail struct {
 func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	images, attachments []primitive.ObjectID, publish bool) primitive.ObjectID {
 	status := models.TaskStatusDraft
+	user, err := s.userModel.GetUserByID(userID)
+	libs.AssertErr(err, "", 500)
 	if publish {
 		status = models.TaskStatusWait
+		libs.Assert(float32(user.Data.Money) > info.RewardValue + 1, "no_money", 403)
 	}
 
 	taskID := primitive.NewObjectID()

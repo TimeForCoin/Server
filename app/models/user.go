@@ -117,24 +117,33 @@ type UserSchema struct {
 	Certification UserCertificationSchema `bson:"certification"` // 用户认证信息
 }
 
-// AddUserByViolet 通过 Violet 增加用户
-func (m *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
-	ctx, over := GetCtx()
-	defer over()
-	userID := primitive.NewObjectID()
-	_, err := m.Collection.InsertOne(ctx, &UserSchema{
-		ID:           userID,
-		VioletID:     id,
+func makeNewUserSchema() UserSchema {
+	return UserSchema{
 		RegisterTime: time.Now().Unix(),
 		Data: UserDataSchema{
 			Type:          UserTypeNormal,
 			CollectTasks:  []primitive.ObjectID{},
 			SearchHistory: []string{},
+			Money: 100,
+			Value: 1000,
+			Credit: 100,
 		},
 		Certification: UserCertificationSchema{
 			Identity: IdentityNone,
+			Status: CertificationNone,
 		},
-	})
+	}
+}
+
+// AddUserByViolet 通过 Violet 增加用户
+func (m *UserModel) AddUserByViolet(id string) (primitive.ObjectID, error) {
+	ctx, over := GetCtx()
+	defer over()
+	userID := primitive.NewObjectID()
+	newUser := makeNewUserSchema()
+	newUser.ID = userID
+	newUser.VioletID = id
+	_, err := m.Collection.InsertOne(ctx, newUser)
 	if err != nil {
 		return primitive.ObjectID{}, err
 	}
@@ -146,18 +155,10 @@ func (m *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, error) {
 	ctx, finish := GetCtx()
 	defer finish()
 	userID := primitive.NewObjectID()
-	_, err := m.Collection.InsertOne(ctx, &UserSchema{
-		ID:           userID,
-		WechatID:     openid,
-		RegisterTime: time.Now().Unix(),
-		Data: UserDataSchema{
-			Type: UserTypeNormal,
-		},
-		Certification: UserCertificationSchema{
-			Identity: IdentityNone,
-			Status: CertificationNone,
-		},
-	})
+	newUser := makeNewUserSchema()
+	newUser.ID = userID
+	newUser.WechatID = openid
+	_, err := m.Collection.InsertOne(ctx, newUser)
 	if err != nil {
 		return primitive.ObjectID{}, err
 	}

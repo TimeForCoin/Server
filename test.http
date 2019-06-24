@@ -41,7 +41,7 @@ POST  http://127.0.0.1:30233/session/wechat
 Content-Type: application/json
 
 {
-  "code": "043m27DN1NyVO91ASSCN1XbQCN1m27DP"
+  "code": "023z8BGT1jFtF41UWQFT1I9wGT1z8BGI"
 }
 
 ### 微信二维码
@@ -244,7 +244,7 @@ Content-Type: application/json
 }
 
 ### 获取问卷问题
-GET http://127.0.0.1:30233/questionnaires/5d106ef618633d579fd2eb8c/questions
+GET http://127.0.0.1:30233/questionnaires/5d10664b281e86f5226c5974/questions
 
 ### 修改问卷问题
 POST http://127.0.0.1:30233/questionnaires/5d106ef618633d579fd2eb8c/questions
@@ -295,18 +295,11 @@ GET http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/answers
 
 ### 添加问卷回答
 
-POST http://127.0.0.1:30233/questionnaires/5d0b6d6277b84a717c9f3854/answers
+POST http://127.0.0.1:30233/questionnaires/5d10664b281e86f5226c5974/answers
 Content-Type: application/json
 
 {
-  "data": [
-    {
-      "problem_index": 1,
-      "choose_value": [
-        3
-      ]
-    }
-  ]
+  "data": [{"problem_index":0,"choose_value":[3]},{"problem_index":1,"choose_value":[0]},{"problem_index":2,"choose_value":[1]},{"problem_index":3,"string_value":"123"},{"problem_index":4,"score_value":3},{"problem_index":5,"choose_value":[1]},{"problem_index":6,"choose_value":[0]}]
 }
 
 ### 获取活动二维码

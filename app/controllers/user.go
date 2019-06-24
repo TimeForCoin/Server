@@ -100,6 +100,11 @@ func (c *UserController) PostAttend() int {
 	return iris.StatusOK
 }
 
+func (c *UserController) PostPay() int {
+	c.Service.UserPay(c.checkLogin())
+	return iris.StatusOK
+}
+
 // PutUserInfoReq 修改用户信息请求
 type PutUserInfoReq struct {
 	*models.UserInfoSchema
