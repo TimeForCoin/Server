@@ -474,10 +474,6 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 		libs.Assert(false, "not_allow_status", 403)
 	}
 
-	if taskStatus.Note != "" {
-		libs.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_edit", 403)
-	}
-
 	// 允许修改的信息
 	if isPublisher {
 		libs.Assert(taskStatus.Score == 0 && taskStatus.Feedback == "" && taskStatus.Note == "", "permission_deny", 403)
@@ -488,7 +484,6 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 	err = s.taskStatusModel.SetTaskStatus(taskStatusGet.ID, models.TaskStatusSchema{
 		Status:   taskStatus.Status,
 		Degree:   taskStatus.Degree,
-		Note:     taskStatus.Note,
 		Remark:   taskStatus.Remark,
 		Score:    taskStatus.Score,
 		Feedback: taskStatus.Feedback,
