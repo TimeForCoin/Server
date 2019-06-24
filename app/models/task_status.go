@@ -109,8 +109,12 @@ func (m *TaskStatusModel) GetTaskStatusListByTaskID(taskID primitive.ObjectID, s
 	if err != nil {
 		return
 	}
+	opt := options.Find()
+	if skip != 0 && limit != 0 {
+		opt.SetSkip(skip).SetLimit(limit)
+	}
 
-	cursor, err := m.Collection.Find(ctx, filter, options.Find().SetSkip(skip).SetLimit(limit))
+	cursor, err := m.Collection.Find(ctx, filter, opt)
 	if err != nil {
 		return
 	}

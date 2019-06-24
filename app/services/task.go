@@ -119,24 +119,19 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	if info.Status == models.TaskStatusClose {
 		// 关闭任务
 		libs.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
-		page := 1
-		taskStatus, _, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, int64(page), 10)
+
+		taskStatus, _, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
 		libs.AssertErr(err, "", 500)
 		// 发送通知消息
-		for len(taskStatus) != 0 {
-			for _, status := range taskStatus {
-				_, err = s.messageModel.AddMessage(status.Player, models.MessageTypeTask, models.MessageSchema{
-					UserID: taskID,
-					Title:  "任务已关闭",
-				})
-				libs.AssertErr(err, "", 500)
-				err = s.taskStatusModel.SetTaskStatus(status.ID, models.TaskStatusSchema{
-					Status: models.PlayerClose,
-				})
-				libs.AssertErr(err, "", 500)
-			}
-			page++
-			taskStatus, _, err = s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, int64(page), 10)
+		for _, status := range taskStatus {
+			_, err = s.messageModel.AddMessage(status.Player, models.MessageTypeTask, models.MessageSchema{
+				UserID: taskID,
+				Title:  "任务已关闭",
+			})
+			libs.AssertErr(err, "", 500)
+			err = s.taskStatusModel.SetTaskStatus(status.ID, models.TaskStatusSchema{
+				Status: models.PlayerClose,
+			})
 			libs.AssertErr(err, "", 500)
 		}
 
@@ -148,6 +143,13 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	} else if info.Status == models.TaskStatusWait {
 		// 发布任务
 		libs.Assert(task.Status == models.TaskStatusDraft, "not_allow_status", 403)
+	} else if info.Status == models.TaskStatusFinish {
+		// 任务已完成
+		players,_, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
+		libs.AssertErr(err, "", 500)
+		for _, status := range players {
+			libs.Assert(status.Status != models.PlayerRunning && status.Status != models.PlayerWait, "not_allow_finish", 403)
+		}
 	} else if info.Status != "" {
 		libs.Assert(false, "not_allow_status", 403)
 	} else {

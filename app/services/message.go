@@ -21,6 +21,7 @@ func newMessageService() MessageService {
 		model:     models.GetModel().Message,
 		userModel: models.GetModel().User,
 		cache:     models.GetRedis().Cache,
+		taskModel: models.GetModel().Task,
 	}
 }
 
@@ -28,6 +29,7 @@ type messageService struct {
 	model     *models.MessageModel
 	userModel *models.UserModel
 	cache     *models.CacheModel
+	taskModel *models.TaskModel
 }
 
 // SessionListDetail 会话列表信息
@@ -56,9 +58,9 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 		SessionSchema: &session,
 	}
 	if userID == session.User1 {
-		sessionItem.UnreadCount = session.Unread2
-	} else {
 		sessionItem.UnreadCount = session.Unread1
+	} else {
+		sessionItem.UnreadCount = session.Unread2
 	}
 	// 用户信息
 	if session.Type == models.MessageTypeChat {
@@ -70,6 +72,22 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 			userInfo, err := s.cache.GetUserBaseInfo(session.User1)
 			libs.AssertErr(err, "", 500)
 			sessionItem.Target = userInfo
+		}
+	} else if session.Type == models.MessageTypeTask {
+		// 任务信息
+		taskID := session.User1
+		if userID == session.User1 {
+			taskID = session.User2
+		}
+		task, err := s.taskModel.GetTaskByID(taskID)
+		libs.AssertErr(err, "", 500)
+		sessionItem.Target = models.UserBaseInfo{
+			ID: taskID.Hex(),
+			Nickname: task.Title,
+		}
+	} else if session.Type == models.MessageTypeSystem {
+		sessionItem.Target = models.UserBaseInfo{
+			Nickname: "系统消息",
 		}
 	}
 	if sessionItem.Messages == nil {
