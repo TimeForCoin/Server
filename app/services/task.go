@@ -468,7 +468,6 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 		libs.Assert(isPublisher, "permission_deny", 403)
 		libs.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
 	} else if taskStatus.Status == models.PlayerGiveUp {
-		libs.Assert(!isPublisher, "permission_deny", 403)
 		libs.Assert(taskStatusGet.Status == models.PlayerRunning || taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
 	} else if string(taskStatus.Status) != "" {
 		libs.Assert(false, "not_allow_status", 403)
