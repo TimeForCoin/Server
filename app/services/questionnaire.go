@@ -137,6 +137,8 @@ func (s *questionnaireService) AddAnswer(id, userID primitive.ObjectID, data []m
 	task, err := s.taskModel.GetTaskByID(id)
 	libs.AssertErr(err, "faked_task", 400)
 	libs.Assert(task.Status == models.TaskStatusWait, "not_allow", 403)
+	//_, err := s.model.GetAnswerByUserID(id, userID)
+	//libs.Assert(err != nil, "")
 
 	err = s.model.AddAnswer(id, models.StatisticsSchema{
 		UserID: userID,

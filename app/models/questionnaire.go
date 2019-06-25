@@ -4,6 +4,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // QuestionnaireModel 问卷数据库
@@ -211,4 +212,19 @@ func (model *QuestionnaireModel) AddAnswer(id primitive.ObjectID, statistics Sta
 		return ErrNotExist
 	}
 	return nil
+}
+
+// GetAnswerByUserID 根据用户获取答案
+func (model *QuestionnaireModel) GetAnswerByUserID(id, userID primitive.ObjectID) (StatisticsSchema, error) {
+	ctx, over := GetCtx()
+	defer over()
+	res := QuestionnaireSchema{}
+	err := model.Collection.FindOne(ctx,
+		bson.M{"_id": id, "data.user_id": userID}, options.FindOne().SetProjection(bson.M{"data": 1})).Decode(&res)
+	if err != nil {
+		return StatisticsSchema{}, err
+	} else if len(res.Data) < 1 {
+		return StatisticsSchema{}, ErrNotExist
+	}
+	return res.Data[0], nil
 }

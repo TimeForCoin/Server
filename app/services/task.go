@@ -84,7 +84,7 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	libs.AssertErr(err, "", 500)
 	if publish {
 		status = models.TaskStatusWait
-		libs.Assert(float32(user.Data.Money) > info.RewardValue + 1, "no_money", 403)
+		libs.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) + 1, "no_money", 403)
 	} else {
 		libs.Assert(float32(user.Data.Money) > 1, "no_money", 403)
 	}
@@ -117,7 +117,7 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 
 	if publish {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
-			Money: -int64(info.RewardValue) - 1,
+			Money: -int64(info.RewardValue) * info.MaxPlayer  - 1,
 			Value: -2,
 		})
 	} else {
@@ -168,7 +168,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		info.PublishDate = time.Now().Unix()
 		user, err := s.userModel.GetUserByID(userID)
 		libs.AssertErr(err, "", 500)
-		libs.Assert(float32(user.Data.Money) > info.RewardValue, "no_money", 403)
+		libs.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) , "no_money", 403)
 		libs.Assert(float32(user.Data.Value) > 2, "no_value", 403)
 	} else if info.Status == models.TaskStatusFinish {
 		// 任务已完成
@@ -270,7 +270,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	if info.Status == models.TaskStatusWait {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
-			Money: -int64(info.RewardValue),
+			Money: -int64(info.RewardValue) * info.MaxPlayer ,
 		})
 	} else if addMoney != 0 {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
@@ -462,6 +462,9 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	libs.Assert(task.PlayerCount < task.MaxPlayer, "max_player", 403)
+	user, err := s.userModel.GetUserByID(userID)
+	libs.AssertErr(err, "", 500)
+	libs.Assert(user.Data.Value > 1, "no_value", 403)
 	taskStatus, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
 
 	status := models.PlayerWait
@@ -483,8 +486,7 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 	err = s.model.InsertCount(taskID, models.PlayerCount, 1)
 	libs.AssertErr(err, "", 500)
 
-	userInfo := GetServiceManger().User.GetUserBaseInfo(userID)
-	msg := userInfo.Nickname
+	msg := user.Info.Nickname
 	if status == models.PlayerRunning {
 		msg += "申请加入任务"
 	} else {
@@ -498,6 +500,10 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 		About: userID,
 	})
 	libs.AssertErr(err, "", 500)
+
+	err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+		Value: -1,
+	})
 
 
 	return status == models.PlayerRunning
@@ -566,11 +572,20 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			Content: taskStatus.Note,
 		})
 		libs.AssertErr(err, "", 500)
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Money: int64(task.RewardValue),
+			Value: 5,
+		})
+		libs.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerFinish {
 		_, err = s.messageModel.AddMessage(userID, models.MessageTypeTask, models.MessageSchema{
 			UserID:  taskID,
 			Title:   "很遗憾，任务已失败",
 			Content: taskStatus.Note,
+		})
+		libs.AssertErr(err, "", 500)
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Value: -1,
 		})
 		libs.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerGiveUp {
@@ -584,10 +599,14 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 		libs.AssertErr(err, "", 500)
 		err = s.model.InsertCount(taskID, models.PlayerCount, -1)
 		libs.AssertErr(err, "", 500)
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Value: -3,
+		})
+		libs.AssertErr(err, "", 500)
 	}
 }
 
-// SetTaskStatus
+// SetTaskStatus 设置任务状态
 func (s *taskService) GetTaskStatus(taskID, userID, postUserID primitive.ObjectID) (taskStatus TaskStatus) {
 	taskStatusGet, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
 	libs.AssertErr(err, "faked_status", 403)
