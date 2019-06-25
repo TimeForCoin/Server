@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"github.com/TimeForCoin/Server/app/libs"
 	"reflect"
 	"time"
 
@@ -158,6 +159,8 @@ func (m *UserModel) AddUserByWechat(openid string) (primitive.ObjectID, error) {
 	newUser := makeNewUserSchema()
 	newUser.ID = userID
 	newUser.WechatID = openid
+	newUser.Info.Nickname = "微信用户" + libs.GetRandomString(6)
+	newUser.Info.Avatar = "https://coin-1252808268.cos.ap-guangzhou.myqcloud.com/avatar-5cfe5cab2cfbe5ed600f9665.png"
 	_, err := m.Collection.InsertOne(ctx, newUser)
 	if err != nil {
 		return primitive.ObjectID{}, err

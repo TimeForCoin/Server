@@ -7,35 +7,37 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// ArticleService 公告服务
 type ArticleService interface {
 	GetArticles(page, size int64) (int64, []ArticleBrief)
 	AddArticle(userID primitive.ObjectID, title string, content string, publisher string, images []primitive.ObjectID) primitive.ObjectID
-	GetArticleByID(id primitive.ObjectID) (ArticleDetail)
+	GetArticleByID(id primitive.ObjectID) ArticleDetail
 	SetArticleByID(userID primitive.ObjectID, id primitive.ObjectID, title, content, publisher string, images []primitive.ObjectID)
 }
 
 func newArticleService() ArticleService {
 	return &articleService{
-		model:		models.GetModel().Article,
-		userModel:	models.GetModel().User,
-		fileModel:	models.GetModel().File,
+		model:     models.GetModel().Article,
+		userModel: models.GetModel().User,
+		fileModel: models.GetModel().File,
 	}
 }
 
 type articleService struct {
-	model		*models.ArticleModel
-	userModel	*models.UserModel
-	fileModel	*models.FileModel
+	model     *models.ArticleModel
+	userModel *models.UserModel
+	fileModel *models.FileModel
 }
 
 // ArticleBrief 公告简介
 type ArticleBrief struct {
-	ID		string
-	Title	string
-	Publisher	string
-	Images 	[]ImagesData
+	ID        string
+	Title     string
+	Publisher string
+	Images    []ImagesData
 }
 
+// ArticleDetail 公告详情
 type ArticleDetail struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"` // ID
 	ViewCount int64              `bson:"view_count"`    // 文章阅读数
@@ -43,12 +45,12 @@ type ArticleDetail struct {
 	Content   string             // 文章内容
 	Publisher string             // 发布者名字
 	Date      int64              // 发布时间
-	Images     []ImagesData // 首页图片
+	Images    []ImagesData       // 首页图片
 }
 
 // GetArticles 获取公告列表
-func (s *articleService) GetArticles(page, size int64) (count int64, articleList []ArticleBrief){
-	articles, count, err := s.model.GetArticles((page - 1) * size, size)
+func (s *articleService) GetArticles(page, size int64) (count int64, articleList []ArticleBrief) {
+	articles, count, err := s.model.GetArticles((page-1)*size, size)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	for _, article := range articles {
 		var imagesData []ImagesData
@@ -56,15 +58,15 @@ func (s *articleService) GetArticles(page, size int64) (count int64, articleList
 		libs.AssertErr(err, "", iris.StatusInternalServerError)
 		for _, image := range images {
 			imagesData = append(imagesData, ImagesData{
-				ID:		image.ID.Hex(),
-				URL:	image.URL,
+				ID:  image.ID.Hex(),
+				URL: image.URL,
 			})
 		}
 		brief := ArticleBrief{
-			ID:			article.ID.Hex(),
-			Title:		article.Title,
-			Publisher:	article.Publisher,
-			Images:		imagesData,
+			ID:        article.ID.Hex(),
+			Title:     article.Title,
+			Publisher: article.Publisher,
+			Images:    imagesData,
 		}
 		articleList = append(articleList, brief)
 	}
@@ -83,8 +85,8 @@ func (s *articleService) AddArticle(userID primitive.ObjectID, title string, con
 	var files []FileBaseInfo
 	for _, image := range images {
 		files = append(files, FileBaseInfo{
-			ID:		image,
-			Type:	models.FileImage,
+			ID:   image,
+			Type: models.FileImage,
 		})
 	}
 	GetServiceManger().File.BindFilesToTask(userID, articleID, files)
@@ -95,7 +97,7 @@ func (s *articleService) AddArticle(userID primitive.ObjectID, title string, con
 }
 
 // GetArticleByID 根据ID获取公告详情
-func (s *articleService) GetArticleByID(id primitive.ObjectID) (ArticleDetail){
+func (s *articleService) GetArticleByID(id primitive.ObjectID) ArticleDetail {
 	article, err := s.model.GetArticleByID(id)
 	libs.AssertErr(err, "faked_article", 403)
 	var imagesData []ImagesData
@@ -103,18 +105,18 @@ func (s *articleService) GetArticleByID(id primitive.ObjectID) (ArticleDetail){
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 	for _, image := range images {
 		imagesData = append(imagesData, ImagesData{
-			ID:		image.ID.Hex(),
-			URL:	image.URL,
+			ID:  image.ID.Hex(),
+			URL: image.URL,
 		})
 	}
 	return ArticleDetail{
-		ID:			id,
-		ViewCount:	article.ViewCount,
-		Title:		article.Title,
-		Content:	article.Content,
-		Publisher:	article.Publisher,
-		Date:		article.Date,
-		Images:		imagesData,
+		ID:        id,
+		ViewCount: article.ViewCount,
+		Title:     article.Title,
+		Content:   article.Content,
+		Publisher: article.Publisher,
+		Date:      article.Date,
+		Images:    imagesData,
 	}
 }
 
@@ -145,8 +147,8 @@ func (s *articleService) SetArticleByID(userID primitive.ObjectID, id primitive.
 			}
 			if !exist {
 				imageFiles = append(imageFiles, FileBaseInfo{
-					ID:		image,
-					Type:	models.FileImage,
+					ID:   image,
+					Type: models.FileImage,
 				})
 			}
 		}
