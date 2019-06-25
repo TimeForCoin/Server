@@ -56,7 +56,7 @@ type QuestionnaireStatisticsRes struct {
 // AddQuestionnaire 添加问卷
 func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema) {
 	task, err := s.taskModel.GetTaskByID(info.TaskID)
-	libs.AssertErr(err, "faked_task", 400)
+	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Type == models.TaskTypeQuestionnaire, "not_allow_type", 403)
 	libs.Assert(task.Publisher == info.Owner, "permission_deny", 403)
 
@@ -70,7 +70,7 @@ func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema)
 // SetQuestionnaireInfo 设置问卷信息
 func (s *questionnaireService) SetQuestionnaireInfo(userID primitive.ObjectID, info models.QuestionnaireSchema) {
 	task, err := s.taskModel.GetTaskByID(info.TaskID)
-	libs.AssertErr(err, "faked_task", 400)
+	libs.AssertErr(err, "faked_task", 403)
 	libs.Assert(task.Publisher == userID, "permission_deny", 403)
 	libs.Assert(task.Status == models.TaskStatusDraft || task.Status == models.TaskStatusWait, "not_allow", 403)
 
@@ -85,7 +85,7 @@ func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (
 		return QuestionnaireDetail{}
 	}
 	owner, err := s.cacheModel.GetUserBaseInfo(questionnaire.Owner)
-	libs.AssertErr(err, "faked_task", 400)
+	libs.AssertErr(err, "faked_task", 403)
 	detail = QuestionnaireDetail{
 		TaskID:        questionnaire.TaskID.Hex(),
 		Title:         questionnaire.Title,

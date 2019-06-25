@@ -111,6 +111,10 @@ func InitDB(config *libs.DBConfig) error {
 		return err
 	}
 	// 初始化 Model
+	// 公告数据库
+	model.Article = &ArticleModel{
+		Collection: model.db.Collection("article"),
+	}
 	// 日志数据库
 	model.Log = &LogModel{
 		Collection: model.db.Collection("logs"),
