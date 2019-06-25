@@ -64,10 +64,8 @@ func validTask(req AddTaskReq, new bool) {
 		}
 	}
 
-
-
-	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
-	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
+	libs.Assert(len(req.Title) < 128, "title_too_long", 403)
+	libs.Assert(len(req.Content) < 1024, "content_too_long", 403)
 	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
 
 	for _, l := range req.Location {
@@ -75,7 +73,7 @@ func validTask(req AddTaskReq, new bool) {
 	}
 
 	for _, t := range req.Tags {
-		libs.Assert(len(t) < 16, "tag_too_long", 403)
+		libs.Assert(len(t) < 32, "tag_too_long", 403)
 	}
 
 	for _, file := range req.Images {

@@ -183,9 +183,15 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	libs.Assert(info.MaxPlayer == 0 || info.MaxPlayer > task.PlayerCount, "not_allow_max_player", 403)
 
+	if info.Type != "" {
+		if task.Type == models.TaskTypeQuestionnaire || info.Type == models.TaskTypeQuestionnaire {
+			libs.Assert(info.Type == task.Type, "not_allow_change_type")
+		}
+	}
+
 	addMoney := 0
 	if task.Status != models.TaskStatusDraft {
-		libs.Assert(info.Reward == "" || task.Reward == info.Reward, "now_allow_change_reward_type", 403)
+		libs.Assert(info.Reward == "" || task.Reward == info.Reward, "not_allow_change_reward_type", 403)
 		if task.Reward != models.RewardObject {
 			if info.RewardValue != 0 {
 				libs.Assert(info.RewardValue >= task.RewardValue, "not_allow_reward_value", 403)

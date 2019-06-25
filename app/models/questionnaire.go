@@ -146,7 +146,7 @@ func (model *QuestionnaireModel) SetQuestionnaireInfoByID(id primitive.ObjectID,
 	updateItem["anonymous"] = info.Anonymous
 	res, err := model.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
-		bson.M{"$set": updateItem})
+		bson.M{"$set": updateItem}, options.Update().SetUpsert(true))
 	if err != nil {
 		return
 	} else if res.MatchedCount < 1 {

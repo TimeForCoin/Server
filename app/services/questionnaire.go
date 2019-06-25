@@ -81,7 +81,9 @@ func (s *questionnaireService) SetQuestionnaireInfo(userID primitive.ObjectID, i
 // GetQuestionnaireInfoByID 获取问卷信息
 func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (detail QuestionnaireDetail) {
 	questionnaire, err := s.model.GetQuestionnaireInfoByID(id)
-	libs.AssertErr(err, "faked_task", 400)
+	if err != nil {
+		return QuestionnaireDetail{}
+	}
 	owner, err := s.cacheModel.GetUserBaseInfo(questionnaire.Owner)
 	libs.AssertErr(err, "faked_task", 400)
 	detail = QuestionnaireDetail{
