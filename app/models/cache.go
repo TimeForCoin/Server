@@ -222,3 +222,27 @@ func (c *CacheModel) CheckCertification(userID primitive.ObjectID, email, code s
 	err = c.Redis.Del("certification-" + userID.Hex()).Err()
 	return true, true
 }
+
+// SetSessionUser 设置会话用户ID
+func (c *CacheModel) SetSessionUser(session string, userID primitive.ObjectID) error{
+	_, err := c.Redis.Set("login-"+session, userID.Hex(), time.Minute * 10).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetSessionUser 获取用户ID
+func (c *CacheModel) GetSessionUser(session string) (primitive.ObjectID, error) {
+	user, err := c.Redis.Get("login-"+session).Result()
+	if err != nil {
+		return primitive.NilObjectID, err
+	} else if user == "" {
+		return primitive.NilObjectID, ErrNotExist
+	}
+	userID, err := primitive.ObjectIDFromHex(user)
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return userID, nil
+}

@@ -5,9 +5,11 @@ GET http://127.0.0.1:30233/session
 GET http://127.0.0.1:30233/session/violet?code=8f48c80107e95a232629c7301f3ac3300eb4220dbf7b38a373dfec4ffd07cee59a286576532e004ea20739b68a80cd8763bfa2111725728c879da6dadbadc5df6edc6ec47717a0edee13c2264e29160fe58b312dcb531c1d228f7cd6bcd3f824d8&state=9b3291d1427aa3d43a6738da6ed2e5c966d962f9d1b96002a2d2
 
 ### 获取登陆状态
-// GET http://127.0.0.1:30233/session/status
-https://coin.zhenly.cn/api/session/status
+GET http://127.0.0.1:30233/session/status
+// https://coin.zhenly.cn/api/session/status
 
+### 获取微信登陆二维码
+GET http://127.0.0.1:30233/session/wechat
 ### 获取用户信息
 GET http://127.0.0.1:30233/users/info/me
 //GET https://coin.zhenly.cn/api/users/info/me
@@ -304,3 +306,4 @@ Content-Type: application/json
 
 ### 获取活动二维码
 GET http://127.0.0.1:30233/tasks/5d01295ccf5a6a31b607f88c/wechat
+

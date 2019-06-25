@@ -23,6 +23,8 @@ type UserService interface {
 	SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema)
 	LoginByViolet(code string) (id string, new bool)
 	LoginByWechat(code string) (id string, new bool)
+	LoginByWechatOnPC(userID, sessionID primitive.ObjectID)
+	GetSessionUser(sessionID primitive.ObjectID) primitive.ObjectID
 	SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType)
 	SearchUser(key string, page, size int64) []UserDetail
 	GetUserCollections(id primitive.ObjectID, page, size int64, sortRule string, taskType string,
@@ -197,6 +199,20 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		})
 	}
 	return userID.Hex(), true
+}
+
+// 微信扫码登陆
+func (s *userService) LoginByWechatOnPC(userID,sessionID primitive.ObjectID) {
+	err := s.cache.SetSessionUser(sessionID.Hex(), userID)
+	libs.AssertErr(err, "", 500)
+}
+
+func (s *userService) GetSessionUser(session primitive.ObjectID ) primitive.ObjectID {
+	id, err := s.cache.GetSessionUser(session.Hex())
+	if err != nil {
+		return primitive.NilObjectID
+	}
+	return id
 }
 
 // LoginByWechat 使用微信登陆

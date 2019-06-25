@@ -4,6 +4,8 @@ import (
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/kataras/iris"
+	"github.com/skip2/go-qrcode"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // SessionController 用户登陆状态控制
@@ -93,6 +95,21 @@ func (c *SessionController) GetStatus() int {
 	if status == "" {
 		status = "none"
 	}
+	if status == "wechat_qr" {
+		session := c.Session.GetString("qr-code")
+		sessionID, err := primitive.ObjectIDFromHex(session)
+		if err != nil {
+			status = "none"
+			c.Session.Set("login", status)
+		} else {
+			id := c.Service.GetSessionUser(sessionID)
+			if id != primitive.NilObjectID {
+				c.Session.Set("id", id.Hex())
+				status = "wechat_pc"
+				c.Session.Set("login", status)
+			}
+		}
+	}
 	c.JSON(GetSessionStatusRes{
 		Status: status,
 	})
@@ -113,13 +130,28 @@ type GetWeChatImageRes struct {
 
 // GetWechat 获取微信登陆二维码
 func (c *SessionController) GetWechat() int {
-	// id := c.checkLogin()
-	// TODO 微信扫码登陆
-	image, err := libs.GetWeChat().MakeImage("hello")
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	sessionID := primitive.NewObjectID()
+	png, err := qrcode.Encode(sessionID.Hex(),  qrcode.Medium, 256)
+	c.Session.Set("qr-code", sessionID.Hex())
+	c.Session.Set("login", "wechat_qr")
+	libs.AssertErr(err, "", 500)
+	_, err = c.Ctx.Write(png)
+	libs.AssertErr(err, "", 500)
+	return iris.StatusOK
+}
 
-	c.JSON(GetWeChatImageRes{
-		Data: image,
-	})
+type PutWechatReq struct {
+	Session string
+}
+
+// PutWechat 微信扫码登陆
+func (c *SessionController) PutWechat() int {
+	userID := c.checkLogin()
+	req := PutWechatReq{}
+	err := c.Ctx.ReadJSON(&req)
+	libs.AssertErr(err, "invalid_value", 400)
+	sessionID, err := primitive.ObjectIDFromHex(req.Session)
+	libs.AssertErr(err, "invalid_session", 400)
+	c.Service.LoginByWechatOnPC(userID, sessionID)
 	return iris.StatusOK
 }
