@@ -2,6 +2,7 @@ package services
 
 import (
 	"strings"
+	"time"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
@@ -84,7 +85,10 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	if publish {
 		status = models.TaskStatusWait
 		libs.Assert(float32(user.Data.Money) > info.RewardValue + 1, "no_money", 403)
+	} else {
+		libs.Assert(float32(user.Data.Money) > 1, "no_money", 403)
 	}
+	libs.Assert(float32(user.Data.Value) > 2, "no_value", 403)
 
 	taskID := primitive.NewObjectID()
 
@@ -103,10 +107,25 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	}
 	GetServiceManger().File.BindFilesToTask(userID, taskID, files)
 
+
+
 	id, err := s.model.AddTask(taskID, userID, status)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
 	err = s.model.SetTaskInfoByID(id, info)
+	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	if publish {
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Money: -int64(info.RewardValue) - 1,
+			Value: -2,
+		})
+	} else {
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Money: - 1,
+			Value: -2,
+		})
+	}
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
 
 	return id
@@ -146,6 +165,11 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	} else if info.Status == models.TaskStatusWait {
 		// 发布任务
 		libs.Assert(task.Status == models.TaskStatusDraft, "not_allow_status", 403)
+		info.PublishDate = time.Now().Unix()
+		user, err := s.userModel.GetUserByID(userID)
+		libs.AssertErr(err, "", 500)
+		libs.Assert(float32(user.Data.Money) > info.RewardValue, "no_money", 403)
+		libs.Assert(float32(user.Data.Value) > 2, "no_value", 403)
 	} else if info.Status == models.TaskStatusFinish {
 		// 任务已完成
 		players,_, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
@@ -153,6 +177,8 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		for _, status := range players {
 			libs.Assert(status.Status != models.PlayerRunning && status.Status != models.PlayerWait, "not_allow_finish", 403)
 		}
+	} else if info.Status == models.TaskStatusDraft {
+		
 	} else if info.Status != "" {
 		libs.Assert(false, "not_allow_status", 403)
 	} else {
@@ -164,8 +190,13 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	libs.Assert(info.MaxPlayer == 0 || info.MaxPlayer > task.PlayerCount, "not_allow_max_player", 403)
 
-	if task.Status != models.TaskStatusDraft && task.Reward != models.RewardObject {
-		libs.Assert(info.RewardValue > task.RewardValue, "not_allow_reward_value", 403)
+	addMoney := 0
+	if task.Status != models.TaskStatusDraft {
+		libs.Assert(task.Reward == info.Reward, "now_allow_change_reward_type", 403)
+		if task.Reward != models.RewardObject {
+			libs.Assert(info.RewardValue > task.RewardValue, "not_allow_reward_value", 403)
+			addMoney = int(info.RewardValue - task.RewardValue)
+		}
 	}
 
 	// 更新附件
@@ -243,6 +274,16 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	err = s.model.SetTaskInfoByID(taskID, info)
 	libs.AssertErr(err, "", iris.StatusInternalServerError)
+
+	if info.Status == models.TaskStatusWait {
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Money: -int64(info.RewardValue),
+		})
+	} else if addMoney != 0 {
+		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
+			Money: -int64(addMoney),
+		})
+	}
 
 	// 删除无用文件
 	for _, file := range toRemove {
