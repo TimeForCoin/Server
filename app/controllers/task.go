@@ -44,19 +44,27 @@ type AddTaskReq struct {
 	Publish      bool     `json:"publish"`
 }
 
-func validTask(req AddTaskReq) {
-	libs.Assert(models.TaskType(req.Type) == models.TaskTypeInfo ||
-		models.TaskType(req.Type) == models.TaskTypeQuestionnaire ||
-		models.TaskType(req.Type) == models.TaskTypeRunning, "invalid_type", 400)
+func validTask(req AddTaskReq, new bool) {
+	if req.Type != "" || new {
+		libs.Assert(models.TaskType(req.Type) == models.TaskTypeInfo ||
+			models.TaskType(req.Type) == models.TaskTypeQuestionnaire ||
+			models.TaskType(req.Type) == models.TaskTypeRunning, "invalid_type", 400)
+	}
 
-	libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
+	if new {
+		libs.Assert(req.Title != "", "invalid_title", 400)
+		libs.Assert(req.Content != "", "invalid_content", 400)
+		libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
+		libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
+		libs.CheckDateDuring(req.StartDate, req.EndDate)
+	} else {
+		libs.Assert(req.MaxPlayer >= 0, "invalid_max_player", 400)
+		if req.StartDate != 0 || req.EndDate != 0 {
+			libs.CheckDateDuring(req.StartDate, req.EndDate)
+		}
+	}
 
-	libs.Assert(req.Title != "", "invalid_title", 400)
-	libs.Assert(req.Content != "", "invalid_content", 400)
 
-	libs.CheckDateDuring(req.StartDate, req.EndDate)
-
-	libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
 
 	libs.Assert(len(req.Title) < 64, "title_too_long", 403)
 	libs.Assert(len(req.Content) < 512, "content_too_long", 403)
@@ -87,7 +95,7 @@ func (c *TaskController) Post() int {
 	req := AddTaskReq{}
 	err := c.Ctx.ReadJSON(&req)
 	libs.Assert(err == nil, "invalid_value", 400)
-	validTask(req)
+	validTask(req, true)
 
 	taskType := models.TaskType(req.Type)
 	taskReward := models.RewardType(req.Reward)
@@ -152,7 +160,7 @@ func (c *TaskController) PutBy(id string) int {
 	req := AddTaskReq{}
 	err = c.Ctx.ReadJSON(&req)
 	libs.AssertErr(err, "invalid_value", 400)
-	validTask(req)
+	validTask(req, false)
 
 	var images []primitive.ObjectID
 	for _, file := range req.Images {

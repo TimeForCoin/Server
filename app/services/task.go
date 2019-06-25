@@ -185,10 +185,12 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	addMoney := 0
 	if task.Status != models.TaskStatusDraft {
-		libs.Assert(task.Reward == info.Reward, "now_allow_change_reward_type", 403)
+		libs.Assert(info.Reward == "" || task.Reward == info.Reward, "now_allow_change_reward_type", 403)
 		if task.Reward != models.RewardObject {
-			libs.Assert(info.RewardValue > task.RewardValue, "not_allow_reward_value", 403)
-			addMoney = int(info.RewardValue - task.RewardValue)
+			if info.RewardValue != 0 {
+				libs.Assert(info.RewardValue >= task.RewardValue, "not_allow_reward_value", 403)
+				addMoney = int(info.RewardValue - task.RewardValue)
+			}
 		}
 	}
 
