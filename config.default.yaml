@@ -1,23 +1,53 @@
+# 开发环境
 dev: true
+
+# Iris 网络配置
 http:
   host: 127.0.0.1
-  port: 30233
+  port: 12345
   session:
-    key: key
+    key: my-key
     expires: 30
+
+# MongoDB 主数据库配置
 db:
   host: 127.0.0.1
-  port: 27017
-  db: db
+  port: 12346
+  db: name
   user: user
   password: password
+
+# Redis 缓存数据库配置
 redis:
   host: 127.0.0.1
-  port: 6379
+  port: 12347
   password: password
-  db: 0
+  db: 1
+  session: 0
+
+# Violet 授权系统配置
 violet:
-  id: 5cd999e153b5735e91249c3b5
-  key: viu26hpfee8cxfaykmrea4
-  host: https://example.com/api
-  callback: https://my.website.com/auth
+  id: id
+  key: key
+  host: https://xxx.com/api
+  callback: http://xxx.com
+
+# 微信小程序配置
+wechat:
+  id: id
+  secret: secret
+
+# 腾讯云对象存储 配置
+cos:
+  id: id
+  secret: secret
+  url: https://xxxx.myqcloud.com
+
+# 邮件系统配置
+email:
+  host: smtp.example.com
+  port: 587
+  user: example@example.com
+  password: password
+  from: xxxxx <example@example.com>
+
