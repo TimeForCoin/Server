@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"strings"
 	"time"
 
@@ -81,14 +82,14 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	images, attachments []primitive.ObjectID, publish bool) primitive.ObjectID {
 	status := models.TaskStatusDraft
 	user, err := s.userModel.GetUserByID(userID)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	if publish {
 		status = models.TaskStatusWait
-		libs.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) + 1, "no_money", 403)
+		utils.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) + 1, "no_money", 403)
 	} else {
-		libs.Assert(float32(user.Data.Money) > 1, "no_money", 403)
+		utils.Assert(float32(user.Data.Money) > 1, "no_money", 403)
 	}
-	libs.Assert(float32(user.Data.Value) > 2, "no_value", 403)
+	utils.Assert(float32(user.Data.Value) > 2, "no_value", 403)
 
 	taskID := primitive.NewObjectID()
 
@@ -110,10 +111,10 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 
 
 	id, err := s.model.AddTask(taskID, userID, status)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	err = s.model.SetTaskInfoByID(id, info)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	if publish {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
@@ -126,7 +127,7 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 			Value: -2,
 		})
 	}
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	return id
 }
@@ -134,67 +135,67 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models.TaskSchema,
 	images, attachments []primitive.ObjectID) {
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Publisher == userID, "permission_deny", 403)
 
 	// 状态修改
 	if info.Status == models.TaskStatusClose {
 		// 关闭任务
-		libs.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
+		utils.Assert(task.Status == models.TaskStatusWait, "not_allow_status", 403)
 
 		taskStatus, _, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		// 发送通知消息
 		for _, status := range taskStatus {
 			_, err = s.messageModel.AddMessage(status.Player, models.MessageTypeTask, models.MessageSchema{
 				UserID: taskID,
 				Title:  "任务已关闭",
 			})
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 			err = s.taskStatusModel.SetTaskStatus(status.ID, models.TaskStatusSchema{
 				Status: models.PlayerClose,
 			})
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 		}
 
 		err = s.model.SetTaskInfoByID(taskID, models.TaskSchema{
 			Status: models.TaskStatusClose,
 		})
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		return
 	} else if info.Status == models.TaskStatusWait {
 		// 发布任务
-		libs.Assert(task.Status == models.TaskStatusDraft, "not_allow_status", 403)
+		utils.Assert(task.Status == models.TaskStatusDraft, "not_allow_status", 403)
 		info.PublishDate = time.Now().Unix()
 		user, err := s.userModel.GetUserByID(userID)
-		libs.AssertErr(err, "", 500)
-		libs.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) , "no_money", 403)
-		libs.Assert(float32(user.Data.Value) > 2, "no_value", 403)
+		utils.AssertErr(err, "", 500)
+		utils.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) , "no_money", 403)
+		utils.Assert(float32(user.Data.Value) > 2, "no_value", 403)
 	} else if info.Status == models.TaskStatusFinish {
 		// 任务已完成
 		players,_, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		for _, status := range players {
-			libs.Assert(status.Status != models.PlayerRunning && status.Status != models.PlayerWait, "not_allow_finish", 403)
+			utils.Assert(status.Status != models.PlayerRunning && status.Status != models.PlayerWait, "not_allow_finish", 403)
 		}
 	} else if info.Status != models.TaskStatusDraft && info.Status != "" {
-		libs.Assert(false, "not_allow_status", 403)
+		utils.Assert(false, "not_allow_status", 403)
 	}
 
-	libs.Assert(info.MaxPlayer == 0 || info.MaxPlayer > task.PlayerCount, "not_allow_max_player", 403)
+	utils.Assert(info.MaxPlayer == 0 || info.MaxPlayer > task.PlayerCount, "not_allow_max_player", 403)
 
 	if info.Type != "" {
 		if task.Type == models.TaskTypeQuestionnaire || info.Type == models.TaskTypeQuestionnaire {
-			libs.Assert(info.Type == task.Type, "not_allow_change_type")
+			utils.Assert(info.Type == task.Type, "not_allow_change_type")
 		}
 	}
 
 	addMoney := 0
 	if task.Status != models.TaskStatusDraft {
-		libs.Assert(info.Reward == "" || task.Reward == info.Reward, "not_allow_change_reward_type", 403)
+		utils.Assert(info.Reward == "" || task.Reward == info.Reward, "not_allow_change_reward_type", 403)
 		if task.Reward != models.RewardObject {
 			if info.RewardValue != 0 {
-				libs.Assert(info.RewardValue >= task.RewardValue, "not_allow_reward_value", 403)
+				utils.Assert(info.RewardValue >= task.RewardValue, "not_allow_reward_value", 403)
 				addMoney = int(info.RewardValue - task.RewardValue)
 			}
 		}
@@ -206,7 +207,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	var imageFiles []FileBaseInfo
 	if len(images) > 0 {
 		oldImages, err := s.fileModel.GetFileByContent(taskID, models.FileImage)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		for _, image := range images {
 			// 原来是否存在
 			exist := false
@@ -240,7 +241,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	var attachmentFiles []FileBaseInfo
 	if len(attachments) > 0 {
 		oldAttachment, err := s.fileModel.GetFileByContent(taskID, models.FileFile)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		for _, attachment := range attachments {
 			// 原来是否存在
 			exist := false
@@ -274,7 +275,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 	GetServiceManger().File.BindFilesToTask(userID, taskID, append(imageFiles, attachmentFiles...))
 
 	err = s.model.SetTaskInfoByID(taskID, info)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	if info.Status == models.TaskStatusWait {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
@@ -296,7 +297,7 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 func (s *taskService) GetTaskByID(taskID primitive.ObjectID, userID string, biref bool) (task TaskDetail) {
 	var err error
 	taskItem, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
+	utils.AssertErr(err, "faked_task", 403)
 	return s.makeTaskDetail(taskItem, userID, biref)
 }
 
@@ -353,7 +354,7 @@ func (s *taskService) GetTasks(page, size int64, sortRule, taskType,
 	}
 
 	tasks, taskCount, err := s.model.GetTasks(sortRule, taskIDs, taskTypes, statuses, rewards, keywords, user, (page-1)*size, size)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	for _, t := range tasks {
 		taskCards = append(taskCards, s.makeTaskDetail(t, userID, biref))
@@ -365,11 +366,11 @@ func (s *taskService) makeTaskDetail(task models.TaskSchema, userID string, bire
 	res.TaskSchema = &task
 
 	user, err := s.cache.GetUserBaseInfo(task.Publisher)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	res.Publisher = user
 
 	images, err := s.fileModel.GetFileByContent(task.ID, models.FileImage)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	res.Images = []ImagesData{}
 	for _, i := range images {
 		res.Images = append(res.Images, ImagesData{
@@ -382,7 +383,7 @@ func (s *taskService) makeTaskDetail(task models.TaskSchema, userID string, bire
 	}
 	if !biref {
 		attachments, err := s.fileModel.GetFileByContent(task.ID, models.FileFile)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		res.Attachment = []models.FileSchema{}
 		for _, attachment := range attachments {
 			res.Attachment = append(res.Attachment, attachment)
@@ -403,14 +404,14 @@ func (s *taskService) makeTaskDetail(task models.TaskSchema, userID string, bire
 // RemoveTask 删除任务
 func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
-	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Publisher == userID, "permission_deny", 403)
+	utils.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
 	err = s.model.RemoveTask(taskID)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	// 删除附件
 	files, err := s.fileModel.GetFileByContent(taskID)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	for _, file := range files {
 		GetServiceManger().File.RemoveFile(file.ID)
 	}
@@ -419,60 +420,60 @@ func (s *taskService) RemoveTask(userID, taskID primitive.ObjectID) {
 // AddView 增加任务阅读量
 func (s *taskService) AddView(taskID primitive.ObjectID) {
 	err := s.model.InsertCount(taskID, models.ViewCount, 1)
-	libs.AssertErr(err, "faked_task", 403)
+	utils.AssertErr(err, "faked_task", 403)
 }
 
 // ChangeLike 改变任务点赞状态
 func (s *taskService) ChangeLike(taskID, userID primitive.ObjectID, like bool) {
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	if like {
 		err = s.setModel.AddToSet(userID, taskID, models.SetOfLikeTask)
-		libs.AssertErr(err, "exist_like", 403)
+		utils.AssertErr(err, "exist_like", 403)
 		err = s.model.InsertCount(taskID, models.LikeCount, 1)
 	} else {
 		err = s.setModel.RemoveFromSet(userID, taskID, models.SetOfLikeTask)
-		libs.AssertErr(err, "faked_like", 403)
+		utils.AssertErr(err, "faked_like", 403)
 		err = s.model.InsertCount(taskID, models.LikeCount, -1)
 	}
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // ChangeCollection 改变收藏状态
 func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collect bool) {
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	if collect {
 		err = s.setModel.AddToSet(userID, taskID, models.SetOfCollectTask)
-		libs.AssertErr(err, "exist_collect", 403)
+		utils.AssertErr(err, "exist_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, 1)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		err = s.userModel.AddCollectTask(userID, taskID)
 	} else {
 		err = s.setModel.RemoveFromSet(userID, taskID, models.SetOfCollectTask)
-		libs.AssertErr(err, "faked_collect", 403)
+		utils.AssertErr(err, "faked_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, -1)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		err = s.userModel.RemoveCollectTask(userID, taskID)
 	}
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // AddPlayer 增加参与人员
 func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) bool {
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
-	libs.Assert(task.PlayerCount < task.MaxPlayer, "max_player", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
+	utils.Assert(task.PlayerCount < task.MaxPlayer, "max_player", 403)
 	user, err := s.userModel.GetUserByID(userID)
-	libs.AssertErr(err, "", 500)
-	libs.Assert(user.Data.Value > 1, "no_value", 403)
+	utils.AssertErr(err, "", 500)
+	utils.Assert(user.Data.Value > 1, "no_value", 403)
 	taskStatus, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
 
 	status := models.PlayerWait
@@ -484,15 +485,15 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 		err = s.taskStatusModel.AddTaskStatus(taskID, userID, status, note)
 	} else {
 		// 存在记录
-		libs.Assert(taskStatus.Status == models.PlayerGiveUp, "not_allow_status", 403)
+		utils.Assert(taskStatus.Status == models.PlayerGiveUp, "not_allow_status", 403)
 		err = s.taskStatusModel.SetTaskStatus(taskStatus.ID, models.TaskStatusSchema{
 			Status: status,
 			Note:   note,
 		})
 	}
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.model.InsertCount(taskID, models.PlayerCount, 1)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	msg := user.Info.Nickname
 	if status == models.PlayerRunning {
@@ -507,7 +508,7 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 		Content: taskStatus.Note,
 		About: userID,
 	})
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
 		Value: -1,
@@ -520,33 +521,33 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 // SetTaskStatusInfo 设置参与任务信息
 func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.ObjectID, taskStatus models.TaskStatusSchema) {
 	taskStatusGet, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
-	libs.AssertErr(err, "faked_status", 403)
+	utils.AssertErr(err, "faked_status", 403)
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
+	utils.AssertErr(err, "faked_task", 403)
 	isPublisher := task.Publisher == postUserID
-	libs.Assert(isPublisher || userID == postUserID, "permission_deny", 403)
+	utils.Assert(isPublisher || userID == postUserID, "permission_deny", 403)
 
 	// 状态修改
 	if taskStatus.Status == models.PlayerRunning {
-		libs.Assert(isPublisher, "permission_deny", 403)
-		libs.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
+		utils.Assert(isPublisher, "permission_deny", 403)
+		utils.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
 	} else if taskStatus.Status == models.PlayerFinish || taskStatus.Status == models.PlayerFailure {
-		libs.Assert(isPublisher, "permission_deny", 403)
-		libs.Assert(taskStatusGet.Status == models.PlayerRunning, "not_allow_status", 403)
+		utils.Assert(isPublisher, "permission_deny", 403)
+		utils.Assert(taskStatusGet.Status == models.PlayerRunning, "not_allow_status", 403)
 	} else if taskStatus.Status == models.PlayerRefuse {
-		libs.Assert(isPublisher, "permission_deny", 403)
-		libs.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
+		utils.Assert(isPublisher, "permission_deny", 403)
+		utils.Assert(taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
 	} else if taskStatus.Status == models.PlayerGiveUp {
-		libs.Assert(taskStatusGet.Status == models.PlayerRunning || taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
+		utils.Assert(taskStatusGet.Status == models.PlayerRunning || taskStatusGet.Status == models.PlayerWait, "not_allow_status", 403)
 	} else if string(taskStatus.Status) != "" {
-		libs.Assert(false, "not_allow_status", 403)
+		utils.Assert(false, "not_allow_status", 403)
 	}
 
 	// 允许修改的信息
 	if isPublisher {
-		libs.Assert(taskStatus.Score == 0 && taskStatus.Feedback == "", "permission_deny", 403)
+		utils.Assert(taskStatus.Score == 0 && taskStatus.Feedback == "", "permission_deny", 403)
 	} else {
-		libs.Assert(taskStatus.Degree == 0 && taskStatus.Remark == "", "permission_deny", 403)
+		utils.Assert(taskStatus.Degree == 0 && taskStatus.Remark == "", "permission_deny", 403)
 	}
 
 	err = s.taskStatusModel.SetTaskStatus(taskStatusGet.ID, models.TaskStatusSchema{
@@ -556,7 +557,7 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 		Score:    taskStatus.Score,
 		Feedback: taskStatus.Feedback,
 	})
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	// 发送消息
 	if taskStatus.Status == models.PlayerRefuse {
@@ -565,37 +566,37 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			Title:   "你的任务申请被拒绝了",
 			Content: taskStatus.Note,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerRunning {
 		_, err = s.messageModel.AddMessage(userID, models.MessageTypeTask, models.MessageSchema{
 			UserID:  taskID,
 			Title:   "你的任务申请已通过",
 			Content: taskStatus.Note,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerFinish {
 		_, err = s.messageModel.AddMessage(userID, models.MessageTypeTask, models.MessageSchema{
 			UserID:  taskID,
 			Title:   "恭喜你，任务已完成",
 			Content: taskStatus.Note,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
 			Money: int64(task.RewardValue),
 			Value: 5,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerFinish {
 		_, err = s.messageModel.AddMessage(userID, models.MessageTypeTask, models.MessageSchema{
 			UserID:  taskID,
 			Title:   "很遗憾，任务已失败",
 			Content: taskStatus.Note,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
 			Value: -1,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	} else if taskStatus.Status == models.PlayerGiveUp {
 		user := GetServiceManger().User.GetUserBaseInfo(userID)
 		_, err = s.messageModel.AddMessage(task.Publisher, models.MessageTypeTask, models.MessageSchema{
@@ -604,33 +605,33 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			Content: taskStatus.Note,
 			About:   userID,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		err = s.model.InsertCount(taskID, models.PlayerCount, -1)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
 			Value: -3,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	}
 }
 
 // SetTaskStatus 设置任务状态
 func (s *taskService) GetTaskStatus(taskID, userID, postUserID primitive.ObjectID) (taskStatus TaskStatus) {
 	taskStatusGet, err := s.taskStatusModel.GetTaskStatus(userID, taskID)
-	libs.AssertErr(err, "faked_status", 403)
+	utils.AssertErr(err, "faked_status", 403)
 	task, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Publisher == postUserID || userID == postUserID, "permission_deny", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Publisher == postUserID || userID == postUserID, "permission_deny", 403)
 	taskStatus.TaskStatusSchema = &taskStatusGet
 	userPlayer, err := s.cache.GetUserBaseInfo(taskStatusGet.Player)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	taskStatus.Player = userPlayer
 	return
 }
 
 func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status string, page, size int64) (taskCount int64, taskStatusList []TaskStatus) {
 	_, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
+	utils.AssertErr(err, "faked_task", 403)
 	var statuses []models.PlayerStatus
 	split := strings.Split(status, ",")
 	for _, str := range split {
@@ -642,13 +643,13 @@ func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status string, pa
 	}
 
 	taskStatuses, taskCount, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, statuses, (page-1)*size, size)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	for i, t := range taskStatuses {
 		var taskStatus TaskStatus
 		taskStatus.TaskStatusSchema = &taskStatuses[i]
 
 		userPlayer, err := s.cache.GetUserBaseInfo(t.Player)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		taskStatus.Player = userPlayer
 
 		taskStatusList = append(taskStatusList, taskStatus)
@@ -659,19 +660,19 @@ func (s *taskService) GetTaskPlayer(taskID primitive.ObjectID, status string, pa
 // 获取小程序码
 func (s *taskService) GetQRCode(taskID primitive.ObjectID) string {
 	_, err := s.model.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_task", 403)
+	utils.AssertErr(err, "faked_task", 403)
 	image, err := s.fileModel.GetFileByContent(taskID, models.FileQRCode)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	if len(image) == 0 {
 		// 不存在记录
 		base64, err := libs.GetWeChat().MakeImage(taskID.Hex())
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 
 		fileID := primitive.NewObjectID()
 		// 上传到腾讯云
 		cosName := "qr_code-" + taskID.Hex() + "-" + fileID.Hex() + ".png"
 		url, err := libs.GetCOS().SaveBase64File(cosName, base64)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 
 		// 保存到数据库
 		err = s.fileModel.AddFile(models.FileSchema{
@@ -686,7 +687,7 @@ func (s *taskService) GetQRCode(taskID primitive.ObjectID) string {
 			Hash:    fileID.Hex(),
 			COSName: cosName,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		return url
 	}
 	return image[0].URL

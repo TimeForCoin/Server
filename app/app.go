@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"os"
 
 	"github.com/TimeForCoin/Server/app/controllers"
@@ -12,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func initService(config libs.Config) {
+func initService(config utils.Config) {
 	// 初始化数据库
 	if err := models.InitDB(&config.Db); err != nil {
 		panic(err)
@@ -41,7 +42,7 @@ func Run(configPath string) {
 	// 初始化日志
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	// 读取配置
-	var config libs.Config
+	var config utils.Config
 	config.LoadConf(configPath)
 	// 初始化各种服务
 	initService(config)

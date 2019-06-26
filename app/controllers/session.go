@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/skip2/go-qrcode"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,7 +24,7 @@ func (c *SessionController) Get() int {
 	loginURL, state := c.Service.GetLoginURL()
 	c.Session.Set("state", state)
 	c.Session.Set("login", "running")
-	libs.JSON(c.Ctx, GetSessionRes{
+	utils.JSON(c.Ctx, GetSessionRes{
 		URL: loginURL,
 	})
 	return iris.StatusOK
@@ -40,14 +40,14 @@ func (c *SessionController) GetViolet() int {
 	}()
 	code := c.Ctx.FormValue("code")
 	state := c.Ctx.FormValue("state")
-	libs.Assert(code != "" && state != "", "登陆失败，请重试")
+	utils.Assert(code != "" && state != "", "登陆失败，请重试")
 
 	rightState := c.Session.GetString("state")
-	libs.Assert(state == rightState, "状态校验失败，请重试")
+	utils.Assert(state == rightState, "状态校验失败，请重试")
 	c.Session.Delete("state")
 
 	id, _ := c.Service.LoginByViolet(code)
-	libs.Assert(id != "", "登陆已过期，请重试")
+	utils.Assert(id != "", "登陆已过期，请重试")
 
 	c.Session.Set("id", id)
 	c.Session.Set("login", "violet")
@@ -68,7 +68,7 @@ type PostWechatReq struct {
 func (c *SessionController) PostWechat() int {
 	req := PostWechatReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil && req.Code != "", "invalid_code", 400)
+	utils.Assert(err == nil && req.Code != "", "invalid_code", 400)
 
 	id, newUser := c.Service.LoginByWechat(req.Code)
 	c.JSON(PostWechatRes{
@@ -134,9 +134,9 @@ func (c *SessionController) GetWechat() int {
 	png, err := qrcode.Encode(sessionID.Hex(),  qrcode.Medium, 256)
 	c.Session.Set("qr-code", sessionID.Hex())
 	c.Session.Set("login", "wechat_qr")
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	_, err = c.Ctx.Write(png)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	return iris.StatusOK
 }
 
@@ -149,9 +149,9 @@ func (c *SessionController) PutWechat() int {
 	userID := c.checkLogin()
 	req := PutWechatReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 	sessionID, err := primitive.ObjectIDFromHex(req.Session)
-	libs.AssertErr(err, "invalid_session", 400)
+	utils.AssertErr(err, "invalid_session", 400)
 	c.Service.LoginByWechatOnPC(userID, sessionID)
 	return iris.StatusOK
 }

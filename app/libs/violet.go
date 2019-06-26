@@ -1,6 +1,7 @@
 package libs
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
 )
@@ -14,7 +15,7 @@ type OAuthService struct {
 }
 
 // InitViolet 初始化授权服务
-func InitViolet(c VioletConfig) *OAuthService {
+func InitViolet(c utils.VioletConfig) *OAuthService {
 	oauth = &OAuthService{
 		API: violet.NewViolet(violet.Config{
 			ClientID:   c.ClientID,

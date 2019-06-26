@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -51,11 +51,11 @@ type ArticleDetail struct {
 // GetArticles 获取公告列表
 func (s *articleService) GetArticles(page, size int64) (count int64, articleList []ArticleBrief) {
 	articles, count, err := s.model.GetArticles((page-1)*size, size)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	for _, article := range articles {
 		var imagesData []ImagesData
 		images, err := s.fileModel.GetFileByContent(article.ID, models.FileImage)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		for _, image := range images {
 			imagesData = append(imagesData, ImagesData{
 				ID:  image.ID.Hex(),
@@ -76,8 +76,8 @@ func (s *articleService) GetArticles(page, size int64) (count int64, articleList
 // AddArticle 添加公告
 func (s *articleService) AddArticle(userID primitive.ObjectID, title string, content string, publisher string, images []primitive.ObjectID) primitive.ObjectID {
 	user, err := s.userModel.GetUserByID(userID)
-	libs.AssertErr(err, "invalid_session", 400)
-	libs.Assert(user.Data.Type == models.UserTypeAdmin || user.Data.Type == models.UserTypeRoot,
+	utils.AssertErr(err, "invalid_session", 400)
+	utils.Assert(user.Data.Type == models.UserTypeAdmin || user.Data.Type == models.UserTypeRoot,
 		"permission_deny", 500)
 
 	articleID := primitive.NewObjectID()
@@ -92,17 +92,17 @@ func (s *articleService) AddArticle(userID primitive.ObjectID, title string, con
 	GetServiceManger().File.BindFilesToTask(userID, articleID, files)
 
 	id, err := s.model.AddArticle(articleID, title, content, publisher, images)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	return id
 }
 
 // GetArticleByID 根据ID获取公告详情
 func (s *articleService) GetArticleByID(id primitive.ObjectID) ArticleDetail {
 	article, err := s.model.GetArticleByID(id)
-	libs.AssertErr(err, "faked_article", 403)
+	utils.AssertErr(err, "faked_article", 403)
 	var imagesData []ImagesData
 	images, err := s.fileModel.GetFileByContent(id, models.FileImage)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	for _, image := range images {
 		imagesData = append(imagesData, ImagesData{
 			ID:  image.ID.Hex(),
@@ -123,20 +123,20 @@ func (s *articleService) GetArticleByID(id primitive.ObjectID) ArticleDetail {
 // SetArticleByID 根据ID修改公告文章
 func (s *articleService) SetArticleByID(userID primitive.ObjectID, id primitive.ObjectID, title, content, publisher string, images []primitive.ObjectID) {
 	user, err := s.userModel.GetUserByID(userID)
-	libs.AssertErr(err, "invalid_session", 400)
-	libs.Assert(user.Data.Type == models.UserTypeAdmin || user.Data.Type == models.UserTypeRoot,
+	utils.AssertErr(err, "invalid_session", 400)
+	utils.Assert(user.Data.Type == models.UserTypeAdmin || user.Data.Type == models.UserTypeRoot,
 		"permission_deny", 500)
 
 	for _, imageID := range images {
 		_, err := s.fileModel.GetFile(imageID)
-		libs.AssertErr(err, "faked_image", 403)
+		utils.AssertErr(err, "faked_image", 403)
 	}
 
 	var toRemove []primitive.ObjectID
 	var imageFiles []FileBaseInfo
 	if len(images) > 0 {
 		oldImages, err := s.fileModel.GetFileByContent(id, models.FileImage)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		for _, image := range images {
 			exist := false
 			for _, old := range oldImages {
@@ -169,7 +169,7 @@ func (s *articleService) SetArticleByID(userID primitive.ObjectID, id primitive.
 	GetServiceManger().File.BindFilesToTask(userID, id, imageFiles)
 
 	err = s.model.SetArticleByID(id, title, content, publisher, images)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	// 删除无用文件
 	for _, file := range toRemove {

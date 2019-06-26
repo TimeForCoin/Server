@@ -1,17 +1,16 @@
 package models
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"os"
 	"testing"
-
-	"github.com/TimeForCoin/Server/app/libs"
 )
 
 func testInitDB(t *testing.T) {
 	if GetModel() != nil {
 		return
 	}
-	err := InitDB(&libs.DBConfig{
+	err := InitDB(&utils.DBConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),
 		DBName:   os.Getenv("DB_NAME"),

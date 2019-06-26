@@ -1,9 +1,9 @@
 package models
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"time"
 
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/go-redis/redis"
 	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -215,7 +215,7 @@ func (c *CacheModel) CheckCertification(userID primitive.ObjectID, email, code s
 	if err != nil {
 		return false, false
 	}
-	rightCode := libs.GetHash(token + "&" + email)
+	rightCode := utils.GetHash(token + "&" + email)
 	if rightCode != code {
 		return true, false
 	}

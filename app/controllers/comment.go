@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -28,7 +28,7 @@ func (c *CommentController) GetBy(id string) int {
 	sort := c.Ctx.URLParamDefault("sort", "new")
 
 	contentID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	res := c.Service.GetComments(contentID, c.Session.GetString("id"), page, size, sort)
 	c.JSON(struct {
@@ -56,19 +56,19 @@ func (c *CommentController) PostBy(id string) int {
 
 	req := PostCommentReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
 	contentID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
-	libs.Assert(len(req.Content) < 128, "content_too_long", 403)
+	utils.Assert(len(req.Content) < 128, "content_too_long", 403)
 
 	if req.Type == "task" {
 		c.Service.AddCommentForTask(userID, contentID, req.Content)
 	} else if req.Type == "comment" {
 		c.Service.AddCommentForComment(userID, contentID, req.Content)
 	} else {
-		libs.Assert(false, "invalid_type", 400)
+		utils.Assert(false, "invalid_type", 400)
 	}
 
 	return iris.StatusOK
@@ -79,7 +79,7 @@ func (c *CommentController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 
 	commentID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	c.Service.RemoveComment(userID, commentID)
 
@@ -91,7 +91,7 @@ func (c *CommentController) PostByLike(id string) int {
 	userID := c.checkLogin()
 
 	commentID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	c.Service.ChangeLike(userID, commentID, true)
 
@@ -103,7 +103,7 @@ func (c *CommentController) DeleteByLike(id string) int {
 	userID := c.checkLogin()
 
 	commentID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	c.Service.ChangeLike(userID, commentID, false)
 

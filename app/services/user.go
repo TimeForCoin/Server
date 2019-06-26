@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"math/rand"
 	"strings"
 	"time"
@@ -151,7 +152,7 @@ func (s *userService) GetLoginURL() (url, state string) {
 		QuickMode: true,
 	}
 	url, state, err := s.oAuth.API.GetLoginURL(s.oAuth.Callback, options)
-	libs.Assert(err == nil, "Internal Service Error", iris.StatusInternalServerError)
+	utils.Assert(err == nil, "Internal Service Error", iris.StatusInternalServerError)
 	return url, state
 }
 
@@ -186,7 +187,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 		}
 		// 保存头像到云存储
 		url, err := libs.GetCOS().SaveURLFile("avatar-"+userID.Hex()+".png", info.Avatar)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		_ = s.model.SetUserInfoByID(userID, models.UserInfoSchema{
 			Email:    info.Email,
 			Phone:    info.Phone,
@@ -204,7 +205,7 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 // 微信扫码登陆
 func (s *userService) LoginByWechatOnPC(userID,sessionID primitive.ObjectID) {
 	err := s.cache.SetSessionUser(sessionID.Hex(), userID)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 func (s *userService) GetSessionUser(session primitive.ObjectID ) primitive.ObjectID {
@@ -218,21 +219,21 @@ func (s *userService) GetSessionUser(session primitive.ObjectID ) primitive.Obje
 // LoginByWechat 使用微信登陆
 func (s *userService) LoginByWechat(code string) (id string, new bool) {
 	openID, err := libs.GetWeChat().GetOpenID(code)
-	libs.AssertErr(err, "", 403)
+	utils.AssertErr(err, "", 403)
 	// 账号已存在，直接返回 ID
 	if u, err := s.model.GetUserByWechat(openID); err == nil {
 		return u.ID.Hex(), u.Info.Nickname == ""
 	}
 	// 账号不存在，新建账号
 	userID, err := s.model.AddUserByWechat(openID)
-	libs.AssertErr(err, "db_error", iris.StatusInternalServerError)
+	utils.AssertErr(err, "db_error", iris.StatusInternalServerError)
 	return userID.Hex(), true
 }
 
 // GetUser 获取用户数据
 func (s *userService) GetUser(id primitive.ObjectID, isMe bool) UserDetail {
 	user, err := s.model.GetUserByID(id)
-	libs.AssertErr(err, "faked_users", 403)
+	utils.AssertErr(err, "faked_users", 403)
 	return s.makeUserRes(user, isMe)
 }
 
@@ -249,58 +250,58 @@ func (s *userService) UserPay(id primitive.ObjectID) {
 	err := s.model.UpdateUserDataCount(id, models.UserDataCount{
 		Money: rand.Int63n(20),
 	})
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // UserAttend 用户签到
 func (s *userService) UserAttend(id primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
-	libs.AssertErr(err, "invalid_session", 401)
+	utils.AssertErr(err, "invalid_session", 401)
 	lastAttend := time.Unix(user.Data.AttendanceDate, 0)
 	nowDate := time.Now()
 	if lastAttend.Add(time.Hour*24).After(nowDate) && lastAttend.YearDay() == nowDate.YearDay() {
-		libs.Assert(false, "already_attend", 403)
+		utils.Assert(false, "already_attend", 403)
 	}
 	err = s.model.UpdateUserDataCount(id, models.UserDataCount{
 		Value: rand.Int63n(20),
 	})
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	err = s.model.SetUserAttend(id)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // SetUserInfo 设置用户信息
 func (s *userService) SetUserInfo(id primitive.ObjectID, info models.UserInfoSchema) {
-	libs.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
-	libs.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
+	utils.Assert(s.model.SetUserInfoByID(id, info) == nil, "invalid_session", 401)
+	utils.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
 // SetUserType 设置用户类型
 func (s *userService) SetUserType(admin primitive.ObjectID, id primitive.ObjectID, userType models.UserType) {
 	adminInfo, err := models.GetRedis().Cache.GetUserBaseInfo(admin)
-	libs.AssertErr(err, "invalid_session", 401)
-	libs.Assert(adminInfo.Type == models.UserTypeAdmin ||
+	utils.AssertErr(err, "invalid_session", 401)
+	utils.Assert(adminInfo.Type == models.UserTypeAdmin ||
 		adminInfo.Type == models.UserTypeRoot, "permission_deny", 403)
 	err = s.model.SetUserType(id, userType)
-	libs.Assert(err == nil, "faked_users", 403)
-	libs.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
+	utils.Assert(err == nil, "faked_users", 403)
+	utils.Assert(models.GetRedis().Cache.WillUpdate(id, models.KindOfBaseInfo) == nil, "redis_error", iris.StatusInternalServerError)
 }
 
 // CancelCertification 取消认证
 func (s *userService) CancelCertification(id primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
-	libs.AssertErr(err, "invalid_session", 401)
-	libs.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
+	utils.AssertErr(err, "invalid_session", 401)
+	utils.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
 	user.Certification.Status = models.CertificationCancel
 	err = s.model.SetUserCertification(id, user.Certification)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // UpdateCertification 更新认证[管理员]
 func (s *userService) UpdateCertification(id primitive.ObjectID, operate, data string) {
 	user, err := s.model.GetUserByID(id)
-	libs.AssertErr(err, "faked_user", 401)
-	libs.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
+	utils.AssertErr(err, "faked_user", 401)
+	utils.Assert(user.Certification.Identity != models.IdentityNone, "faked_certification")
 	if operate == "true" {
 		if data != "" {
 			user.Certification.Data = data
@@ -308,22 +309,22 @@ func (s *userService) UpdateCertification(id primitive.ObjectID, operate, data s
 		user.Certification.Date = time.Now().Unix()
 		user.Certification.Status = models.CertificationTrue
 		err = s.model.SetUserCertification(id, user.Certification)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	} else if operate == "false" {
 		user.Certification.Status = models.CertificationFalse
 		user.Certification.Feedback = data
 		err = s.model.SetUserCertification(id, user.Certification)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	}
 }
 
 // AddEmailCertification 添加认证
 func (s *userService) AddEmailCertification(identity models.UserIdentity, id primitive.ObjectID, data, email string) {
 	user, err := s.model.GetUserByID(id)
-	libs.AssertErr(err, "invalid_session", 401)
-	libs.Assert(user.Certification.Identity == models.IdentityNone ||
+	utils.AssertErr(err, "invalid_session", 401)
+	utils.Assert(user.Certification.Identity == models.IdentityNone ||
 		user.Certification.Status == models.CertificationCancel, "exist_certification", 403)
-	libs.Assert(s.model.CheckCertificationEmail(email), "exist_email", 403)
+	utils.Assert(s.model.CheckCertificationEmail(email), "exist_email", 403)
 	err = s.model.SetUserCertification(id, models.UserCertificationSchema{
 		Identity: identity,
 		Data:     data,
@@ -331,15 +332,15 @@ func (s *userService) AddEmailCertification(identity models.UserIdentity, id pri
 		Date:     time.Now().Unix(),
 		Email:    email,
 	})
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	s.SendCertificationEmail(id, email)
 }
 
 // AddMaterialCertification 添加材料认证
 func (s *userService) AddMaterialCertification(identity models.UserIdentity, id primitive.ObjectID, data string, attachment []primitive.ObjectID) {
 	user, err := s.model.GetUserByID(id)
-	libs.AssertErr(err, "invalid_session", 401)
-	libs.Assert(user.Certification.Identity == models.IdentityNone ||
+	utils.AssertErr(err, "invalid_session", 401)
+	utils.Assert(user.Certification.Identity == models.IdentityNone ||
 		user.Certification.Status == models.CertificationCancel, "exist_certification", 403)
 	GetServiceManger().File.BindFilesToUser(id, attachment)
 	err = s.model.SetUserCertification(id, models.UserCertificationSchema{
@@ -349,27 +350,27 @@ func (s *userService) AddMaterialCertification(identity models.UserIdentity, id 
 		Date:     time.Now().Unix(),
 		Material: attachment,
 	})
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // SendCertificationEmail 发送认证邮件
 func (s *userService) SendCertificationEmail(id primitive.ObjectID, email string) {
 	if email == "" {
 		user, err := s.model.GetUserByID(id)
-		libs.AssertErr(err, "invalid_session", 401)
-		libs.Assert(user.Certification.Identity != models.IdentityNone &&
+		utils.AssertErr(err, "invalid_session", 401)
+		utils.Assert(user.Certification.Identity != models.IdentityNone &&
 			user.Certification.Status == models.CertificationCheckEmail, "faked_certification", 403)
-		libs.Assert(user.Certification.Email != "", "faked_email", 403)
+		utils.Assert(user.Certification.Email != "", "faked_email", 403)
 		email = user.Certification.Email
 	}
 	exist, _ := models.GetRedis().Cache.CheckCertification(id, "", "", false)
-	libs.Assert(!exist, "limit_email", 403)
-	token := libs.GetRandomString(64)
-	code := libs.GetHash(token + "&" + email)
+	utils.Assert(!exist, "limit_email", 403)
+	token := utils.GetRandomString(64)
+	code := utils.GetHash(token + "&" + email)
 	err := libs.GetEmail().SendAuthEmail(id, email, code)
-	libs.AssertErr(err, "error_email", iris.StatusInternalServerError)
+	utils.AssertErr(err, "error_email", iris.StatusInternalServerError)
 	err = models.GetRedis().Cache.SetCertification(id, token)
-	libs.AssertErr(err, "error_redis", iris.StatusInternalServerError)
+	utils.AssertErr(err, "error_redis", iris.StatusInternalServerError)
 }
 
 // CheckCertification 检查用户认证
@@ -379,7 +380,7 @@ func (s *userService) CheckCertification(id primitive.ObjectID, code string) str
 		return "无效的认证链接"
 	}
 	// 是否存在认证
-	libs.Assert(user.Certification.Identity != models.IdentityNone, "error_code", iris.StatusInternalServerError)
+	utils.Assert(user.Certification.Identity != models.IdentityNone, "error_code", iris.StatusInternalServerError)
 	// 检查认证邮箱和 code 的正确性
 	exist, right := models.GetRedis().Cache.CheckCertification(id, user.Certification.Email, code, true)
 	if !exist || !right || user.Certification.Status != models.CertificationCheckEmail {
@@ -394,23 +395,23 @@ func (s *userService) CheckCertification(id primitive.ObjectID, code string) str
 	if content == "" {
 		user.Certification.Status = models.CertificationWaitEmail
 		err = s.model.SetUserCertification(id, user.Certification)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		return "认证邮箱成功，待审核通过"
 	}
 	user.Certification.Status = models.CertificationTrue
 	user.Certification.Data = content
 	err = s.model.SetUserCertification(id, user.Certification)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	return "认证已通过"
 }
 
 // GetCertificationList 获取待审核认证列表
 func (s *userService) GetCertificationList(userID primitive.ObjectID, types []models.CertificationStatus, page, size int64) (users []UserDetail) {
 	admin := s.GetUserBaseInfo(userID)
-	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	utils.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
 
 	usersData, err := s.model.GetCertification(types, page, size)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	for i := range usersData {
 		users = append(users, s.makeUserRes(usersData[i], true))
 	}
@@ -420,9 +421,9 @@ func (s *userService) GetCertificationList(userID primitive.ObjectID, types []mo
 // GetAutoCertification 获取自动认证后缀
 func (s *userService) GetAutoCertification(userID primitive.ObjectID, page, size int64) (keys []models.SystemSchemas) {
 	admin := s.GetUserBaseInfo(userID)
-	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	utils.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
 	keys, err := s.system.GetAutoEmail(page, size)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	for i := range keys {
 		keys[i].Key = strings.Replace(keys[i].Key, "email-", "", 1)
 	}
@@ -432,17 +433,17 @@ func (s *userService) GetAutoCertification(userID primitive.ObjectID, page, size
 // AddAutoCertification 添加自动认证后缀
 func (s *userService) AddAutoCertification(userID primitive.ObjectID, key, data string) {
 	admin := s.GetUserBaseInfo(userID)
-	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	utils.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
 	err := s.system.AddAutoEmail(key, data)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // RemoveAutoCertification 移除自动认证后缀
 func (s *userService) RemoveAutoCertification(userID primitive.ObjectID, key string) {
 	admin := s.GetUserBaseInfo(userID)
-	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	utils.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
 	err := s.system.RemoveAutoEmail(key)
-	libs.AssertErr(err, "faked_email", 403)
+	utils.AssertErr(err, "faked_email", 403)
 }
 
 // GetUserCollections 获取用户收藏
@@ -484,7 +485,7 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 	collectionTasks := s.setModel.GetSets(id, models.SetOfCollectTask)
 	if len(collectionTasks.CollectTaskID) > 0 {
 		tasks, taskCount, err := s.taskModel.GetTasks(sortRule, collectionTasks.CollectTaskID, taskTypes, statuses, rewards, keywords, "", (page-1)*size, size)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		for _, t := range tasks {
 			taskCards = append(taskCards, GetServiceManger().Task.makeTaskDetail(t, id.Hex(), true))
 		}
@@ -496,14 +497,14 @@ func (s *userService) GetUserCollections(id primitive.ObjectID, page, size int64
 // GetSearchHistory 获取用户搜索历史
 func (s *userService) GetSearchHistory(id primitive.ObjectID) []string {
 	res, err := s.model.GetSearchHistory(id)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	return res
 }
 
 // ClearSearchHistory 清空用户搜索历史
 func (s *userService) ClearSearchHistory(id primitive.ObjectID) {
 	err := s.model.ClearSearchHistory(id)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // GetFollowing 获取用户关注列表
@@ -555,28 +556,28 @@ func (s *userService) GetFollower(id primitive.ObjectID, page, size int64) ([]mo
 // FollowUser 关注用户
 func (s *userService) FollowUser(userID, followID primitive.ObjectID) {
 	_, err := s.model.GetUserByID(followID)
-	libs.AssertErr(err, "faked_user", 403)
+	utils.AssertErr(err, "faked_user", 403)
 
 	err = s.setModel.AddToSet(userID, followID, models.SetOfFollowingUser)
-	libs.AssertErr(err, "exist_relation", 403)
+	utils.AssertErr(err, "exist_relation", 403)
 
 	err = s.setModel.AddToSet(followID, userID, models.SetOfFollowerUser)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.model.UpdateUserDataCount(followID, models.UserDataCount{
 		FollowerCount: 1,
 	})
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.model.UpdateUserDataCount(userID, models.UserDataCount{
 		FollowingCount: 1,
 	})
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.cache.WillUpdate(userID, models.KindOfFollowing)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.cache.WillUpdate(followID, models.KindOfFollower)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // GetUserParticipate 获取用户参与的用户
@@ -591,10 +592,10 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 		statuses = append(statuses, models.PlayerStatus(str))
 	}
 	taskStatusList, taskStatusCount, err := s.taskStatusModel.GetTaskStatusListByUserID(id, statuses, (page-1)*size, size)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	userPlayer := s.GetUserBaseInfo(id)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	for i := range taskStatusList {
 		var taskStatusDetail TaskStatusDetail
@@ -603,7 +604,7 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 			Player: userPlayer,
 		}
 		task, err := s.taskModel.GetTaskByID(taskStatusList[i].Task)
-		libs.AssertErr(err, "", iris.StatusInternalServerError)
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		taskStatusDetail.Task = GetServiceManger().Task.makeTaskDetail(task, id.Hex(), true)
 		taskStatusDetailList = append(taskStatusDetailList, taskStatusDetail)
 	}
@@ -613,25 +614,25 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 // UnFollowUser 取消关注用户
 func (s *userService) UnFollowUser(userID, followID primitive.ObjectID) {
 	err := s.setModel.RemoveFromSet(userID, followID, models.SetOfFollowingUser)
-	libs.AssertErr(err, "faked_relation", 403)
+	utils.AssertErr(err, "faked_relation", 403)
 
 	err = s.setModel.RemoveFromSet(followID, userID, models.SetOfFollowerUser)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.model.UpdateUserDataCount(followID, models.UserDataCount{
 		FollowerCount: -1,
 	})
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.model.UpdateUserDataCount(userID, models.UserDataCount{
 		FollowingCount: -1,
 	})
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.cache.WillUpdate(userID, models.KindOfFollowing)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 
 	err = s.cache.WillUpdate(followID, models.KindOfFollower)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // IsFollower 是否是粉丝
@@ -679,7 +680,7 @@ func (s *userService) makeUserRes(user models.UserSchema, all bool) UserDetail {
 		res.Certification.Material = []models.FileSchema{}
 		for _, id := range user.Certification.Material {
 			file, err := s.fileModel.GetFile(id)
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 			res.Certification.Material = append(res.Certification.Material, file)
 		}
 	}

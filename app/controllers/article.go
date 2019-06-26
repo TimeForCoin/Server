@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -61,16 +61,16 @@ func (c *ArticleController) Post() int {
 	id := c.checkLogin()
 	req := ArticleReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
-	libs.Assert(req.Title != "", "invalid_title", 400)
-	libs.Assert(req.Content != "", "invalid_content", 400)
-	libs.Assert(req.Publisher != "", "invalid_publisher", 400)
+	utils.Assert(req.Title != "", "invalid_title", 400)
+	utils.Assert(req.Content != "", "invalid_content", 400)
+	utils.Assert(req.Publisher != "", "invalid_publisher", 400)
 
 	var images []primitive.ObjectID
 	for _, file := range req.Images {
 		fileID, err := primitive.ObjectIDFromHex(file)
-		libs.AssertErr(err, "invalid_file", 400)
+		utils.AssertErr(err, "invalid_file", 400)
 		images = append(images, fileID)
 	}
 
@@ -81,7 +81,7 @@ func (c *ArticleController) Post() int {
 // GetBy 根据ID获取公告文章详情
 func (c *ArticleController) GetBy(id string) int {
 	articleID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.GetArticleByID(articleID)
 	return iris.StatusOK
 }
@@ -90,14 +90,14 @@ func (c *ArticleController) GetBy(id string) int {
 func (c *ArticleController) SetBy(id string) int {
 	userID := c.checkLogin()
 	articleID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	req := ArticleReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 	var imageIDs []primitive.ObjectID
 	for _, i := range req.Images {
 		imageID, err := primitive.ObjectIDFromHex(i)
-		libs.AssertErr(err, "invalid_value", 400)
+		utils.AssertErr(err, "invalid_value", 400)
 		imageIDs = append(imageIDs, imageID)
 	}
 	c.Service.SetArticleByID(userID, articleID, req.Title, req.Content, req.Publisher, imageIDs)

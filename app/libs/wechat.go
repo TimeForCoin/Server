@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/TimeForCoin/Server/app/utils"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -22,7 +23,7 @@ type WeChatService struct {
 }
 
 // InitWeChat 初始化微信服务
-func InitWeChat(c WechatConfig) {
+func InitWeChat(c utils.WechatConfig) {
 	wechat = &WeChatService{
 		AppID:        c.AppID,
 		AppSecret:    c.AppSecret,

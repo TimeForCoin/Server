@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
+	"github.com/TimeForCoin/Server/app/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -36,56 +36,56 @@ type commentService struct {
 // AddCommentForTask 为任务添加评论
 func (s *commentService) AddCommentForTask(userID, taskID primitive.ObjectID, content string) {
 	task, err := s.taskModel.GetTaskByID(taskID)
-	libs.AssertErr(err, "faked_content", 403)
-	libs.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
+	utils.AssertErr(err, "faked_content", 403)
+	utils.Assert(task.Status != models.TaskStatusDraft, "not_allow_status", 403)
 	err = s.model.AddComment(taskID, task.Publisher, userID, content, false)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.taskModel.InsertCount(taskID, models.CommentCount, 1)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // AddCommentForComment 为评论添加回复
 func (s *commentService) AddCommentForComment(userID, commentID primitive.ObjectID, content string) {
 	comment, err := s.model.GetCommentByID(commentID)
-	libs.AssertErr(err, "faked_content", 403)
-	libs.Assert(comment.IsReply == false, "faked_content", 403)
+	utils.AssertErr(err, "faked_content", 403)
+	utils.Assert(comment.IsReply == false, "faked_content", 403)
 	err = s.model.AddComment(commentID, comment.UserID, userID, content, true)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	err = s.model.InsertCount(commentID, models.ReplyCount, 1)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // RemoveComment 删除评论
 func (s *commentService) RemoveComment(userID, commentID primitive.ObjectID) {
 	comment, err := s.model.GetCommentByID(commentID)
-	libs.AssertErr(err, "faked_comment", 403)
+	utils.AssertErr(err, "faked_comment", 403)
 	if comment.UserID != userID {
 		userInfo, err := s.cache.GetUserBaseInfo(userID)
-		libs.AssertErr(err, "", 500)
-		libs.Assert(userInfo.Type == models.UserTypeAdmin || userInfo.Type == models.UserTypeRoot, "permission_deny", 403)
+		utils.AssertErr(err, "", 500)
+		utils.Assert(userInfo.Type == models.UserTypeAdmin || userInfo.Type == models.UserTypeRoot, "permission_deny", 403)
 	}
 	err = s.model.RemoveContentByID(commentID)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // ChangeLike 改变点赞状态
 func (s *commentService) ChangeLike(userID, commentID primitive.ObjectID, like bool) {
 	comment, err := s.model.GetCommentByID(commentID)
-	libs.AssertErr(err, "faked_comment", 403)
-	libs.Assert(comment.IsDelete == false, "deleted_comment", 403)
+	utils.AssertErr(err, "faked_comment", 403)
+	utils.Assert(comment.IsDelete == false, "deleted_comment", 403)
 	if like {
 		err := s.setModel.AddToSet(userID, commentID, models.SetOfLikeComment)
-		libs.AssertErr(err, "exist_like", 403)
+		utils.AssertErr(err, "exist_like", 403)
 		err = s.model.InsertCount(commentID, models.LikeCount, 1)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	} else {
 		err := s.setModel.RemoveFromSet(userID, commentID, models.SetOfLikeComment)
-		libs.AssertErr(err, "faked_like", 403)
+		utils.AssertErr(err, "faked_like", 403)
 		err = s.model.InsertCount(commentID, models.LikeCount, -1)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	}
 	err = s.cache.WillUpdate(userID, models.KindOfLikeComment)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 }
 
 // CommentWithUserInfo 带用户信息的评论数据
@@ -116,43 +116,43 @@ func (s *commentService) GetComments(contentID primitive.ObjectID, userID string
 		sortRule["like_count"] = -1
 	}
 	comments, err := s.model.GetCommentsByContent(contentID, page, size, sortRule)
-	libs.AssertErr(err, "faked_content", 403)
+	utils.AssertErr(err, "faked_content", 403)
 
 	if len(comments) == 0 {
 		return []CommentData{}
 	}
 	var res []CommentData
 	ownInfo, err := s.cache.GetUserBaseInfo(comments[0].ContentOwn)
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	for i, c := range comments {
 		comment := CommentData{}
 		comment.CommentWithUserInfo = &CommentWithUserInfo{}
 		comment.CommentSchema = &comments[i]
 		comment.Own = ownInfo
 		userInfo, err := s.cache.GetUserBaseInfo(c.UserID)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		comment.User = userInfo
 		if userID != "" && c.IsDelete == false {
 			_id, err := primitive.ObjectIDFromHex(userID)
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 			comment.Liked = s.cache.IsLikeComment(_id, c.ID)
 		}
 		if !c.IsReply && c.ReplyCount > 0 {
 			// 默认显示最先5条回复
 			replies, err := s.model.GetCommentsByContent(c.ID, 1, 5, bson.M{"time": 1})
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 			for j, r := range replies {
 				reply := CommentWithUserInfo{}
 				reply.CommentSchema = &replies[j]
 				ownInfo, err := s.cache.GetUserBaseInfo(r.ContentOwn)
-				libs.AssertErr(err, "", 500)
+				utils.AssertErr(err, "", 500)
 				reply.Own = ownInfo
 				userInfo, err := s.cache.GetUserBaseInfo(r.UserID)
-				libs.AssertErr(err, "", 500)
+				utils.AssertErr(err, "", 500)
 				reply.User = userInfo
 				if userID != "" && r.IsDelete == false {
 					_id, err := primitive.ObjectIDFromHex(userID)
-					libs.AssertErr(err, "", 500)
+					utils.AssertErr(err, "", 500)
 					comment.Liked = s.cache.IsLikeComment(_id, r.ID)
 				}
 				comment.Reply = append(comment.Reply, reply)

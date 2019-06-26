@@ -1,6 +1,7 @@
 package libs
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/gomail.v2"
@@ -15,7 +16,7 @@ type EmailService struct {
 }
 
 // InitEmail 初始化邮件服务
-func InitEmail(c EmailConfig) {
+func InitEmail(c utils.EmailConfig) {
 	emailService = &EmailService{
 		Dialer: gomail.NewDialer(c.Host, c.Port, c.User, c.Password),
 		From:   c.From,

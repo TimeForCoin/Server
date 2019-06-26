@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/TimeForCoin/Server/app/utils"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -98,7 +98,7 @@ func initCollection() error {
 }
 
 // InitDB 初始化数据库
-func InitDB(config *libs.DBConfig) error {
+func InitDB(config *utils.DBConfig) error {
 	model = &Model{}
 	err := connect(config)
 	if err != nil {
@@ -159,7 +159,7 @@ func InitDB(config *libs.DBConfig) error {
 }
 
 // 连接数据库
-func connect(config *libs.DBConfig) error {
+func connect(config *utils.DBConfig) error {
 	ctx, cancel := GetCtx()
 	defer cancel()
 	option := options.Client().

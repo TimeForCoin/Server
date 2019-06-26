@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -28,25 +28,25 @@ func (c *CertificationController) Post() int {
 	id := c.checkLogin()
 	req := PostCertificationReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_valid", 400)
+	utils.AssertErr(err, "invalid_valid", 400)
 	// 目前只支持学生认证
-	libs.Assert(req.Identity == models.IdentityStudent, "invalid_identity", 400)
+	utils.Assert(req.Identity == models.IdentityStudent, "invalid_identity", 400)
 	// 目前只支持邮箱认证
 	switch req.Type {
 	case "email":
-		libs.Assert(libs.IsEmail(req.Email), "invalid_email", 400)
+		utils.Assert(utils.IsEmail(req.Email), "invalid_email", 400)
 		c.Service.AddEmailCertification(req.Identity, id, req.Data, req.Email)
 	case "material":
 		var material []primitive.ObjectID
 		for _, attachment := range req.Attachment {
 			fileID, err := primitive.ObjectIDFromHex(attachment)
-			libs.AssertErr(err, "invalid_attachment", 400)
+			utils.AssertErr(err, "invalid_attachment", 400)
 			material = append(material, fileID)
 		}
-		libs.Assert(len(material) > 0, "invalid_attachment", 400)
+		utils.Assert(len(material) > 0, "invalid_attachment", 400)
 		c.Service.AddMaterialCertification(req.Identity, id, req.Data, material)
 	default:
-		libs.Assert(false, "invalid_type", 400)
+		utils.Assert(false, "invalid_type", 400)
 	}
 	return iris.StatusOK
 }
@@ -73,7 +73,7 @@ func (c *CertificationController) GetCertification() int {
 		status = append(status, models.CertificationWaitEmail)
 		status = append(status, models.CertificationWait)
 	default:
-		libs.Assert(false, "invalid_type", 400)
+		utils.Assert(false, "invalid_type", 400)
 	}
 	users := c.Service.GetCertificationList(userID, status, page, size)
 
@@ -117,8 +117,8 @@ func (c *CertificationController) PostAuto() int {
 		Value string
 	}{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
-	libs.Assert(req.Key != "" && req.Value != "", "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
+	utils.Assert(req.Key != "" && req.Value != "", "invalid_value", 400)
 	c.Service.AddAutoCertification(userID, req.Key, req.Value)
 	return iris.StatusOK
 }
@@ -126,7 +126,7 @@ func (c *CertificationController) PostAuto() int {
 // DeleteAutoBy 删除自动认证前缀
 func (c *CertificationController) DeleteAutoBy(key string) int {
 	userID := c.checkLogin()
-	libs.Assert(key != "", "invalid_key", 400)
+	utils.Assert(key != "", "invalid_key", 400)
 	c.Service.RemoveAutoCertification(userID, key)
 	return iris.StatusOK
 }
@@ -162,25 +162,25 @@ func (c *CertificationController) PutUserBy(userID string) int {
 	} else {
 		var err error
 		opUser, err = primitive.ObjectIDFromHex(userID)
-		libs.AssertErr(err, "invalid_id", 400)
+		utils.AssertErr(err, "invalid_id", 400)
 	}
 	req := PutUserReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 	if req.Operate == "cancel" {
 		c.Service.CancelCertification(opUser)
 	} else if req.Operate == "true" || req.Operate == "false" {
 		// 验证管理员权限
 		user, err := models.GetRedis().Cache.GetUserBaseInfo(sessionUser)
-		libs.AssertErr(err, "invalid_session", 401)
-		libs.Assert(user.Type == models.UserTypeRoot || user.Type == models.UserTypeAdmin, "permission_deny", 403)
+		utils.AssertErr(err, "invalid_session", 401)
+		utils.Assert(user.Type == models.UserTypeRoot || user.Type == models.UserTypeAdmin, "permission_deny", 403)
 		if req.Operate == "true" {
 			c.Service.UpdateCertification(opUser, req.Operate, req.Data)
 		} else {
 			c.Service.UpdateCertification(opUser, req.Operate, req.Feedback)
 		}
 	} else {
-		libs.Assert(false, "invalid_operate", 400)
+		utils.Assert(false, "invalid_operate", 400)
 	}
 	return iris.StatusOK
 }

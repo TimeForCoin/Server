@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
+	"github.com/TimeForCoin/Server/app/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -66,11 +66,11 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 	if session.Type == models.MessageTypeChat {
 		if userID == session.User1 {
 			userInfo, err := s.cache.GetUserBaseInfo(session.User2)
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 			sessionItem.Target = userInfo
 		} else {
 			userInfo, err := s.cache.GetUserBaseInfo(session.User1)
-			libs.AssertErr(err, "", 500)
+			utils.AssertErr(err, "", 500)
 			sessionItem.Target = userInfo
 		}
 	} else if session.Type == models.MessageTypeTask {
@@ -80,7 +80,7 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 			taskID = session.User2
 		}
 		task, err := s.taskModel.GetTaskByID(taskID)
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 		sessionItem.Target = models.UserBaseInfo{
 			ID: taskID.Hex(),
 			Nickname: task.Title,
@@ -111,17 +111,17 @@ func (s *messageService) GetSessions(userID primitive.ObjectID, page, size int64
 // GetSession 获取会话信息
 func (s *messageService) GetSession(userID, sessionID primitive.ObjectID, page, size int64) SessionDetail {
 	session, err := s.model.GetSessionWithMsgByID(sessionID, page, size)
-	libs.AssertErr(err, "faked_message", 403)
+	utils.AssertErr(err, "faked_message", 403)
 	if session.User1 == userID {
 		if session.Unread1 != 0 {
-			libs.AssertErr(s.model.ReadMessage(sessionID, true), "", 500)
+			utils.AssertErr(s.model.ReadMessage(sessionID, true), "", 500)
 		}
 	} else if session.User2 == userID {
 		if session.Unread2 != 0 {
-			libs.AssertErr(s.model.ReadMessage(sessionID, false), "", 500)
+			utils.AssertErr(s.model.ReadMessage(sessionID, false), "", 500)
 		}
 	} else {
-		libs.Assert(false, "permission_deny", 403)
+		utils.Assert(false, "permission_deny", 403)
 	}
 	return s.makeSession(userID, session)
 }
@@ -143,8 +143,8 @@ func (s *messageService) GetSessionByUser(userID, targetID primitive.ObjectID, p
 // SendSystemMessage 发送系统消息
 func (s *messageService) SendSystemMessage(userID, aboutID primitive.ObjectID, title, content string) (total int64) {
 	admin, err := s.cache.GetUserBaseInfo(userID)
-	libs.AssertErr(err, "faked_user", 403)
-	libs.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
+	utils.AssertErr(err, "faked_user", 403)
+	utils.Assert(admin.Type == models.UserTypeAdmin || admin.Type == models.UserTypeRoot, "permission_deny", 403)
 
 	users := s.userModel.GetAllUser()
 	for _, userID := range users {
@@ -153,7 +153,7 @@ func (s *messageService) SendSystemMessage(userID, aboutID primitive.ObjectID, t
 			Content: content,
 			About:   aboutID,
 		})
-		libs.AssertErr(err, "", 500)
+		utils.AssertErr(err, "", 500)
 	}
 	return int64(len(users))
 }
@@ -161,11 +161,11 @@ func (s *messageService) SendSystemMessage(userID, aboutID primitive.ObjectID, t
 // SendChatMessage 发送聊天消息
 func (s *messageService) SendChatMessage(userID, targetID primitive.ObjectID, msg string) primitive.ObjectID {
 	_, err := s.cache.GetUserBaseInfo(targetID)
-	libs.AssertErr(err, "faked_user", 403)
+	utils.AssertErr(err, "faked_user", 403)
 	sessionID, err := s.model.AddMessage(targetID, models.MessageTypeChat, models.MessageSchema{
 		UserID:  userID,
 		Content: msg,
 	})
-	libs.AssertErr(err, "", 500)
+	utils.AssertErr(err, "", 500)
 	return sessionID
 }

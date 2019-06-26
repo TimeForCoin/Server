@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -41,11 +41,11 @@ func (c *QuestionnaireController) PostBy(id string) int {
 	userID := c.checkLogin()
 	req := AddQuestionnaireReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
-	libs.Assert(req.Title != "", "invalid_title", 400)
+	utils.AssertErr(err, "invalid_value", 400)
+	utils.Assert(req.Title != "", "invalid_title", 400)
 
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	questionnaire := models.QuestionnaireSchema{
 		TaskID:      taskID,
@@ -61,7 +61,7 @@ func (c *QuestionnaireController) PostBy(id string) int {
 // GetBy 获取问卷信息
 func (c *QuestionnaireController) GetBy(id string) int {
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	questionnaireInfo := c.Server.GetQuestionnaireInfoByID(_id)
 	c.JSON(questionnaireInfo)
@@ -72,13 +72,13 @@ func (c *QuestionnaireController) GetBy(id string) int {
 func (c *QuestionnaireController) PutBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	req := AddQuestionnaireReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
-	libs.Assert(req.Title != "", "invalid_title", 400)
-	libs.Assert(req.Description != "", "invalid_description", 400)
+	utils.AssertErr(err, "invalid_value", 400)
+	utils.Assert(req.Title != "", "invalid_title", 400)
+	utils.Assert(req.Description != "", "invalid_description", 400)
 	questionnaireInfo := models.QuestionnaireSchema{
 		TaskID:      taskID,
 		Title:       req.Title,
@@ -92,7 +92,7 @@ func (c *QuestionnaireController) PutBy(id string) int {
 // GetByQuestions 获取问卷问题
 func (c *QuestionnaireController) GetByQuestions(id string) int {
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	questions := c.Server.GetQuestionnaireQuestionsByID(_id)
 	if questions == nil {
 		questions = []models.ProblemSchema{}
@@ -107,10 +107,10 @@ func (c *QuestionnaireController) GetByQuestions(id string) int {
 func (c *QuestionnaireController) PostByQuestions(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	req := QuestionsRes{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
 	c.Server.SetQuestionnaireQuestions(userID, _id, req.Data)
 	return iris.StatusOK
@@ -120,7 +120,7 @@ func (c *QuestionnaireController) PostByQuestions(id string) int {
 func (c *QuestionnaireController) GetByAnswers(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	res := c.Server.GetQuestionnaireAnswersByID(userID, _id)
 	c.JSON(res)
 
@@ -136,11 +136,11 @@ type PostAnswersReq struct {
 func (c *QuestionnaireController) PostByAnswers(id string) int {
 	userID := c.checkLogin()
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	req := PostAnswersReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
 	c.Server.AddAnswer(_id, userID, req.Data)
 	return iris.StatusOK

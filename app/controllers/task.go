@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -46,44 +46,44 @@ type AddTaskReq struct {
 
 func validTask(req AddTaskReq, new bool) {
 	if req.Type != "" || new {
-		libs.Assert(models.TaskType(req.Type) == models.TaskTypeInfo ||
+		utils.Assert(models.TaskType(req.Type) == models.TaskTypeInfo ||
 			models.TaskType(req.Type) == models.TaskTypeQuestionnaire ||
 			models.TaskType(req.Type) == models.TaskTypeRunning, "invalid_type", 400)
 	}
 
 	if new {
-		libs.Assert(req.Title != "", "invalid_title", 400)
-		libs.Assert(req.Content != "", "invalid_content", 400)
-		libs.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
-		libs.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
-		libs.CheckDateDuring(req.StartDate, req.EndDate)
+		utils.Assert(req.Title != "", "invalid_title", 400)
+		utils.Assert(req.Content != "", "invalid_content", 400)
+		utils.CheckReward(req.Reward, req.RewardObject, req.RewardValue)
+		utils.Assert(req.MaxPlayer > 0, "invalid_max_player", 400)
+		utils.CheckDateDuring(req.StartDate, req.EndDate)
 	} else {
-		libs.Assert(req.MaxPlayer >= 0, "invalid_max_player", 400)
+		utils.Assert(req.MaxPlayer >= 0, "invalid_max_player", 400)
 		if req.StartDate != 0 || req.EndDate != 0 {
-			libs.CheckDateDuring(req.StartDate, req.EndDate)
+			utils.CheckDateDuring(req.StartDate, req.EndDate)
 		}
 	}
 
-	libs.Assert(len(req.Title) < 128, "title_too_long", 403)
-	libs.Assert(len(req.Content) < 1024, "content_too_long", 403)
-	libs.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
+	utils.Assert(len(req.Title) < 128, "title_too_long", 403)
+	utils.Assert(len(req.Content) < 1024, "content_too_long", 403)
+	utils.Assert(len(req.RewardObject) < 32, "reward_object_too_long", 403)
 
 	for _, l := range req.Location {
-		libs.Assert(len(l) < 64, "location_too_long", 403)
+		utils.Assert(len(l) < 64, "location_too_long", 403)
 	}
 
 	for _, t := range req.Tags {
-		libs.Assert(len(t) < 32, "tag_too_long", 403)
+		utils.Assert(len(t) < 32, "tag_too_long", 403)
 	}
 
 	for _, file := range req.Images {
 		_, err := primitive.ObjectIDFromHex(file)
-		libs.AssertErr(err, "invalid_file", 400)
+		utils.AssertErr(err, "invalid_file", 400)
 	}
 
 	for _, attachment := range req.Attachment {
 		_, err := primitive.ObjectIDFromHex(attachment)
-		libs.AssertErr(err, "invalid_file", 400)
+		utils.AssertErr(err, "invalid_file", 400)
 	}
 }
 
@@ -92,7 +92,7 @@ func (c *TaskController) Post() int {
 	id := c.checkLogin()
 	req := AddTaskReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.Assert(err == nil, "invalid_value", 400)
+	utils.Assert(err == nil, "invalid_value", 400)
 	validTask(req, true)
 
 	taskType := models.TaskType(req.Type)
@@ -135,7 +135,7 @@ func (c *TaskController) Post() int {
 // GetBy 获取指定任务详情
 func (c *TaskController) GetBy(id string) int {
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	briefParam := c.Ctx.URLParamDefault("brief", "false")
 	biref := false
@@ -153,11 +153,11 @@ func (c *TaskController) GetBy(id string) int {
 func (c *TaskController) PutBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	req := AddTaskReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 	validTask(req, false)
 
 	var images []primitive.ObjectID
@@ -171,7 +171,7 @@ func (c *TaskController) PutBy(id string) int {
 		attachments = append(attachments, fileID)
 	}
 
-	libs.Assert(req.Status == "" || libs.IsTaskStatus(req.Status), "invalid_status", 400)
+	utils.Assert(req.Status == "" || utils.IsTaskStatus(req.Status), "invalid_status", 400)
 
 	taskInfo := models.TaskSchema{
 		Title:        req.Title,
@@ -225,7 +225,7 @@ func (c *TaskController) Get() int {
 	}
 
 	if status == string(models.TaskStatusDraft) {
-		libs.Assert(user == "me" || user == "", "not_allow_other_draft", 403)
+		utils.Assert(user == "me" || user == "", "not_allow_other_draft", 403)
 		user = "me"
 	}
 
@@ -237,7 +237,7 @@ func (c *TaskController) Get() int {
 	} else if user != "" {
 		// 筛选用户
 		_, err := primitive.ObjectIDFromHex(user)
-		libs.AssertErr(err, "invalid_user", 403)
+		utils.AssertErr(err, "invalid_user", 403)
 	}
 
 	taskCount, tasksData := c.Service.GetTasks(page, size, sort,
@@ -263,7 +263,7 @@ func (c *TaskController) Get() int {
 func (c *TaskController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.RemoveTask(userID, taskID)
 	return iris.StatusOK
 }
@@ -272,7 +272,7 @@ func (c *TaskController) DeleteBy(id string) int {
 func (c *TaskController) PostByLike(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.ChangeLike(taskID, userID, true)
 	return iris.StatusOK
 }
@@ -281,7 +281,7 @@ func (c *TaskController) PostByLike(id string) int {
 func (c *TaskController) DeleteByLike(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.ChangeLike(taskID, userID, false)
 	return iris.StatusOK
 }
@@ -290,7 +290,7 @@ func (c *TaskController) DeleteByLike(id string) int {
 func (c *TaskController) PostByCollect(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.ChangeCollection(taskID, userID, true)
 	return iris.StatusOK
 }
@@ -299,7 +299,7 @@ func (c *TaskController) PostByCollect(id string) int {
 func (c *TaskController) DeleteByCollect(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.ChangeCollection(taskID, userID, false)
 	return iris.StatusOK
 }
@@ -313,10 +313,10 @@ type PostPlayerReq struct {
 func (c *TaskController) PostByPlayer(id string) int {
 	userID := c.checkLogin()
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	req := PostPlayerReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
 	accept := c.Service.AddPlayer(taskID, userID, req.Note)
 	res := "wait"
@@ -344,13 +344,13 @@ type TaskStatusReq struct {
 // GetByPlayerBy 获取用户任务状态
 func (c *TaskController) GetByPlayerBy(id, userIDString string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	var userID primitive.ObjectID
 	if userIDString == "me" {
 		userID = c.checkLogin()
 	} else {
 		userID, err = primitive.ObjectIDFromHex(userIDString)
-		libs.AssertErr(err, "invalid_id", 400)
+		utils.AssertErr(err, "invalid_id", 400)
 	}
 
 	status := c.Service.GetTaskStatus(taskID, userID, c.checkLogin())
@@ -367,25 +367,25 @@ func (c *TaskController) GetByPlayerBy(id, userIDString string) int {
 // PutByPlayerBy 修改任务参与者状态
 func (c *TaskController) PutByPlayerBy(id, userIDString string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	var userID primitive.ObjectID
 	if userIDString == "me" {
 		userID = c.checkLogin()
 	} else {
 		userID, err = primitive.ObjectIDFromHex(userIDString)
-		libs.AssertErr(err, "invalid_id", 400)
+		utils.AssertErr(err, "invalid_id", 400)
 	}
 
 	postUserID := c.checkLogin()
 
 	req := TaskStatusReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
 	var status models.PlayerStatus
 	if req.Status != "" {
 		status = models.PlayerStatus(req.Status)
-		libs.Assert(status == models.PlayerWait || status == models.PlayerRefuse ||
+		utils.Assert(status == models.PlayerWait || status == models.PlayerRefuse ||
 			status == models.PlayerClose || status == models.PlayerRunning ||
 			status == models.PlayerFinish || status == models.PlayerGiveUp ||
 			status == models.PlayerFailure, "invalid_status", 403)
@@ -412,9 +412,9 @@ type PlayerListRes struct {
 
 // GetByPlayer 获取任务参与者
 func (c *TaskController) GetByPlayer(id string) int {
-	libs.Assert(id != "", "string")
+	utils.Assert(id != "", "string")
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	page, size := c.getPaginationData()
 
@@ -440,7 +440,7 @@ func (c *TaskController) GetByPlayer(id string) int {
 // GetByWechat 生成活动微信小程序码
 func (c *TaskController) GetByWechat(id string) int {
 	taskID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	url := c.Service.GetQRCode(taskID)
 	c.JSON(struct {
 		URL string `json:"url"`

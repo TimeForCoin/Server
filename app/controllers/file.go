@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -31,10 +31,10 @@ func (c *FileController) Post() int {
 	file, head, err := c.Ctx.FormFile("data")
 	//noinspection GoUnhandledErrorResult
 	defer file.Close()
-	libs.AssertErr(err, "invalid_data", 400)
+	utils.AssertErr(err, "invalid_data", 400)
 
 	fileType := c.Ctx.FormValueDefault("type", "")
-	libs.Assert(fileType == "image" || fileType == "file", "invalid_type", 400)
+	utils.Assert(fileType == "image" || fileType == "file", "invalid_type", 400)
 
 	name := c.Ctx.FormValueDefault("name", head.Filename)
 	description := c.Ctx.FormValueDefault("description", "")
@@ -58,7 +58,7 @@ func (c *FileController) DeleteBy(id string) int {
 	userID := c.checkLogin()
 
 	fileID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	c.Service.RemoveUserFile(userID, fileID)
 	return iris.StatusOK
 }
@@ -104,10 +104,10 @@ func (c *FileController) PutBy(id string) int {
 	userID := c.checkLogin()
 
 	fileID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	req := PutFileReq{}
-	libs.AssertErr(c.Ctx.ReadJSON(&req), "invalid_value", 400)
+	utils.AssertErr(c.Ctx.ReadJSON(&req), "invalid_value", 400)
 
 	c.Service.UpdateFileInfo(fileID, userID, req.Name, req.Description, req.Public)
 

@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/services"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -61,11 +61,11 @@ func (c *MessageController) PostSystem() int {
 	userID := c.checkLogin()
 	req := PostMessageReq{}
 	err := c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 	aboutID := primitive.NilObjectID
 	if req.About != "" {
 		aboutID, err = primitive.ObjectIDFromHex(req.About)
-		libs.AssertErr(err, "invalid_id")
+		utils.AssertErr(err, "invalid_id")
 	}
 	c.Service.SendSystemMessage(userID, aboutID, req.Title, req.Content)
 
@@ -83,7 +83,7 @@ func (c *MessageController) GetBy(id string) int {
 	userID := c.checkLogin()
 	page, size := c.getPaginationData()
 	sessionID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	session := c.Service.GetSession(userID, sessionID, page, size)
 
@@ -102,7 +102,7 @@ func (c *MessageController) GetUserBy(id string) int {
 	userID := c.checkLogin()
 	page, size := c.getPaginationData()
 	targetUserID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 
 	session := c.Service.GetSessionByUser(userID, targetUserID, page, size)
 
@@ -120,10 +120,10 @@ func (c *MessageController) GetUserBy(id string) int {
 func (c *MessageController) PostBy(id string) int {
 	userID := c.checkLogin()
 	targetID, err := primitive.ObjectIDFromHex(id)
-	libs.AssertErr(err, "invalid_id", 400)
+	utils.AssertErr(err, "invalid_id", 400)
 	req := PostMessageReq{}
 	err = c.Ctx.ReadJSON(&req)
-	libs.AssertErr(err, "invalid_value", 400)
+	utils.AssertErr(err, "invalid_value", 400)
 
 	sessionID := c.Service.SendChatMessage(userID, targetID, req.Content)
 

@@ -1,11 +1,10 @@
 package models
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"os"
 	"strconv"
 	"testing"
-
-	"github.com/TimeForCoin/Server/app/libs"
 )
 
 func TestRedis(t *testing.T) {
@@ -21,7 +20,7 @@ func testInitRedis(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = InitRedis(&libs.RedisConfig{
+	err = InitRedis(&utils.RedisConfig{
 		Host:     os.Getenv("REDIS_HOST"),
 		Port:     os.Getenv("REDIS_PORT"),
 		Password: os.Getenv("REDIS_PASSWORD"),

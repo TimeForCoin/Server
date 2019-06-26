@@ -1,9 +1,9 @@
 package models
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/kataras/iris/core/errors"
 
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/go-redis/redis"
 	"github.com/rs/zerolog/log"
 )
@@ -22,7 +22,7 @@ func GetRedis() *Redis {
 }
 
 // InitRedis 初始化 Redis
-func InitRedis(config *libs.RedisConfig) error {
+func InitRedis(config *utils.RedisConfig) error {
 	redisInst = &Redis{}
 	redisInst.Client = redis.NewClient(&redis.Options{
 		Addr:     config.Host + ":" + config.Port,

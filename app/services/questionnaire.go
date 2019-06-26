@@ -1,9 +1,9 @@
 package services
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"time"
 
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/kataras/iris"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -56,26 +56,26 @@ type QuestionnaireStatisticsRes struct {
 // AddQuestionnaire 添加问卷
 func (s *questionnaireService) AddQuestionnaire(info models.QuestionnaireSchema) {
 	task, err := s.taskModel.GetTaskByID(info.TaskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Type == models.TaskTypeQuestionnaire, "not_allow_type", 403)
-	libs.Assert(task.Publisher == info.Owner, "permission_deny", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Type == models.TaskTypeQuestionnaire, "not_allow_type", 403)
+	utils.Assert(task.Publisher == info.Owner, "permission_deny", 403)
 
 	_, err = s.model.GetQuestionnaireInfoByID(task.ID)
-	libs.Assert(err != nil, "exist_questionnaire", 403)
+	utils.Assert(err != nil, "exist_questionnaire", 403)
 
 	_, err = s.model.AddQuestionnaire(info)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // SetQuestionnaireInfo 设置问卷信息
 func (s *questionnaireService) SetQuestionnaireInfo(userID primitive.ObjectID, info models.QuestionnaireSchema) {
 	task, err := s.taskModel.GetTaskByID(info.TaskID)
-	libs.AssertErr(err, "faked_task", 403)
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
-	libs.Assert(task.Status == models.TaskStatusDraft || task.Status == models.TaskStatusWait, "not_allow", 403)
+	utils.AssertErr(err, "faked_task", 403)
+	utils.Assert(task.Publisher == userID, "permission_deny", 403)
+	utils.Assert(task.Status == models.TaskStatusDraft || task.Status == models.TaskStatusWait, "not_allow", 403)
 
 	err = s.model.SetQuestionnaireInfoByID(task.ID, info)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // GetQuestionnaireInfoByID 获取问卷信息
@@ -85,7 +85,7 @@ func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (
 		return QuestionnaireDetail{}
 	}
 	owner, err := s.cacheModel.GetUserBaseInfo(questionnaire.Owner)
-	libs.AssertErr(err, "faked_task", 403)
+	utils.AssertErr(err, "faked_task", 403)
 	detail = QuestionnaireDetail{
 		TaskID:        questionnaire.TaskID.Hex(),
 		Title:         questionnaire.Title,
@@ -101,29 +101,29 @@ func (s *questionnaireService) GetQuestionnaireInfoByID(id primitive.ObjectID) (
 // GetQuestionnaireQuestionsByID 获取问卷问题
 func (s *questionnaireService) GetQuestionnaireQuestionsByID(id primitive.ObjectID) (questions []models.ProblemSchema) {
 	questions, err := s.model.GetQuestionnaireQuestionsByID(id)
-	libs.AssertErr(err, "faked_task", 400)
+	utils.AssertErr(err, "faked_task", 400)
 	return
 }
 
 // SetQuestionnaireQuestions 修改问卷问题
 func (s *questionnaireService) SetQuestionnaireQuestions(userID primitive.ObjectID, id primitive.ObjectID, questions []models.ProblemSchema) {
 	task, err := s.taskModel.GetTaskByID(id)
-	libs.AssertErr(err, "faked_task", 400)
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
-	libs.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
+	utils.AssertErr(err, "faked_task", 400)
+	utils.Assert(task.Publisher == userID, "permission_deny", 403)
+	utils.Assert(task.Status == models.TaskStatusDraft, "not_allow", 403)
 
 	err = s.model.SetQuestionnaireQuestionsByID(id, questions)
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // GetQuestionnaireAnswersByID 获取问卷答案数据
 func (s *questionnaireService) GetQuestionnaireAnswersByID(userID primitive.ObjectID, id primitive.ObjectID) QuestionnaireStatisticsRes {
 	task, err := s.taskModel.GetTaskByID(id)
-	libs.AssertErr(err, "faked_task", 400)
-	libs.Assert(task.Publisher == userID, "permission_deny", 403)
+	utils.AssertErr(err, "faked_task", 400)
+	utils.Assert(task.Publisher == userID, "permission_deny", 403)
 
 	statistics, err := s.model.GetQuestionnaireAnswersByID(id)
-	libs.AssertErr(err, "faked_task", 400)
+	utils.AssertErr(err, "faked_task", 400)
 	if statistics == nil {
 		statistics = []models.StatisticsSchema{}
 	}
@@ -137,8 +137,8 @@ func (s *questionnaireService) GetQuestionnaireAnswersByID(userID primitive.Obje
 // AddAnswer 添加新回答
 func (s *questionnaireService) AddAnswer(id, userID primitive.ObjectID, data []models.ProblemDataSchema) {
 	task, err := s.taskModel.GetTaskByID(id)
-	libs.AssertErr(err, "faked_task", 400)
-	libs.Assert(task.Status == models.TaskStatusWait, "not_allow", 403)
+	utils.AssertErr(err, "faked_task", 400)
+	utils.Assert(task.Status == models.TaskStatusWait, "not_allow", 403)
 	//_, err := s.model.GetAnswerByUserID(id, userID)
 	//libs.Assert(err != nil, "")
 
@@ -147,5 +147,5 @@ func (s *questionnaireService) AddAnswer(id, userID primitive.ObjectID, data []m
 		Data:   data,
 		Time:   time.Now().Unix(),
 	})
-	libs.AssertErr(err, "", iris.StatusInternalServerError)
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }

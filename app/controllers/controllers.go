@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/TimeForCoin/Server/app/utils"
 	"strconv"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	irisRecover "github.com/kataras/iris/middleware/recover"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/logger"
 	"github.com/kataras/iris/sessions"
@@ -27,7 +27,7 @@ func NewApp() *iris.Application {
 
 	app.Use(irisRecover.New())
 
-	app.Use(libs.NewErrorHandler())
+	app.Use(utils.NewErrorHandler())
 
 	BindUserController(app)
 	BindArticleController(app)
@@ -59,7 +59,7 @@ type PaginationRes struct {
 func (b *BaseController) checkLogin() primitive.ObjectID {
 	id := b.Session.GetString("id")
 	_id, err := primitive.ObjectIDFromHex(id)
-	libs.Assert(err == nil, "invalid_session", 401)
+	utils.Assert(err == nil, "invalid_session", 401)
 	// login := b.Session.GetString("login")
 	// libs.Assert(login != "wechat_new", "invalid_session", 401)
 	return _id
@@ -69,22 +69,22 @@ func (b *BaseController) getPaginationData() (page, size int64) {
 	var err error
 	pageStr := b.Ctx.URLParamDefault("page", "1")
 	page, err = strconv.ParseInt(pageStr, 10, 64)
-	libs.AssertErr(err, "invalid_page", 400)
-	libs.Assert(page > 0, "invalid_page", 400)
+	utils.AssertErr(err, "invalid_page", 400)
+	utils.Assert(page > 0, "invalid_page", 400)
 	sizeStr := b.Ctx.URLParamDefault("size", "10")
 	size, err = strconv.ParseInt(sizeStr, 10, 64)
-	libs.AssertErr(err, "invalid_size", 400)
-	libs.Assert(size > 0, "invalid_size", 400)
+	utils.AssertErr(err, "invalid_size", 400)
+	utils.Assert(size > 0, "invalid_size", 400)
 	return
 }
 
 // JSON 使用 JSON 返回数据
 func (b *BaseController) JSON(data interface{}) {
-	libs.JSON(b.Ctx, data)
+	utils.JSON(b.Ctx, data)
 }
 
 // InitSession 初始化 Session
-func InitSession(config libs.SessionConfig, dbConfig libs.RedisConfig) {
+func InitSession(config utils.SessionConfig, dbConfig utils.RedisConfig) {
 	sessionManager = sessions.New(sessions.Config{
 		Cookie:  config.Key,
 		Expires: time.Hour * time.Duration(config.Expires*24),

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"github.com/TimeForCoin/Server/app/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/tencentyun/cos-go-sdk-v5"
 	"gopkg.in/resty.v1"
@@ -21,7 +22,7 @@ type COSService struct {
 }
 
 // InitCOS 初始化对象存储
-func InitCOS(c COSConfig) {
+func InitCOS(c utils.COSConfig) {
 	u, _ := url.Parse(c.URL)
 	b := &cos.BaseURL{BucketURL: u}
 	cosService = &COSService{
