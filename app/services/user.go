@@ -186,7 +186,11 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 			gender = models.GenderOther
 		}
 		// 保存头像到云存储
+		if info.Avatar == "" {
+			info.Avatar = "https://violet-1252808268.cos.ap-guangzhou.myqcloud.com/0.png"
+		}
 		url, err := libs.GetCOS().SaveURLFile("avatar-"+userID.Hex()+".png", info.Avatar)
+
 		utils.AssertErr(err, "", 500)
 		_ = s.model.SetUserInfoByID(userID, models.UserInfoSchema{
 			Email:    info.Email,

@@ -77,7 +77,6 @@ func NewErrorHandler() context.Handler {
 				panic(err)
 			}
 		}()
-
 		ctx.Next()
 	}
 }
