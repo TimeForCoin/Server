@@ -153,7 +153,7 @@ func (s *commentService) GetComments(contentID primitive.ObjectID, userID string
 				if userID != "" && r.IsDelete == false {
 					_id, err := primitive.ObjectIDFromHex(userID)
 					utils.AssertErr(err, "", 500)
-					comment.Liked = s.cache.IsLikeComment(_id, r.ID)
+					reply.Liked = s.cache.IsLikeComment(_id, r.ID)
 				}
 				comment.Reply = append(comment.Reply, reply)
 			}
