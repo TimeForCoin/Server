@@ -457,7 +457,7 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 		err = s.model.InsertCount(taskID, models.CollectCount, -1)
 	}
 	utils.AssertErr(err, "", 500)
-	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
+	err = s.cache.WillUpdate(userID, models.KindOfCollectTask)
 	utils.AssertErr(err, "", 500)
 }
 
