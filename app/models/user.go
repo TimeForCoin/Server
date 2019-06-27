@@ -1,7 +1,6 @@
 package models
 
 import (
-	"errors"
 	"github.com/TimeForCoin/Server/app/utils"
 	"reflect"
 	"time"
@@ -83,7 +82,6 @@ type UserDataSchema struct {
 	Type   UserType // 用户类型
 
 	AttendanceDate int64                `bson:"attendance_date"` // 签到时间戳
-	CollectTasks   []primitive.ObjectID `bson:"collect_tasks"`   // 收藏的任务
 	SearchHistory  []string             `bson:"search_history"`  // 搜索历史(仅保留最近的 20 条)
 	// 冗余数据
 	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
@@ -123,7 +121,6 @@ func makeNewUserSchema() UserSchema {
 		RegisterTime: time.Now().Unix(),
 		Data: UserDataSchema{
 			Type:          UserTypeNormal,
-			CollectTasks:  []primitive.ObjectID{},
 			SearchHistory: []string{},
 			Money: 100,
 			Value: 1000,
@@ -352,34 +349,6 @@ func (m *UserModel) CheckCertificationEmail(email string) bool {
 		return true
 	}
 	return false
-}
-
-// AddCollectTask 添加任务收藏
-func (m *UserModel) AddCollectTask(id, taskID primitive.ObjectID) error {
-	ctx, over := GetCtx()
-	defer over()
-	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$addToSet": bson.M{"data.collect_tasks": taskID}})
-	if err != nil {
-		return err
-	} else if res.ModifiedCount == 0 {
-		return errors.New("exist")
-	}
-	return nil
-}
-
-// RemoveCollectTask 移除任务收藏
-func (m *UserModel) RemoveCollectTask(id, taskID primitive.ObjectID) error {
-	ctx, over := GetCtx()
-	defer over()
-	res, err := m.Collection.UpdateOne(ctx, bson.M{"_id": id},
-		bson.M{"$pull": bson.M{"data.collect_tasks": taskID}})
-	if err != nil {
-		return err
-	} else if res.ModifiedCount == 0 {
-		return ErrNotExist
-	}
-	return nil
 }
 
 // AddSearchHistory 添加搜索历史
