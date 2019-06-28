@@ -1,10 +1,11 @@
 package services
 
 import (
-	"github.com/TimeForCoin/Server/app/utils"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/TimeForCoin/Server/app/utils"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/xmatrixstudio/violet.sdk.go.v3"
@@ -65,6 +66,7 @@ func newUserService() UserService {
 		setModel:        models.GetModel().Set,
 		fileModel:       models.GetModel().File,
 		taskStatusModel: models.GetModel().TaskStatus,
+		logModel:        models.GetModel().Log,
 	}
 }
 
@@ -77,6 +79,7 @@ type userService struct {
 	setModel        *models.SetModel
 	fileModel       *models.FileModel
 	taskStatusModel *models.TaskStatusModel
+	logModel        *models.LogModel
 }
 
 // UserDetail 用户详细信息
@@ -165,6 +168,9 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 	}
 	// 账号已存在，直接返回 ID
 	if u, err := s.model.GetUserByViolet(res.UserID); err == nil {
+		logID, err := s.logModel.AddLog(u.ID, u.ID, models.LogTypeLogin)
+		err = s.logModel.SetMsg(logID, "Login By Violet")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		return u.ID.Hex(), false
 	}
 	// 账号不存在，创建新账号
@@ -203,16 +209,22 @@ func (s *userService) LoginByViolet(code string) (id string, new bool) {
 			Location: info.Location,
 		})
 	}
+	logID, err := s.logModel.AddLog(userID, userID, models.LogTypeLogin)
+	err = s.logModel.SetMsg(logID, "Login By Violet")
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	return userID.Hex(), true
 }
 
 // 微信扫码登陆
-func (s *userService) LoginByWechatOnPC(userID,sessionID primitive.ObjectID) {
+func (s *userService) LoginByWechatOnPC(userID, sessionID primitive.ObjectID) {
 	err := s.cache.SetSessionUser(sessionID.Hex(), userID)
 	utils.AssertErr(err, "", 500)
+	logID, err := s.logModel.AddLog(userID, userID, models.LogTypeLogin)
+	err = s.logModel.SetMsg(logID, "Login By Wechat On PC")
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
-func (s *userService) GetSessionUser(session primitive.ObjectID ) primitive.ObjectID {
+func (s *userService) GetSessionUser(session primitive.ObjectID) primitive.ObjectID {
 	id, err := s.cache.GetSessionUser(session.Hex())
 	if err != nil {
 		return primitive.NilObjectID
@@ -226,11 +238,17 @@ func (s *userService) LoginByWechat(code string) (id string, new bool) {
 	utils.AssertErr(err, "", 403)
 	// 账号已存在，直接返回 ID
 	if u, err := s.model.GetUserByWechat(openID); err == nil {
+		logID, err := s.logModel.AddLog(u.ID, u.ID, models.LogTypeLogin)
+		err = s.logModel.SetMsg(logID, "Login By Wechat")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 		return u.ID.Hex(), u.Info.Nickname == ""
 	}
 	// 账号不存在，新建账号
 	userID, err := s.model.AddUserByWechat(openID)
 	utils.AssertErr(err, "db_error", iris.StatusInternalServerError)
+	logID, err := s.logModel.AddLog(userID, userID, models.LogTypeLogin)
+	err = s.logModel.SetMsg(logID, "Login By Wechat")
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	return userID.Hex(), true
 }
 
@@ -255,6 +273,10 @@ func (s *userService) UserPay(id primitive.ObjectID) {
 		Money: rand.Int63n(20),
 	})
 	utils.AssertErr(err, "", iris.StatusInternalServerError)
+	logID, err := s.logModel.AddLog(id, id, models.LogTypeMoney)
+	err = s.logModel.SetValue(logID, rand.Int63n(20))
+	err = s.logModel.SetMsg(logID, "user pay")
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 }
 
 // UserAttend 用户签到
@@ -269,6 +291,10 @@ func (s *userService) UserAttend(id primitive.ObjectID) {
 	err = s.model.UpdateUserDataCount(id, models.UserDataCount{
 		Value: rand.Int63n(20),
 	})
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
+	logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+	err = s.logModel.SetValue(logID, rand.Int63n(20))
+	err = s.logModel.SetMsg(logID, "user attend")
 	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	err = s.model.SetUserAttend(id)
 	utils.AssertErr(err, "", iris.StatusInternalServerError)
@@ -605,7 +631,7 @@ func (s *userService) GetUserParticipate(id primitive.ObjectID, page, size int64
 		var taskStatusDetail TaskStatusDetail
 		taskStatusDetail.Status = TaskStatus{
 			TaskStatusSchema: &taskStatusList[i],
-			Player: userPlayer,
+			Player:           userPlayer,
 		}
 		task, err := s.taskModel.GetTaskByID(taskStatusList[i].Task)
 		utils.AssertErr(err, "", iris.StatusInternalServerError)

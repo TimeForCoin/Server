@@ -1,9 +1,10 @@
 package services
 
 import (
-	"github.com/TimeForCoin/Server/app/utils"
 	"strings"
 	"time"
+
+	"github.com/TimeForCoin/Server/app/utils"
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
@@ -42,6 +43,7 @@ func newTaskService() TaskService {
 		setModel:        models.GetModel().Set,
 		taskStatusModel: models.GetModel().TaskStatus,
 		messageModel:    models.GetModel().Message,
+		logModel:        models.GetModel().Log,
 	}
 }
 
@@ -53,6 +55,7 @@ type taskService struct {
 	setModel        *models.SetModel
 	taskStatusModel *models.TaskStatusModel
 	messageModel    *models.MessageModel
+	logModel        *models.LogModel
 }
 
 // ImagesData 图片数据
@@ -85,7 +88,7 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	utils.AssertErr(err, "", 500)
 	if publish {
 		status = models.TaskStatusWait
-		utils.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) + 1, "no_money", 403)
+		utils.Assert(float32(user.Data.Money) > info.RewardValue*float32(info.MaxPlayer)+1, "no_money", 403)
 	} else {
 		utils.Assert(float32(user.Data.Money) > 1, "no_money", 403)
 	}
@@ -108,8 +111,6 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 	}
 	GetServiceManger().File.BindFilesToTask(userID, taskID, files)
 
-
-
 	id, err := s.model.AddTask(taskID, userID, status)
 	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
@@ -118,16 +119,31 @@ func (s *taskService) AddTask(userID primitive.ObjectID, info models.TaskSchema,
 
 	if publish {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
-			Money: -int64(info.RewardValue) * info.MaxPlayer  - 1,
+			Money: -int64(info.RewardValue)*info.MaxPlayer - 1,
 			Value: -2,
 		})
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeMoney)
+		err = s.logModel.SetValue(logID, -int64(info.RewardValue)*info.MaxPlayer-1)
+		err = s.logModel.SetMsg(logID, "funish task")
+		logID, err = s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+		err = s.logModel.SetValue(logID, -2)
+		err = s.logModel.SetMsg(logID, "funish task")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	} else {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
-			Money: - 1,
+			Money: -1,
 			Value: -2,
 		})
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeMoney)
+		err = s.logModel.SetValue(logID, -1)
+		err = s.logModel.SetMsg(logID, "funish task")
+		logID, err = s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+		err = s.logModel.SetValue(logID, -2)
+		err = s.logModel.SetMsg(logID, "funish task")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	}
-	utils.AssertErr(err, "", iris.StatusInternalServerError)
 
 	return id
 }
@@ -169,11 +185,11 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 		info.PublishDate = time.Now().Unix()
 		user, err := s.userModel.GetUserByID(userID)
 		utils.AssertErr(err, "", 500)
-		utils.Assert(float32(user.Data.Money) > info.RewardValue * float32(info.MaxPlayer) , "no_money", 403)
+		utils.Assert(float32(user.Data.Money) > info.RewardValue*float32(info.MaxPlayer), "no_money", 403)
 		utils.Assert(float32(user.Data.Value) > 2, "no_value", 403)
 	} else if info.Status == models.TaskStatusFinish {
 		// 任务已完成
-		players,_, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
+		players, _, err := s.taskStatusModel.GetTaskStatusListByTaskID(taskID, []models.PlayerStatus{}, 0, 0)
 		utils.AssertErr(err, "", 500)
 		for _, status := range players {
 			utils.Assert(status.Status != models.PlayerRunning && status.Status != models.PlayerWait, "not_allow_finish", 403)
@@ -279,12 +295,20 @@ func (s *taskService) SetTaskInfo(userID, taskID primitive.ObjectID, info models
 
 	if info.Status == models.TaskStatusWait {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
-			Money: -int64(info.RewardValue) * info.MaxPlayer ,
+			Money: -int64(info.RewardValue) * info.MaxPlayer,
 		})
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeMoney)
+		err = s.logModel.SetValue(logID, -int64(info.RewardValue)*info.MaxPlayer)
+		err = s.logModel.SetMsg(logID, "set task info")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	} else if addMoney != 0 {
 		err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
 			Money: -int64(addMoney),
 		})
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeMoney)
+		err = s.logModel.SetValue(logID, -int64(addMoney))
+		err = s.logModel.SetMsg(logID, "set task info")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	}
 
 	// 删除无用文件
@@ -506,15 +530,17 @@ func (s *taskService) AddPlayer(taskID, userID primitive.ObjectID, note string) 
 		UserID:  taskID,
 		Title:   msg,
 		Content: taskStatus.Note,
-		About: userID,
+		About:   userID,
 	})
 	utils.AssertErr(err, "", 500)
 
 	err = s.userModel.UpdateUserDataCount(userID, models.UserDataCount{
 		Value: -1,
 	})
-
-
+	logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+	err = s.logModel.SetValue(logID, -1)
+	err = s.logModel.SetMsg(logID, "Add Player")
+	utils.AssertErr(err, "", iris.StatusInternalServerError)
 	return status == models.PlayerRunning
 }
 
@@ -586,6 +612,13 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			Value: 5,
 		})
 		utils.AssertErr(err, "", 500)
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeMoney)
+		err = s.logModel.SetValue(logID, int64(task.RewardValue))
+		err = s.logModel.SetMsg(logID, "funish task")
+		logID, err = s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+		err = s.logModel.SetValue(logID, 5)
+		err = s.logModel.SetMsg(logID, "funish task")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	} else if taskStatus.Status == models.PlayerFinish {
 		_, err = s.messageModel.AddMessage(userID, models.MessageTypeTask, models.MessageSchema{
 			UserID:  taskID,
@@ -597,6 +630,10 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			Value: -1,
 		})
 		utils.AssertErr(err, "", 500)
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+		err = s.logModel.SetValue(logID, -1)
+		err = s.logModel.SetMsg(logID, "Player Finish")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	} else if taskStatus.Status == models.PlayerGiveUp {
 		user := GetServiceManger().User.GetUserBaseInfo(userID)
 		_, err = s.messageModel.AddMessage(task.Publisher, models.MessageTypeTask, models.MessageSchema{
@@ -612,6 +649,10 @@ func (s *taskService) SetTaskStatusInfo(taskID, userID, postUserID primitive.Obj
 			Value: -3,
 		})
 		utils.AssertErr(err, "", 500)
+		logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeValue)
+		err = s.logModel.SetValue(logID, -3)
+		err = s.logModel.SetMsg(logID, "Player Give Up")
+		utils.AssertErr(err, "", iris.StatusInternalServerError)
 	}
 }
 

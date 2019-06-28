@@ -36,6 +36,7 @@ func NewApp() *iris.Application {
 	BindQuestionnaireController(app)
 	BindCommentController(app)
 	BindMessageController(app)
+	BindUtilsController(app)
 
 	return app
 }
