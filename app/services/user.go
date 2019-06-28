@@ -686,7 +686,6 @@ func (s *userService) makeUserRes(user models.UserSchema, all bool) UserDetail {
 		Info:         user.Info,
 		Data: &UserDataRes{
 			UserDataSchema: &user.Data,
-			CollectCount:   int64(len(user.Data.CollectTasks)),
 		},
 		Certification: &UserCertification{
 			Type:   user.Certification.Identity,

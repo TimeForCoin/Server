@@ -475,17 +475,13 @@ func (s *taskService) ChangeCollection(taskID, userID primitive.ObjectID, collec
 		err = s.setModel.AddToSet(userID, taskID, models.SetOfCollectTask)
 		utils.AssertErr(err, "exist_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, 1)
-		utils.AssertErr(err, "", 500)
-		err = s.userModel.AddCollectTask(userID, taskID)
 	} else {
 		err = s.setModel.RemoveFromSet(userID, taskID, models.SetOfCollectTask)
 		utils.AssertErr(err, "faked_collect", 403)
 		err = s.model.InsertCount(taskID, models.CollectCount, -1)
-		utils.AssertErr(err, "", 500)
-		err = s.userModel.RemoveCollectTask(userID, taskID)
 	}
 	utils.AssertErr(err, "", 500)
-	err = s.cache.WillUpdate(userID, models.KindOfLikeTask)
+	err = s.cache.WillUpdate(userID, models.KindOfCollectTask)
 	utils.AssertErr(err, "", 500)
 }
 
