@@ -27,11 +27,11 @@ const (
 
 // MessageSchema 消息数据结构
 type MessageSchema struct {
-	UserID  primitive.ObjectID `bson:"user" json:"user_id"`            // 消息发言人ID
-	Time    int64              `bson:"time"`            // 发送时间
-	Title   string             `bson:"title,omitempty"` // 消息标题 (系统通知/任务通知)
-	Content string             `bson:"content"`         // 消息内容
-	About   primitive.ObjectID `bson:"about,omitempty"` // 相关ID (被评论的任务)
+	UserID  primitive.ObjectID `bson:"user" json:"user_id"` // 消息发言人ID
+	Time    int64              `bson:"time"`                // 发送时间
+	Title   string             `bson:"title,omitempty"`     // 消息标题 (系统通知/任务通知)
+	Content string             `bson:"content"`             // 消息内容
+	About   primitive.ObjectID `bson:"about,omitempty"`     // 相关ID (被评论的任务)
 }
 
 // SessionSchema Session 数据结构

@@ -1,8 +1,9 @@
 package models
 
 import (
+	"errors"
+
 	"github.com/TimeForCoin/Server/app/utils"
-	"github.com/kataras/iris/core/errors"
 
 	"github.com/go-redis/redis"
 	"github.com/rs/zerolog/log"

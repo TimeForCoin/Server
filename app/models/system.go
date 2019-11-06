@@ -24,7 +24,7 @@ type SystemSchemas struct {
 func (m *SystemModel) GetAutoEmail(page, size int64) (res []SystemSchemas, err error) {
 	ctx, finish := GetCtx()
 	defer finish()
-	cur, err := m.Collection.Find(ctx, bson.M{"key": bson.M{"$regex": "^email-"}}, options.Find().SetSkip((page-1) *size).SetLimit(size))
+	cur, err := m.Collection.Find(ctx, bson.M{"key": bson.M{"$regex": "^email-"}}, options.Find().SetSkip((page-1)*size).SetLimit(size))
 	if err != nil {
 		return
 	}

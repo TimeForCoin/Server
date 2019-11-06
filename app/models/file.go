@@ -43,10 +43,10 @@ type FileSchema struct {
 	Name        string             // 文件名
 	Description string             // 文件描述
 	Size        int64              // 文件大小
-	Public      bool               `json:"-"` // 公开，非公开文件需要验证权限
+	Public      bool               `json:"-"`   // 公开，非公开文件需要验证权限
 	URL         string             `json:"url"` // 下载链接
-	COSName     string             `json:"-"` // 对象存储名字
-	Hash        string             `json:"-"` // 文件哈希值
+	COSName     string             `json:"-"`   // 对象存储名字
+	Hash        string             `json:"-"`   // 文件哈希值
 }
 
 // AddFile 添加文件

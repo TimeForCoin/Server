@@ -6,7 +6,7 @@ import (
 	"github.com/TimeForCoin/Server/app/utils"
 
 	"github.com/TimeForCoin/Server/app/models"
-	"github.com/kataras/iris"
+	"github.com/kataras/iris/v12"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

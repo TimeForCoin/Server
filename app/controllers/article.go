@@ -3,8 +3,8 @@ package controllers
 import (
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/TimeForCoin/Server/app/utils"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/mvc"
+	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,16 +23,16 @@ func BindArticleController(app *iris.Application) {
 
 // GetArticlesRes 公告文章列表数据
 type ArticlesListRes struct {
-	Pagination	PaginationRes
-	Data		[]services.ArticleBrief
+	Pagination PaginationRes
+	Data       []services.ArticleBrief
 }
 
 // ArticleReq 添加或修改公告文章请求
 type ArticleReq struct {
-	Title		string		`json:"title"`
-	Content		string		`json:"content"`
-	Publisher	string		`json:"publisher"`
-	Images		[]string	`json:"images"`
+	Title     string   `json:"title"`
+	Content   string   `json:"content"`
+	Publisher string   `json:"publisher"`
+	Images    []string `json:"images"`
 }
 
 // Get 获取公告文章列表
@@ -44,12 +44,12 @@ func (c *ArticleController) Get() int {
 		articles = []services.ArticleBrief{}
 	}
 	res := ArticlesListRes{
-		Pagination:	PaginationRes{
-			Page:	page,
-			Size:	size,
-			Total:	count,
+		Pagination: PaginationRes{
+			Page:  page,
+			Size:  size,
+			Total: count,
 		},
-		Data:	articles,
+		Data: articles,
 	}
 	c.JSON(res)
 

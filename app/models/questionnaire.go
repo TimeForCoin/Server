@@ -42,32 +42,32 @@ const (
 
 // ProblemSchema 问卷问题
 type ProblemSchema struct {
-	Index   int64                // 题号
-	Content string               // 问题本体
-	Note    string               // 问题备注
-	Type    ProblemType          // 问题类型
+	Index   int64       // 题号
+	Content string      // 问题本体
+	Note    string      // 问题备注
+	Type    ProblemType // 问题类型
 
 	// 选择题数据
 	ChooseProblem struct {
 		Options []struct {
-			Index   int64              // 选项序号
-			Content string             // 选项内容
+			Index   int64  // 选项序号
+			Content string // 选项内容
 		} // 问题选项
 		MaxChoose int64 `bson:"max_choose" json:"max_choose"` // 最大可选项
 	} `bson:"choose_problem,omitempty" json:"choose_problem,omitempty"`
 
 	// 填空题数据
 	FillProblem struct {
-		Type      FillType `bson:"type"`                  // 填空类型
+		Type      FillType `bson:"type"`                                    // 填空类型
 		MultiLine bool     `bson:"multi_line, omitempty" json:"multi_line"` // 是否多行
-		MaxWord   int64    `bson:"max_word, omitempty" json:"max_word"`   // 最大字数
+		MaxWord   int64    `bson:"max_word, omitempty" json:"max_word"`     // 最大字数
 	} `bson:"fill_problem, omitempty" json:"fill_problem,omitempty"`
 
 	// 评分题
 	ScoreProblem struct {
 		MinText string `bson:"min_text" json:"min_text"` // 低分描述（如：不满意，不重要，不愿意)
 		MaxText string `bson:"max_text" json:"max_text"` // 高分描述
-		Score   int64  `bson:"score"`    // 评分级别 1-x (最高为10)
+		Score   int64  `bson:"score"`                    // 评分级别 1-x (最高为10)
 	} `bson:"score_problem, omitempty" json:"score_problem,omitempty"`
 
 	// 矩阵题
@@ -91,16 +91,16 @@ type StatisticsSchema struct {
 	Data     []ProblemDataSchema // 问题答案
 	Time     int64               // 提交时间
 	Duration int64               // 花费时间(秒)
-	IP       string         `bson:"ip" json:"ip"`     // 提交 IP 地址
+	IP       string              `bson:"ip" json:"ip"` // 提交 IP 地址
 }
 
 // ProblemDataSchema 问题数据
 type ProblemDataSchema struct {
-	ProblemIndex int                `bson:"problem_index" json:"problem_index"`           // 题目序号
+	ProblemIndex int                `bson:"problem_index" json:"problem_index"`                   // 题目序号
 	StringValue  string             `bson:"string_value,omitempty" json:"string_value,omitempty"` // 填空题
 	ChooseValue  []int              `bson:"choose_value,omitempty" json:"choose_value,omitempty"` // 选择题、矩阵题、排序题数据
-	ScoreValue   int                `bson:"score_value,omitempty" json:"score_value,omitempty"`  // 评分题数据
-	FileValue    primitive.ObjectID `bson:"file_value,omitempty" json:"file_value,omitempty"`   // 文件题数据
+	ScoreValue   int                `bson:"score_value,omitempty" json:"score_value,omitempty"`   // 评分题数据
+	FileValue    primitive.ObjectID `bson:"file_value,omitempty" json:"file_value,omitempty"`     // 文件题数据
 }
 
 // QuestionnaireSchema 问卷数据结构
@@ -205,7 +205,7 @@ func (model *QuestionnaireModel) AddAnswer(id primitive.ObjectID, statistics Sta
 	defer over()
 	res, err := model.Collection.UpdateOne(ctx,
 		bson.M{"_id": id},
-		bson.M{"$push": bson.M{"data": statistics} })
+		bson.M{"$push": bson.M{"data": statistics}})
 	if err != nil {
 		return
 	} else if res.MatchedCount < 1 {
