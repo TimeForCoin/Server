@@ -224,8 +224,8 @@ func (c *CacheModel) CheckCertification(userID primitive.ObjectID, email, code s
 }
 
 // SetSessionUser 设置会话用户ID
-func (c *CacheModel) SetSessionUser(session string, userID primitive.ObjectID) error{
-	_, err := c.Redis.Set("login-"+session, userID.Hex(), time.Minute * 10).Result()
+func (c *CacheModel) SetSessionUser(session string, userID primitive.ObjectID) error {
+	_, err := c.Redis.Set("login-"+session, userID.Hex(), time.Minute*10).Result()
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,7 @@ func (c *CacheModel) SetSessionUser(session string, userID primitive.ObjectID) e
 
 // GetSessionUser 获取用户ID
 func (c *CacheModel) GetSessionUser(session string) (primitive.ObjectID, error) {
-	user, err := c.Redis.Get("login-"+session).Result()
+	user, err := c.Redis.Get("login-" + session).Result()
 	if err != nil {
 		return primitive.NilObjectID, err
 	} else if user == "" {

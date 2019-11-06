@@ -1,20 +1,20 @@
 package controllers
 
 import (
-	"github.com/TimeForCoin/Server/app/utils"
 	"strconv"
 	"time"
 
-	"github.com/kataras/iris/sessions/sessiondb/redis"
-	"github.com/kataras/iris/sessions/sessiondb/redis/service"
+	"github.com/TimeForCoin/Server/app/utils"
+
+	"github.com/kataras/iris/v12/sessions/sessiondb/redis"
 	"github.com/rs/zerolog/log"
 
-	irisRecover "github.com/kataras/iris/middleware/recover"
+	irisRecover "github.com/kataras/iris/v12/middleware/recover"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/middleware/logger"
-	"github.com/kataras/iris/sessions"
+	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/middleware/logger"
+	"github.com/kataras/iris/v12/sessions"
 )
 
 var sessionManager *sessions.Sessions
@@ -90,16 +90,19 @@ func InitSession(config utils.SessionConfig, dbConfig utils.RedisConfig) {
 		Cookie:  config.Key,
 		Expires: time.Hour * time.Duration(config.Expires*24),
 	})
+
 	// 生成默认 Session
-	db := redis.New(service.Config{
-		Network:     "tcp",
-		Addr:        dbConfig.Host + ":" + dbConfig.Port,
-		Password:    dbConfig.Password,
-		Database:    dbConfig.Session,
-		MaxIdle:     0,
-		MaxActive:   0,
-		IdleTimeout: time.Duration(5) * time.Minute,
-		Prefix:      "session-"})
+	db := redis.New(redis.Config{
+		Network:   "tcp",
+		Addr:      dbConfig.Host + ":" + dbConfig.Port,
+		Timeout:   time.Duration(5) * time.Minute,
+		MaxActive: 0,
+		Password:  dbConfig.Password,
+		Database:  dbConfig.Session,
+		Prefix:    "session",
+		Delim:     "-",
+		Driver:    redis.Redigo(), // redis.Radix() can be used instead.
+	})
 
 	// close connection when control+C/cmd+C
 	iris.RegisterOnInterrupt(func() {

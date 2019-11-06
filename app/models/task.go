@@ -235,7 +235,7 @@ type ContentCountType string
 
 // ContentCountType 计数内容类型
 const (
-	PlayerCount    ContentCountType = "player_count"    // 参与人数
+	PlayerCount  ContentCountType = "player_count"  // 参与人数
 	ViewCount    ContentCountType = "view_count"    // 任务浏览数
 	CollectCount ContentCountType = "collect_count" // 收藏数
 	CommentCount ContentCountType = "comment_count" // 评论数(冗余)

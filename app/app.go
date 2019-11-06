@@ -8,7 +8,7 @@ import (
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/json-iterator/go/extra"
-	"github.com/kataras/iris"
+	"github.com/kataras/iris/v12"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

@@ -24,7 +24,7 @@ func testMessage(t *testing.T) {
 	user1 := primitive.NewObjectID()
 	user2 := primitive.NewObjectID()
 	id, err := GetModel().Message.AddMessage(user2, MessageTypeChat, MessageSchema{
-		UserID: user1,
+		UserID:  user1,
 		Content: "???",
 	})
 	if err != nil {
@@ -33,7 +33,7 @@ func testMessage(t *testing.T) {
 	t.Log(id.Hex())
 
 	id, err = GetModel().Message.AddMessage(user1, MessageTypeChat, MessageSchema{
-		UserID: user2,
+		UserID:  user2,
 		Content: "666",
 	})
 	if err != nil {
@@ -44,7 +44,7 @@ func testMessage(t *testing.T) {
 	sessions := GetModel().Message.GetSessionsByUser(user1, 1, 10)
 	if len(sessions) != 1 {
 		t.Error(sessions)
-	} else if  sessions[0].Unread1 != 1 || sessions[0].Unread2 != 1 {
+	} else if sessions[0].Unread1 != 1 || sessions[0].Unread2 != 1 {
 		t.Error(sessions)
 	}
 	t.Log(sessions)

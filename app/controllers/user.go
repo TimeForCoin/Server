@@ -8,8 +8,8 @@ import (
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
 	"github.com/TimeForCoin/Server/app/services"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/mvc"
+	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/mvc"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

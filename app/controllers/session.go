@@ -3,7 +3,7 @@ package controllers
 import (
 	"github.com/TimeForCoin/Server/app/services"
 	"github.com/TimeForCoin/Server/app/utils"
-	"github.com/kataras/iris"
+	"github.com/kataras/iris/v12"
 	"github.com/skip2/go-qrcode"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -131,7 +131,7 @@ type GetWeChatImageRes struct {
 // GetWechat 获取微信登陆二维码
 func (c *SessionController) GetWechat() int {
 	sessionID := primitive.NewObjectID()
-	png, err := qrcode.Encode(sessionID.Hex(),  qrcode.Medium, 256)
+	png, err := qrcode.Encode(sessionID.Hex(), qrcode.Medium, 256)
 	c.Session.Set("qr-code", sessionID.Hex())
 	c.Session.Set("login", "wechat_qr")
 	utils.AssertErr(err, "", 500)

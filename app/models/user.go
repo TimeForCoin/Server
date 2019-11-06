@@ -81,8 +81,8 @@ type UserDataSchema struct {
 	Credit int64    // 个人信誉
 	Type   UserType // 用户类型
 
-	AttendanceDate int64                `bson:"attendance_date"` // 签到时间戳
-	SearchHistory  []string             `bson:"search_history"`  // 搜索历史(仅保留最近的 20 条)
+	AttendanceDate int64    `bson:"attendance_date"` // 签到时间戳
+	SearchHistory  []string `bson:"search_history"`  // 搜索历史(仅保留最近的 20 条)
 	// 冗余数据
 	PublishCount    int64 `bson:"publish_count"`     // 发布任务数
 	PublishRunCount int64 `bson:"publish_run_count"` // 发布并进行中任务数
@@ -122,13 +122,13 @@ func makeNewUserSchema() UserSchema {
 		Data: UserDataSchema{
 			Type:          UserTypeNormal,
 			SearchHistory: []string{},
-			Money: 100,
-			Value: 1000,
-			Credit: 100,
+			Money:         100,
+			Value:         1000,
+			Credit:        100,
 		},
 		Certification: UserCertificationSchema{
 			Identity: IdentityNone,
-			Status: CertificationNone,
+			Status:   CertificationNone,
 		},
 	}
 }
@@ -324,7 +324,7 @@ func (m *UserModel) SetUserCertification(id primitive.ObjectID, data UserCertifi
 func (m *UserModel) GetCertification(status []CertificationStatus, page, size int64) (res []UserSchema, err error) {
 	ctx, over := GetCtx()
 	defer over()
-	cur, err := m.Collection.Find(ctx, bson.M{"certification.status": bson.M{"$in": status}}, options.Find().SetSkip((page - 1) * size).SetLimit(size))
+	cur, err := m.Collection.Find(ctx, bson.M{"certification.status": bson.M{"$in": status}}, options.Find().SetSkip((page-1)*size).SetLimit(size))
 	if err != nil {
 		return
 	}

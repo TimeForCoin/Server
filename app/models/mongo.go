@@ -26,7 +26,7 @@ type Model struct {
 	db     *mongo.Database
 	// 数据库实例
 	Log           *LogModel
-	Article		  *ArticleModel
+	Article       *ArticleModel
 	Comment       *CommentModel
 	Message       *MessageModel
 	Questionnaire *QuestionnaireModel

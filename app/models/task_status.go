@@ -52,7 +52,7 @@ func (m *TaskStatusModel) AddTaskStatus(taskID, userID primitive.ObjectID, statu
 		Task:   taskID,
 		Player: userID,
 		Status: status,
-		Note: note,
+		Note:   note,
 	})
 	if err != nil {
 		return err
@@ -98,7 +98,7 @@ func (m *TaskStatusModel) GetTaskStatusListByTaskID(taskID primitive.ObjectID, s
 	defer over()
 
 	filter := bson.M{
-		"task":   taskID,
+		"task": taskID,
 	}
 
 	if len(status) != 0 {

@@ -82,7 +82,7 @@ func (s *messageService) makeSession(userID primitive.ObjectID, session models.S
 		task, err := s.taskModel.GetTaskByID(taskID)
 		utils.AssertErr(err, "", 500)
 		sessionItem.Target = models.UserBaseInfo{
-			ID: taskID.Hex(),
+			ID:       taskID.Hex(),
 			Nickname: task.Title,
 		}
 	} else if session.Type == models.MessageTypeSystem {
@@ -133,9 +133,9 @@ func (s *messageService) GetSessionByUser(userID, targetID primitive.ObjectID, p
 		return s.makeSession(userID, session)
 	}
 	return s.makeSession(userID, models.SessionSchema{
-		User1: userID,
-		User2: targetID,
-		Type: models.MessageTypeChat,
+		User1:    userID,
+		User2:    targetID,
+		Type:     models.MessageTypeChat,
 		Messages: []models.MessageSchema{},
 	})
 }

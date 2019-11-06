@@ -12,7 +12,7 @@ import (
 
 	"github.com/TimeForCoin/Server/app/libs"
 	"github.com/TimeForCoin/Server/app/models"
-	"github.com/kataras/iris"
+	"github.com/kataras/iris/v12"
 )
 
 // UserService 用户逻辑
@@ -292,6 +292,10 @@ func (s *userService) UserAttend(id primitive.ObjectID) {
 		Value: rand.Int63n(20),
 	})
 	utils.AssertErr(err, "", iris.StatusInternalServerError)
+
+	// FIX:
+	// app\services\user.go:295:34: undefined: userID
+	// app\services\user.go:295:42: undefined: taskID
 	logID, err := s.logModel.AddLog(userID, taskID, models.LogTypeValue)
 	err = s.logModel.SetValue(logID, rand.Int63n(20))
 	err = s.logModel.SetMsg(logID, "user attend")

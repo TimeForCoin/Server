@@ -35,7 +35,7 @@ func IsUserType(userType string) bool {
 }
 
 // IsTaskStatus 判断是否为合法任务状态
-func IsTaskStatus (status string) bool {
+func IsTaskStatus(status string) bool {
 	TaskStatus := []string{"draft", "wait", "close", "finish"}
 	for _, t := range TaskStatus {
 		if status == t {
